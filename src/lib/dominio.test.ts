@@ -4,8 +4,10 @@ import {
   erroresRecarga,
   pasajesEquivalentes,
   saldoParaPasajes,
+  digitoLuhn,
   validarCedula,
   validarPin,
+  validarSerial,
   type BorradorRecarga,
 } from "./dominio";
 import type { Movimiento } from "./tipos";
@@ -22,7 +24,7 @@ const BUENO: BorradorRecarga = {
 function recarga(estado: Movimiento["estado"], referencia = "4821"): Movimiento {
   return {
     id: `r-${estado}`,
-    serial: "23-1-0000001-0",
+    serial: "23-1-000001-9",
     tipo: "recarga",
     monto: 200,
     saldoDespues: 100,
@@ -131,5 +133,25 @@ describe("pasajesEquivalentes", () => {
   it("sabe si el saldo alcanza para N pasajes", () => {
     expect(saldoParaPasajes(45, 15, 3)).toBe(true);
     expect(saldoParaPasajes(44.99, 15, 3)).toBe(false);
+  });
+});
+
+describe("serial BLINK", () => {
+  it("calcula el dígito de Luhn de los 9 dígitos base", () => {
+    expect(digitoLuhn("231000001")).toBe("9");
+    expect(digitoLuhn("231000002")).toBe("7");
+    expect(digitoLuhn("231000003")).toBe("5");
+  });
+
+  it("acepta seriales con verificador válido", () => {
+    expect(validarSerial("23-1-000001-9")).toBeNull();
+    expect(validarSerial("23-1-000002-7")).toBeNull();
+    expect(validarSerial("2310000019")).toBeNull();
+  });
+
+  it("rechaza largo incorrecto o verificador que no cuadra", () => {
+    expect(validarSerial("23-1-000001-0")).toMatch(/último dígito/);
+    expect(validarSerial("23-1-0000001-0")).toMatch(/10 dígitos/);
+    expect(validarSerial("")).toMatch(/10 dígitos/);
   });
 });

@@ -9,7 +9,7 @@ export interface Titular {
 }
 
 export interface Tarjeta {
-  /** Serial público impreso en el plástico: 23-1-0000001-0. */
+  /** Serial público impreso en el plástico: 23-1-000001-9. */
   serial: string;
   /** UID de fábrica del chip MIFARE. Viaja en cada lectura del lector. */
   uid: string;

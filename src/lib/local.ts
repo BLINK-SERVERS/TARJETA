@@ -2,6 +2,7 @@ import type { Ajustes, EstadoMovimiento, Movimiento, RecargaNueva, Sesion, Tarje
 import { AJUSTES_POR_DEFECTO } from "./tipos";
 import { hashPin, verificarPin } from "./pin";
 import { soloDigitos } from "./formato";
+import { validarSerial } from "./dominio";
 
 export type CodigoError =
   | "credenciales"
@@ -55,7 +56,7 @@ interface TarjetaLocal extends Tarjeta {
 }
 
 interface BaseLocal {
-  version: 1;
+  version: 2;
   tarjetas: TarjetaLocal[];
   movimientos: Movimiento[];
   sesiones: Record<string, { cedula: string; expira: number }>;
@@ -74,7 +75,7 @@ function isoDiasAtras(dias: number, hora: number, minuto: number): string {
 function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
   const tarjetas: TarjetaLocal[] = [
     {
-      serial: "23-1-0000001-0",
+      serial: "23-1-000001-9",
       uid: "3981BF06",
       titular: { nombre: "María Fernanda Fernández", cedula: "V-12345678", telefono: "0414-1234567" },
       saldo: 485,
@@ -85,7 +86,7 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
       pinHash: pin1,
     },
     {
-      serial: "23-1-0000002-0",
+      serial: "23-1-000002-7",
       uid: "058151954F3400",
       titular: { nombre: "Carlos Andrés Rondón", cedula: "V-87654321", telefono: "0424-8765432" },
       saldo: 0,
@@ -96,7 +97,7 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
       pinHash: pin2,
     },
     {
-      serial: "23-1-0000003-0",
+      serial: "23-1-000003-5",
       uid: "A1B2C3D4",
       titular: { nombre: "Luis Enrique Pérez", cedula: "V-11223344", telefono: "0412-5556677" },
       saldo: 30,
@@ -111,7 +112,7 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
   const serie1: Movimiento[] = [
     {
       id: "mv-0001",
-      serial: "23-1-0000001-0",
+      serial: "23-1-000001-9",
       tipo: "viaje",
       monto: -TARIFA,
       saldoDespues: 485,
@@ -122,7 +123,7 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
     },
     {
       id: "mv-0002",
-      serial: "23-1-0000001-0",
+      serial: "23-1-000001-9",
       tipo: "viaje",
       monto: -TARIFA,
       saldoDespues: 500,
@@ -133,7 +134,7 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
     },
     {
       id: "mv-0003",
-      serial: "23-1-0000001-0",
+      serial: "23-1-000001-9",
       tipo: "recarga",
       monto: 500,
       saldoDespues: 515,
@@ -145,7 +146,7 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
     },
     {
       id: "mv-0004",
-      serial: "23-1-0000001-0",
+      serial: "23-1-000001-9",
       tipo: "viaje",
       monto: -TARIFA,
       saldoDespues: 15,
@@ -156,7 +157,7 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
     },
     {
       id: "mv-0005",
-      serial: "23-1-0000001-0",
+      serial: "23-1-000001-9",
       tipo: "viaje",
       monto: -TARIFA,
       saldoDespues: 30,
@@ -167,7 +168,7 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
     },
     {
       id: "mv-0006",
-      serial: "23-1-0000001-0",
+      serial: "23-1-000001-9",
       tipo: "recarga",
       monto: 200,
       saldoDespues: 45,
@@ -181,7 +182,7 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
 
   const pendiente: Movimiento = {
     id: "mv-0007",
-    serial: "23-1-0000002-0",
+    serial: "23-1-000002-7",
     tipo: "recarga",
     monto: 100,
     saldoDespues: 0,
@@ -194,7 +195,7 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
 
   const viaje2: Movimiento = {
     id: "mv-0008",
-    serial: "23-1-0000003-0",
+    serial: "23-1-000003-5",
     tipo: "viaje",
     monto: -TARIFA,
     saldoDespues: 30,
@@ -205,7 +206,7 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
   };
 
   return {
-    version: 1,
+    version: 2,
     tarjetas,
     movimientos: [pendiente, ...serie1, viaje2].sort(
       (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()
@@ -220,7 +221,7 @@ function leer(): BaseLocal | null {
     const crudo = localStorage.getItem(CLAVE);
     if (!crudo) return null;
     const datos = JSON.parse(crudo) as BaseLocal;
-    if (datos.version !== 1) return null;
+    if (datos.version !== 2) return null;
     return datos;
   } catch {
     return null;
@@ -329,8 +330,9 @@ export const repositorioLocal: Repositorio = {
       );
     }
     const serialNormalizado = serial.trim();
-    if (!/^\d{2}-\d-\d{7}-\d$/.test(serialNormalizado)) {
-      throw new ErrorBlink("sin-tarjeta", "El serial no tiene el formato 23-1-0000001-0.");
+    const errorSerial = validarSerial(serialNormalizado);
+    if (errorSerial) {
+      throw new ErrorBlink("sin-tarjeta", errorSerial);
     }
     const hoy = new Date();
     const vence = new Date(hoy);

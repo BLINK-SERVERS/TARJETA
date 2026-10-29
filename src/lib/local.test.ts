@@ -34,7 +34,7 @@ describe("PIN", () => {
 describe("repositorio local", () => {
   it("entra con la cédula y el PIN de demostración", async () => {
     const sesion = await repositorioLocal.entrar("V-12345678", "1234");
-    expect(sesion.tarjeta.serial).toBe("23-1-0000001-0");
+    expect(sesion.tarjeta.serial).toBe("23-1-000001-9");
     expect(sesion.tarjeta.saldo).toBe(485);
     expect(sesion.tarjeta.titular.nombre).toContain("María");
   });
@@ -97,7 +97,7 @@ describe("repositorio local", () => {
       codigo: "credenciales",
     });
     const nueva = await repositorioLocal.entrar("V-12345678", "1492");
-    expect(nueva.tarjeta.serial).toBe("23-1-0000001-0");
+    expect(nueva.tarjeta.serial).toBe("23-1-000001-9");
   });
 
   it("cierra la sesión e invalida el token", async () => {

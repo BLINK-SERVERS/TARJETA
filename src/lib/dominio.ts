@@ -38,6 +38,36 @@ export function validarPin(pin: string): string | null {
   return null;
 }
 
+/**
+ * Dígito verificador del ID BLINK (ISO/IEC 7812-1): sobre los 9 dígitos
+ * base se duplican las posiciones impares y se completa a la decena.
+ * 231000001 → 9, es decir 23-1-000001-9.
+ */
+export function digitoLuhn(base: string): string {
+  const digitos = soloDigitos(base);
+  let suma = 0;
+  for (let i = 0; i < digitos.length; i++) {
+    const valor = Number(digitos[i]);
+    if (i % 2 === 0) {
+      const doble = valor * 2;
+      suma += doble > 9 ? doble - 9 : doble;
+    } else {
+      suma += valor;
+    }
+  }
+  return String((10 - (suma % 10)) % 10);
+}
+
+/** Serial impreso en el plástico: 10 dígitos con Luhn válido. */
+export function validarSerial(texto: string): string | null {
+  const digitos = soloDigitos(texto);
+  if (digitos.length !== 10) return "El serial tiene 10 dígitos: 23-1-000001-9.";
+  if (digitoLuhn(digitos.slice(0, 9)) !== digitos[9]) {
+    return "El último dígito del serial no coincide. Revísalo en el reverso de la tarjeta.";
+  }
+  return null;
+}
+
 /** Cuántos pasajes caben en un saldo, a la tarifa vigente. */
 export function pasajesEquivalentes(saldo: number, tarifa: number): number {
   if (!Number.isFinite(tarifa) || tarifa <= 0) return 0;

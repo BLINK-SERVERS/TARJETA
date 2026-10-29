@@ -113,13 +113,13 @@ export function formatearVence(iso: string): string {
 
 // --- Máscaras de entrada ---
 
-const GRUPOS_SERIAL = [2, 1, 7, 1];
+const GRUPOS_SERIAL = [2, 1, 6, 1];
 
 export function soloDigitos(texto: string): string {
   return texto.replace(/\D/g, "");
 }
 
-/** 23100000010 → 23-1-0000001-0 */
+/** 2310000019 → 23-1-000001-9 (estado, tarifa, secuencial y Luhn). */
 export function formatearSerial(digitos: string): string {
   let salida = "";
   let desde = 0;

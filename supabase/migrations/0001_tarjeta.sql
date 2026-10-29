@@ -23,9 +23,40 @@ create table if not exists public.bt_ajustes (
 -- ------------------------------------------------------------
 -- 2. Tarjetas
 -- ------------------------------------------------------------
+
+-- ID BLINK impreso (ISO/IEC 7812-1): 2 dígitos de entidad federal, 1 de
+-- tarifa, 6 secuenciales y el verificador de Luhn. 231000001 → 23-1-000001-9.
+create or replace function public.bt_luhn_valido(p_serial text)
+returns boolean language plpgsql immutable as $$
+declare
+  v_digitos text := regexp_replace(coalesce(p_serial, ''), '\D', '', 'g');
+  v_suma int := 0;
+  v_n int;
+  i int;
+begin
+  if length(v_digitos) <> 10 then
+    return false;
+  end if;
+
+  for i in 1..9 loop
+    v_n := substr(v_digitos, i, 1)::int;
+    if i % 2 = 1 then
+      v_n := v_n * 2;
+      if v_n > 9 then
+        v_n := v_n - 9;
+      end if;
+    end if;
+    v_suma := v_suma + v_n;
+  end loop;
+
+  return (10 - (v_suma % 10)) % 10 = substr(v_digitos, 10, 1)::int;
+end;
+$$;
+
 create table if not exists public.bt_tarjetas (
   id              uuid primary key default gen_random_uuid(),
-  serial          text not null unique check (serial ~ '^\d{2}-\d-\d{7}-\d$'),
+  serial          text not null unique
+                  check (serial ~ '^\d{2}-\d-\d{6}-\d$' and public.bt_luhn_valido(serial)),
   uid             text unique,
   nombre          text not null default 'Titular',
   cedula          text not null,
@@ -566,8 +597,9 @@ language plpgsql security definer set search_path = public as $$
 declare
   v_tarjeta public.bt_tarjetas;
 begin
-  if coalesce(trim(p_serial), '') !~ '^\d{2}-\d-\d{7}-\d$' then
-    raise exception 'El serial debe tener el formato 23-1-0000001-0.';
+  if coalesce(trim(p_serial), '') !~ '^\d{2}-\d-\d{6}-\d$'
+     or not public.bt_luhn_valido(trim(p_serial)) then
+    raise exception 'El serial debe tener 10 dígitos y Luhn válido (ej. 23-1-000001-9).';
   end if;
 
   insert into public.bt_tarjetas (serial, nombre, cedula, telefono, tarifa, pin_hash)
@@ -785,6 +817,7 @@ revoke all on public.bt_sesiones    from anon, authenticated;
 revoke all on public.bt_ajustes     from anon, authenticated;
 
 revoke all on function public.bt_solo_digitos(text)               from public;
+revoke all on function public.bt_luhn_valido(text)                from public;
 revoke all on function public.bt_pin_valido(text)                 from public;
 revoke all on function public.bt_tarjeta_vigente(public.bt_tarjetas) from public;
 revoke all on function public.bt_tarjeta_json(public.bt_tarjetas) from public;

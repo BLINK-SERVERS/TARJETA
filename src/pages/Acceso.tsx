@@ -4,7 +4,7 @@ import { PinEntrada } from "../components/PinEntrada";
 import { Hoja } from "../components/Hoja";
 import { ErrorBlink } from "../lib/repo";
 import { repositorio, type Repositorio } from "../lib/repo";
-import { validarCedula, validarPin } from "../lib/dominio";
+import { validarCedula, validarPin, validarSerial } from "../lib/dominio";
 import { formatearCedula, formatearSerial, formatearTelefono, soloDigitos } from "../lib/formato";
 import type { Sesion } from "../lib/tipos";
 
@@ -45,9 +45,8 @@ export function Acceso({ repo = repositorio, alEntrar }: Props) {
     if (modo === "entrar") {
       if (pinActual.length !== 4) nuevos.pin = "Escribe tu PIN de 4 dígitos.";
     } else {
-      if (!/^\d{2}-\d-\d{7}-\d$/.test(formatearSerial(soloDigitos(serial)))) {
-        nuevos.serial = "El serial tiene 11 dígitos: 23-1-0000001-0.";
-      }
+      const errorSerial = validarSerial(serial);
+      if (errorSerial) nuevos.serial = errorSerial;
       if (!/^0\d{10}$/.test(soloDigitos(telefono))) {
         nuevos.telefono = "Escribe el teléfono con 11 dígitos (0414-1234567).";
       }
@@ -164,7 +163,7 @@ export function Acceso({ repo = repositorio, alEntrar }: Props) {
                   className="entrada mono"
                   inputMode="numeric"
                   autoComplete="off"
-                  placeholder="23-1-0000001-0"
+                  placeholder="23-1-000001-9"
                   value={serial}
                   onChange={(evento) => setSerial(formatearSerial(soloDigitos(evento.target.value)))}
                   aria-invalid={errores.serial ? true : undefined}
