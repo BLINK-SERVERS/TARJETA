@@ -1,5 +1,5 @@
 import type { Ajustes, Movimiento } from "./tipos";
-import { soloDigitos } from "./formato";
+import { soloDigitos } from "./formato.ts";
 
 export interface BorradorRecarga {
   monto: string;
