@@ -544,15 +544,17 @@ $$;
 -- ------------------------------------------------------------
 -- 8. Permisos: solo service_role
 -- ------------------------------------------------------------
-revoke all on function public.bt_luhn_digito(text)                      from public;
-revoke all on function public.bt_normalizar_mac(text)                   from public;
-revoke all on function public.bt_enrolar_tarjeta(text, text)            from public;
-revoke all on function public.bt_generar_lote(int, text, int, int)      from public;
-revoke all on function public.bt_reportar_perdida(text, text)           from public;
-revoke all on function public.bt_acreditar_recarga(text, numeric, text, text, text) from public;
-revoke all on function public.bt_validador_sincronizar(text, jsonb, jsonb) from public;
-revoke all on function public.bt_liquidar(uuid, timestamptz, timestamptz) from public;
-revoke all on function public.bt_resumen_operativo()                    from public;
+-- Se revoca también de anon y authenticated: Supabase se los concede por
+-- defecto a cada función nueva y revocar solo de PUBLIC no los alcanza.
+revoke all on function public.bt_luhn_digito(text)                      from public, anon, authenticated;
+revoke all on function public.bt_normalizar_mac(text)                   from public, anon, authenticated;
+revoke all on function public.bt_enrolar_tarjeta(text, text)            from public, anon, authenticated;
+revoke all on function public.bt_generar_lote(int, text, int, int)      from public, anon, authenticated;
+revoke all on function public.bt_reportar_perdida(text, text)           from public, anon, authenticated;
+revoke all on function public.bt_acreditar_recarga(text, numeric, text, text, text) from public, anon, authenticated;
+revoke all on function public.bt_validador_sincronizar(text, jsonb, jsonb) from public, anon, authenticated;
+revoke all on function public.bt_liquidar(uuid, timestamptz, timestamptz) from public, anon, authenticated;
+revoke all on function public.bt_resumen_operativo()                    from public, anon, authenticated;
 
 grant execute on function public.bt_enrolar_tarjeta(text, text)            to service_role;
 grant execute on function public.bt_generar_lote(int, text, int, int)      to service_role;

@@ -981,6 +981,15 @@ revoke all on function public.bt_sesion_tarjeta(text)                from public
 revoke all on function public.bt_tope_recarga()                      from public;
 revoke all on function public.bt_tocar_actualizada()                 from public;
 
+-- Supabase concede EXECUTE a anon y authenticated en cada función nueva de
+-- public. Revocar solo de PUBLIC no alcanza: el permiso explícito sigue
+-- vivo. Se cierra todo y se vuelve a abrir únicamente la superficie del
+-- portal; las funciones futuras quedan cerradas por defecto.
+alter default privileges in schema public
+  revoke execute on functions from public, anon, authenticated;
+
+revoke all on all functions in schema public from public, anon, authenticated;
+
 -- Las que usa el navegador con la llave pública.
 grant execute on function public.bt_entrar(text, text)                              to anon, authenticated;
 grant execute on function public.bt_activar(text, text, text, text)                 to anon, authenticated;
