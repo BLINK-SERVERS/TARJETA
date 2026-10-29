@@ -1,0 +1,16 @@
+{
+  "name": "BLINK TARJETA",
+  "short_name": "BLINK",
+  "description": "Consulta el saldo de tu tarjeta de transporte y recarga con Pago Móvil.",
+  "lang": "es-VE",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFEFB",
+  "theme_color": "#FFFEFB",
+  "icons": [
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

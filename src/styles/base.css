@@ -1,0 +1,154 @@
+/* ============================================================
+   BLINK POS — Base
+   ------------------------------------------------------------
+   Lo mínimo que necesita CUALQUIER página: el reset, los iconos
+   y las utilidades. Va aparte de `app.css` para que la landing
+   (que no usa la aplicación) no cargue el CSS del POS.
+
+   El orden de importación en `main.tsx` es:
+     base.css → tokens.css → landing.css
+   y `app.css` + `konsta.css` se cargan solo con la aplicación.
+   ============================================================ */
+
+/* --- Reset / base --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+/* La pila tipográfica vive en :root y no en body: así la heredan
+   TODO (incluidos los controles de formulario, que el navegador
+   viste por su cuenta) y también el <html>, donde el preflight de
+   Tailwind escribe su propia font-family. */
+:root {
+  font-family: var(--font-primary);
+  /* El eje óptico (opsz) de SF Pro interpola entre los tamaños
+     Display y Text: la misma familia se adapta a cada cuerpo. */
+  font-optical-sizing: auto;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-text);
+  font-optical-sizing: auto;
+  font-size: var(--fs-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-text-primary);
+}
+p {
+  margin: 0;
+}
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+/* El navegador da su propia fuente a los controles de formulario
+   (y al texto que se selecciona dentro de ellos). Se fuerza la de la
+   app para que un campo, un boton y su etiqueta digan lo mismo. */
+button,
+input,
+select,
+textarea,
+optgroup,
+option {
+  font-family: inherit;
+  font-optical-sizing: auto;
+}
+
+button {
+  touch-action: manipulation;
+}
+
+html {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+input,
+textarea,
+select,
+[contenteditable="true"],
+.allow-select {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+  font-size: 16px;
+}
+
+img,
+svg {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* --- Iconos SVG --- */
+.icon {
+  width: 1.15em;
+  height: 1.15em;
+  flex: none;
+  display: inline-block;
+  vertical-align: -0.15em;
+}
+.icon--sm {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+.icon--lg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.icon--xl {
+  width: 2rem;
+  height: 2rem;
+}
+
+/* --- Utilidades --- */
+
+/* Cargador de página: lo usa el chunk principal (App.tsx), asi que
+   vive en la base y no en el CSS de la aplicación. */
+.page-loader {
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--color-text-tertiary);
+  font-size: var(--fs-sm);
+}
+.muted {
+  color: var(--color-text-secondary);
+}
+.dim {
+  color: var(--color-text-tertiary);
+}
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}

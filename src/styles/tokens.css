@@ -1,0 +1,423 @@
+/* ============================================================
+   BLINK POS — Design tokens
+
+   DOS APARIENCIAS (claro y oscuro), una sola paleta de marca.
+   Los valores de cada modo salen del UI Kit oficial de iOS 27
+   (docs/ios27-geometry.json, docs/DESIGN_IOS27_KIT.md):
+
+   Claro (HIG · Dark Mode, "no son necesariamente la inversion"):
+     · Fondo    #FFFEFB  (papel de la marca)
+     · Texto    #1D1D1F  (tinta de la marca) · secundario #424242
+     · Acento   #007AFF  (IOS_SYSTEM_COLORS.blue.light)
+   Oscuro (mismos tokens del kit, variante dark):
+     · Fondo    #000000  (material "Dark/Regular - Small")
+     · Superficie #1a1a1a (material "Dark/Regular - Medium/Large")
+     · Texto    #FFFFFF  (IOS_LABELS.dark.primary)
+     · Secundario #EBEBF5 (IOS_LABELS.dark.secondary)
+     · Acento   #0091FF  (IOS_SYSTEM_COLORS.blue.dark)
+     · Estados  verde #30D158 · rojo #FF4245 · amarillo #FFD600
+
+   El cambio de apariencia lo decide `color-scheme` en <html>:
+   "light dark" (automático, sigue al sistema), "light" u "dark".
+   Por eso cada token se declara con `light-dark(claro, oscuro)`:
+   una sola regla, dos modos, sin duplicar la paleta.
+
+   Las variaciones (sutiles, bordes, hovers) se derivan del color de
+   texto con transparencia, para no salir de la paleta.
+   ============================================================ */
+:root {
+  /* `light-dark()` necesita conocer la apariencia vigente. "light dark"
+     = sigue al sistema; el ajuste de la app lo cambia a "light" o "dark"
+     en linea (style="color-scheme:..."), que tiene prioridad. */
+  color-scheme: light dark;
+
+  /* --- Marca (paleta oficial Blink) --- */
+  --blink-bg-main: #FFFEFB;
+  --blink-bg-main: light-dark(#FFFEFB, #000000);
+  --blink-primary: #0088ff;
+  --blink-primary: light-dark(var(--blink-blue-light), var(--blink-blue-dark));
+  --blink-text-muted: #424242;
+  --blink-text-muted: light-dark(#424242, #EBEBF5);
+  --blink-success: #34c759;
+  --blink-success: light-dark(var(--blink-green-light), var(--blink-green-dark));
+  --blink-danger: #ff383c;
+  --blink-danger: light-dark(var(--blink-red-light), var(--blink-red-dark));
+  --blink-warning: #ffcc00;
+  --blink-warning: light-dark(var(--blink-yellow-light), var(--blink-yellow-dark));
+  --blink-dark: #1D1D1F;
+  --blink-dark: light-dark(#1D1D1F, #FFFFFF);
+
+  --color-bg-primary: #FFFEFB;
+  --color-bg-primary: light-dark(#FFFEFB, #000000);
+  --color-text-primary: #1D1D1F;
+  --color-text-primary: light-dark(#1D1D1F, #FFFFFF);
+  --color-accent: var(--blink-blue-light);
+  --color-accent: light-dark(var(--blink-blue-light), var(--blink-blue-dark));
+  /* Hover derivado solo de la paleta (acento sobre texto), sin un 4.º color.
+     En oscuro el hover aclara el acento (sobre texto claro). */
+  --color-accent-hover: color-mix(in srgb, var(--blink-blue-light) 82%, #000000);
+  --color-accent-hover: light-dark(
+    color-mix(in srgb, var(--blink-blue-light) 82%, #000000),
+    color-mix(in srgb, var(--blink-blue-dark) 84%, #ffffff)
+  );
+
+  /* --- Superficies ---
+     En claro todo es #FFFEFB; en oscuro, el material "Dark/Regular"
+     del kit: #1a1a1a en las superficies elevadas y #000000 en el fondo. */
+  --color-bg-elevated: #FFFEFB;
+  --color-bg-elevated: light-dark(#FFFEFB, #1a1a1a);
+  --color-bg-subtle: #fffefb;
+  --color-bg-subtle: light-dark(#fffefb, #1a1a1a);
+  --color-bg-inset: #fffefb;
+  --color-bg-inset: light-dark(#fffefb, #000000);
+
+  /* --- Textos derivados del color base ---
+     Opacidades elegidas para cumplir contraste AA (>=4.5:1) en los dos
+     modos: en claro sobre #FFFEFB, en oscuro sobre #000000/#1a1a1a. */
+  --color-text-secondary: #424242;
+  --color-text-secondary: light-dark(#424242, #ebebf5);
+  /* El terciario es más tenue que el secundario para conservar la
+     jerarquía de iOS. Los valores mantienen contraste AA (>=4.5:1)
+     sobre las superficies de cada modo. */
+  --color-text-tertiary: #6e6e6e;
+  --color-text-tertiary: light-dark(#6e6e6e, #a1a1aa);
+  --color-text-inverse: #FFFEFB;
+  --color-text-inverse: light-dark(#FFFEFB, #000000);
+
+  /* Texto sobre un relleno de acento (botón primario, avatar, punto
+     de la lista de pasos). El azul de marca es igual de claro en los
+     dos modos, asi que el texto encima es SIEMPRE claro: si se
+     invirtiera con la apariencia, en oscuro salia negro sobre azul. */
+  --color-text-on-accent: #FFFEFB;
+
+  /* --- Acentos derivados --- */
+  --color-accent-soft: rgb(from var(--acento) r g b / 0.08);
+  --color-accent-soft: light-dark(rgb(from var(--acento) r g b / 0.08), rgb(from var(--acento) r g b / 0.18));
+  --color-accent-soft-strong: rgb(from var(--acento) r g b / 0.16);
+  --color-accent-soft-strong: light-dark(rgb(from var(--acento) r g b / 0.16), rgb(from var(--acento) r g b / 0.3));
+  --color-accent-ring: rgb(from var(--acento) r g b / 0.25);
+  --color-accent-ring: light-dark(rgb(from var(--acento) r g b / 0.25), rgb(from var(--acento) r g b / 0.4));
+
+  /* Texto sobre un velo del acento (boton tintado, chip). El relleno
+     es el acento con poca opacidad, asi que el texto necesita su
+     propia variante: con el azul de marca puro se quedaba en 3:1 en
+     claro y en 2,9:1 en oscuro. */
+  --color-accent-text: #0066cc;
+  --color-accent-text: light-dark(#0066cc, #8cc7ff);
+  /* El hover del boton tintado: en claro se carga mas, en oscuro se
+     mantiene suave para no bajar de 4,5:1. */
+  --color-accent-soft-hover: rgb(from var(--acento) r g b / 0.16);
+  --color-accent-soft-hover: light-dark(
+    rgb(from var(--acento) r g b / 0.16),
+    rgb(from var(--acento) r g b / 0.22)
+  );
+
+  /* Texto de estado sobre su propio velo de color (pildoras de
+     variacion). El verde y el rojo de la marca son muy claros: como
+     texto sobre su velo no llegaban a 4,5:1 en la apariencia clara. */
+  --color-success-text: #1e7a34;
+  --color-success-text: light-dark(#1e7a34, #30d158);
+  --color-danger-text: #c4272b;
+  --color-danger-text: light-dark(#c4272b, #ff4245);
+  /* Píldoras de advertencia y peligro: velo del estado + texto que
+     conserve AA sobre ese velo en ambos modos. */
+  --color-warning-soft: rgba(255, 204, 0, 0.18);
+  --color-warning-soft: light-dark(rgba(255, 204, 0, 0.18), rgba(255, 214, 0, 0.2));
+  --color-warning-text: #6e5200;
+  --color-warning-text: light-dark(#6e5200, #ffd600);
+  --color-danger-soft: rgba(255, 56, 60, 0.12);
+  --color-danger-soft: light-dark(rgba(255, 56, 60, 0.12), rgba(255, 66, 69, 0.16));
+  --color-danger-soft-text: #b32025;
+  --color-danger-soft-text: light-dark(#b32025, #ff6b6e);
+
+  /* --- Bordes derivados del texto --- */
+  --color-border: rgba(66, 66, 66, 0.16);
+  --color-border: light-dark(rgba(66, 66, 66, 0.16), rgba(235, 235, 245, 0.18));
+  --color-border-strong: rgba(66, 66, 66, 0.28);
+  --color-border-strong: light-dark(rgba(66, 66, 66, 0.28), rgba(235, 235, 245, 0.32));
+
+  /* --- Estados (misma paleta: solo acento o neutro) --- */
+  --color-neutral-soft: rgba(66, 66, 66, 0.06);
+  --color-neutral-soft: light-dark(rgba(66, 66, 66, 0.06), rgba(235, 235, 245, 0.07));
+
+  /* --- Tipografía ---
+     UNA sola pila para toda la app: la landing, el POS y las páginas
+     legales escriben siempre con la misma voz.
+
+     · SF Pro (Apple) se pide al sistema con `local()`: sale de serie en
+       Apple y se usa en Windows/Linux si el usuario la instala.
+     · Inter (SIL OFL 1.1) va justo detrás y se sirve desde la app: es
+       el respaldo para los equipos sin SF Pro, de modo que ninguna
+       parte de la interfaz se renderice con la tipografía del sistema.
+     · La pila del sistema queda al final, solo como último recurso.
+
+     --font-display, --font-text y --font-primary apuntan a la MISMA
+     pila: la diferencia entre el corte Display y el Text la resuelve
+     el eje óptico (opsz) de la propia fuente, no el nombre de la
+     familia. Separate las familias obligaba a elegir una u otra a
+     mano y provocaba que un titular y su párrafo salieran con
+     tipografías distintas.
+     · --font-mono → SF Mono (cifras monoespaciadas, SKU, códigos).
+     Ningún fichero de Apple se distribuye. */
+  --font-pila: "SF Pro", "SF Pro Text", "SF Pro Display", "Inter", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-pila);
+  --font-text: var(--font-pila);
+  --font-primary: var(--font-pila);
+  --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+
+  /* Tailwind v4 (preflight) escribe `html { font-family: ... }` con
+     estas dos variables. Sin definirlas, el preflight imponía la pila
+     del sistema al <html> de la aplicación. */
+  --default-font-family: var(--font-pila);
+  --font-sans: var(--font-pila);
+
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.8125rem;
+  --fs-base: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.375rem;
+  --fs-2xl: 1.75rem;
+
+  /* --- Paleta oficial BLINK (claro / oscuro) ---
+     Los diez grupos de color con su par claro/oscuro. Es la fuente
+     de verdad de la marca: el acento, los estados y los materiales
+     salen de aqui. */
+  --blink-red-light: #ff383c;
+  --blink-red-dark: #ff4245;
+  --blink-crimson-light: #ff2d55;
+  --blink-crimson-dark: #ff375f;
+  --blink-orange-light: #ff8d28;
+  --blink-orange-dark: #ff9230;
+  --blink-yellow-light: #ffcc00;
+  --blink-yellow-dark: #ffd600;
+  --blink-green-light: #34c759;
+  --blink-green-dark: #30d158;
+  --blink-teal1-light: #00c8b3;
+  --blink-teal1-dark: #00dac3;
+  --blink-teal2-light: #00c3d0;
+  --blink-teal2-dark: #0fd5e2;
+  --blink-cyan-light: #00c0e8;
+  --blink-cyan-dark: #3cd3fe;
+  --blink-blue-light: #0088ff;
+  --blink-blue-dark: #0091ff;
+  --blink-indigo-light: #6a5ff6;
+  --blink-indigo-dark: #7684ff;
+  --blink-magenta-light: #ce3ce2;
+  --blink-magenta-dark: #dd40f3;
+  --blink-brown-light: #b18767;
+  --blink-brown-dark: #bb916f;
+
+  /* --- Colores base para componer transparencias ---
+     Para derivar rellenos, bordes y sombras que se adapten a la
+     apariencia, se parte de un color con `light-dark()` y se le aplica
+     la transparencia con la sintaxis de color relativo:
+
+         rgb(from var(--papel) r g b / 0.62)
+
+     Ojo: Chrome NO admite `light-dark()` anidado dentro de `rgb()`
+     (`rgb(from var(--papel) r g b / .62)` con el token como canales queda
+     invalido y se descarta la declaracion entera). Por eso aqui el
+     token es un color, no una lista de canales. */
+  --tinta: light-dark(#424242, #EBEBF5);
+  --tinta-inversa: light-dark(#FFFEFB, #000000);
+  --papel: light-dark(#FFFEFB, #000000);
+  --superficie: light-dark(#FFFEFB, #1a1a1a);
+  --acento: light-dark(#0088ff, #0091ff);
+  --rojo: light-dark(#ff383c, #ff4245);
+  --verde: light-dark(#34c759, #30d158);
+  --negro: light-dark(#1D1D1F, #000000);
+  --halo: light-dark(#ffffff, #ebebf5);
+
+  /* --- Formas --- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-pill: 50px;
+
+  --shadow-card: 0 1px 2px rgba(66, 66, 66, 0.04);
+  --shadow-pop: 0 12px 32px rgba(66, 66, 66, 0.18);
+
+  /* --- Elevación (iOS 27 · superficies flotantes) ---
+     La paleta exige que TODOS los fondos sean #FFFEFB, así que la
+     jerarquía entre superficies NO se construye con un tinte distinto
+     (como haría systemGroupedBackground), sino con sombra: el grupo se
+     recorta sobre el lienzo blanco, igual que en iOS. */
+  --shadow-ios-card: 0 1px 2px rgba(29, 29, 31, 0.04);
+  /* `light-dark()` solo resuelve COLORES, así que la geometría de la
+     sombra no puede ir dentro de la función. Cada capa lleva su color
+     con `light-dark()`: en claro las capas extra son transparentes;
+     en oscuro aportan el halo y el borde de 1 px del kit. */
+  --shadow-ios-card:
+    0 1px 2px light-dark(rgba(29, 29, 31, 0.04), rgba(29, 29, 31, 0.05)),
+    0 4px 16px light-dark(rgba(29, 29, 31, 0), rgba(29, 29, 31, 0.05)),
+    0 0 0 1px light-dark(rgba(235, 235, 245, 0), rgba(235, 235, 245, 0.07));
+  --shadow-ios-panel: 0 1px 2px rgba(29, 29, 31, 0.05);
+  --shadow-ios-panel:
+    0 1px 2px light-dark(rgba(29, 29, 31, 0.05), rgba(29, 29, 31, 0.07)),
+    0 12px 32px light-dark(rgba(29, 29, 31, 0), rgba(29, 29, 31, 0.07)),
+    0 0 0 1px light-dark(rgba(235, 235, 245, 0), rgba(235, 235, 245, 0.09));
+  --shadow-ios-raised: 0 1px 2px rgba(29, 29, 31, 0.06);
+  --shadow-ios-raised:
+    0 1px 2px light-dark(rgba(29, 29, 31, 0.06), rgba(29, 29, 31, 0)),
+    0 2px 6px light-dark(rgba(29, 29, 31, 0), rgba(29, 29, 31, 0.06)),
+    0 0 0 1px light-dark(rgba(235, 235, 245, 0), rgba(235, 235, 245, 0.06));
+
+  /* --- Material Liquid Glass (UI Kit de iOS 27) ---
+     Valores reales de `IOS_MATERIALS` (app/src/lib/ios-design-tokens.ts):
+     el radio del desenfoque de fondo, en puntos. */
+  --ios-material-blur-small: 6px;   /* Light/Regular - Small  #f8f8f8 */
+  --ios-material-blur-medium: 15px; /* Light/Regular - Medium #cccccc */
+  --ios-material-blur-large: 30px;  /* Light/Regular - Large  #ffffff */
+  --ios-material-blur-clear: 3px;   /* Clear                  #f8f8f8 */
+
+  /* Radio de desenfoque segun la apariencia. El material "Dark/Regular"
+     del kit difumina mas que el claro: sin esto, el cristal de la
+     escena oscura se ve plano. Como el token sigue a `color-scheme`,
+     respeta tambien el modo elegido a mano en Ajustes. */
+  --ios-blur: var(--ios-material-blur-small);
+  --ios-blur: light-dark(var(--ios-material-blur-small), var(--ios-material-blur-medium));
+
+  /* El canto del cristal: una linea interior translucida que separa el
+     material del fondo y le da el borde de vidrio. */
+  --ios-rim: inset 0 0 0 1px rgb(from var(--halo) r g b / 0.14);
+  --ios-rim: light-dark(
+    inset 0 0 0 1px rgb(from var(--halo) r g b / 0.14),
+    inset 0 0 0 1px rgb(from var(--halo) r g b / 0.13)
+  );
+
+  /* Brillo especular del material: el borde superior iluminado y el
+     inferior en sombra, que es lo que le da el aspecto de "vidrio". */
+  --ios-specular: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  --ios-specular: light-dark(
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3)
+  );
+  --ios-specular-soft: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  --ios-specular-soft: light-dark(
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18)
+  );
+  --ios-specular-dark: inset 0 -1px 0 rgba(66, 66, 66, 0.1);
+  --ios-specular-dark: light-dark(
+    inset 0 -1px 0 rgba(66, 66, 66, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45)
+  );
+  /* Degradado vertical del material: mas luz arriba, translucido abajo. */
+  --ios-veil: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.62) 0%,
+    rgba(255, 255, 255, 0.22) 46%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  --ios-veil: light-dark(
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.62) 0%,
+      rgba(255, 255, 255, 0.22) 46%,
+      rgba(255, 255, 255, 0.08) 100%
+    ),
+    /* En oscuro el velo necesita mas presencia: sobre el negro, un
+       8 % de blanco es invisible y el boton se ve plano. */
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.2) 0%,
+      rgba(255, 255, 255, 0.08) 46%,
+      rgba(255, 255, 255, 0.035) 100%
+    )
+  );
+
+  --transition-speed: 0.2s ease-in-out;
+
+  /* --- Layout --- */
+  --sidebar-w: 248px;
+  --topbar-h: 56px;
+  --ticket-w: 360px;
+  --page-max: 1320px;
+
+  /* ==========================================================
+     iOS 27 — valores oficiales del UI Kit de Apple
+     Extraido de "Apple iOS 27 UI Kit.sketch" (107 colores, 105 estilos
+     de texto, 42 materiales). Ver docs/DESIGN_IOS27_KIT.md
+     ========================================================== */
+
+  /* Colores del sistema (acento por tonalidad) */
+  --ios-blue-light: #0088ff;
+  --ios-brown-light: #ac7f5e;
+  --ios-cyan-light: #00c0e8;
+  --ios-green-light: #34c759;
+  --ios-indigo-light: #6155f5;
+  --ios-mint-light: #00c8b3;
+  --ios-orange-light: #ff8d28;
+  --ios-pink-light: #ff2d55;
+  --ios-purple-light: #cb30e0;
+  --ios-red-light: #ff383c;
+  --ios-teal-light: #00c3d0;
+  --ios-yellow-light: #ffcc00;
+  --ios-blue-dark: #0091ff;
+  --ios-brown-dark: #b78a66;
+  --ios-cyan-dark: #3cd3fe;
+  --ios-green-dark: #30d158;
+  --ios-indigo-dark: #6d7cff;
+  --ios-mint-dark: #00dac3;
+  --ios-orange-dark: #ff9230;
+  --ios-pink-dark: #ff375f;
+  --ios-purple-dark: #db34f2;
+  --ios-red-dark: #ff4245;
+  --ios-teal-dark: #00d2e0;
+  --ios-yellow-dark: #ffd600;
+
+  /* Etiquetas: 5 niveles de jerarquia de texto */
+  --ios-label-light-primary: #000000;
+  --ios-label-light-secondary: #3c3c43;
+  --ios-label-light-tertiary: #3c3c43;
+  --ios-label-light-quaternary: #3c3c43;
+  --ios-label-light-quinary: #3c3c43;
+  --ios-label-dark-primary: #ffffff;
+  --ios-label-dark-secondary: #ebebf5;
+  --ios-label-dark-tertiary: #ebebf5;
+  --ios-label-dark-quaternary: #ebebf5;
+  --ios-label-dark-quinary: #ebebf5;
+
+  /* Rellenos: 5 niveles de superficies */
+  --ios-fill-light-primary: #787878;
+  --ios-fill-light-secondary: #787880;
+  --ios-fill-light-tertiary: #767680;
+  --ios-fill-light-quaternary: #747480;
+  --ios-fill-light-quinary: #000000;
+  --ios-fill-dark-primary: #787880;
+  --ios-fill-dark-secondary: #787880;
+  --ios-fill-dark-tertiary: #767680;
+  --ios-fill-dark-quaternary: #767680;
+  --ios-fill-dark-quinary: #767680;
+
+  /* Materiales Liquid Glass (radio de desenfoque real del kit) */
+  --ios-glass-blur-small: 6px;
+  --ios-glass-blur-medium: 15px;
+  --ios-glass-blur-large: 30px;
+  --ios-glass-bg-light: #f8f8f8;
+  --ios-glass-bg-dark: #1a1a1a;
+  /* Fondo del material de cristal segun la apariencia. */
+  --ios-glass-bg: var(--ios-glass-bg-light);
+  --ios-glass-bg: light-dark(var(--ios-glass-bg-light), var(--ios-glass-bg-dark));
+
+  /* Escala tipografica de iOS 27 (puntos / interlineado) */
+  --ios-fs-largeTitle: 34px;   --ios-lh-largeTitle: 41px;
+  --ios-fs-title1: 28px;       --ios-lh-title1: 34px;
+  --ios-fs-title2: 22px;       --ios-lh-title2: 28px;
+  --ios-fs-title3: 20px;       --ios-lh-title3: 25px;
+  --ios-fs-headline: 17px;     --ios-lh-headline: 22px;
+  --ios-fs-body: 17px;         --ios-lh-body: 22px;
+  --ios-fs-callout: 16px;      --ios-lh-callout: 21px;
+  --ios-fs-subheadline: 15px;  --ios-lh-subheadline: 20px;
+  --ios-fs-footnote: 13px;     --ios-lh-footnote: 18px;
+  --ios-fs-caption1: 12px;     --ios-lh-caption1: 16px;
+  --ios-fs-caption2: 11px;     --ios-lh-caption2: 13px;
+
+  /* Area tactil minima */
+  --ios-touch-target: 44px;
+
+  /* Separadores (hairlines) de las listas y tablas de iOS. */
+  --ios-separator: light-dark(rgba(66, 66, 66, 0.1), rgba(235, 235, 245, 0.18));
+  --ios-separator-strong: light-dark(rgba(66, 66, 66, 0.18), rgba(235, 235, 245, 0.32));
+}
