@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-05 |
-| Versión | 1.1.0 |
+| Versión | 1.2.0 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Norma | ISO/IEC 27001:2022 (A.5, A.8) · OWASP ASVS L1 |
@@ -14,6 +14,7 @@
 | --- | --- | --- |
 | Datos de pasajeros (cédula, teléfono, correo) | Confidencial | `accounts` (Supabase) |
 | PIN (hash bcrypt) | Confidencial | `accounts.pin_hash` |
+| Secreto TOTP del operador | Secreto | `accounts.totp_secret` (solo lectura por `security definer`) |
 | Saldo y movimientos | Interno | `cards`, `card_movements` |
 | Datos de Pago Móvil | Interno | `accounts.pago_*` |
 | Token de validador | Secreto | `vehicles.sync_token_hash` (hash) |
@@ -29,14 +30,17 @@
 | `authenticated` | Igual que `anon` en el esquema `bt_*`; en POS, sus propias filas por RLS. |
 | `service_role` | RPC de operación y acceso total. **Nunca** se usa en el navegador. |
 | Administrador de línea | Ejecuta RPC de servicio desde entorno confiable (script o consola). |
-| Rol `ADMIN` / `TAQUILLA` | Columna `accounts.rol`; el back-office debe exigir ese rol además de su propio inicio de sesión. |
+| Rol `ADMIN` / `TAQUILLA` | Columna `accounts.rol`; el back-office exige ese rol en cada RPC, no solo en el inicio de sesión. |
 | Validador | Token propio (`Authorization: Bearer`), puede sincronizar solo sus taps. |
 
 Controles implementados:
 
 - RLS activo en las 12 tablas; `revoke all` para `anon`/`authenticated` en todas.
 - `security definer` con `search_path` fijo para evitar *search path injection*.
-- Las funciones internas (`bt_*_json`, `bt_sesion_cuenta`, etc.) están revocadas.
+- Las funciones internas (`bt_*_json`, `bt_sesion_cuenta`, `bt_admin_sesion`,
+  `bt_totp_*`, etc.) están revocadas.
+- `anon` ejecuta el contrato del portal **y** once RPC de back-office que
+  autentican por token de sesión con rol administrativo y segundo factor.
 - El PIN nunca viaja al cliente después del registro y nunca se devuelve.
 - La respuesta de `bt_entrar` no distingue entre cédula inexistente y PIN erróneo
   (mensaje genérico `credenciales`), salvo el bloqueo temporal.
@@ -56,6 +60,38 @@ Controles implementados:
 
 El token se guarda en el navegador (almacenamiento local del portal). No se usa
 `localStorage` para datos sensibles más allá del token y del estado de la billetera.
+
+### 3.1 Back-office: RBAC y verificación en dos pasos
+
+La operación administrativa se separó del portal del pasajero en un repositorio y
+una publicación distintos, pero sobre la **misma** base cifrada. El control tiene
+tres capas:
+
+| Capa | Control |
+| --- | --- |
+| Sesión | Token en `account_sessions` validado por `bt_admin_sesion` en cada RPC. |
+| Rol | `rol in ('ADMIN','TAQUILLA')`; un pasajero recibe `bt:permiso` aunque tenga token válido. |
+| Segundo factor | TOTP RFC 6238 verificado con `pgcrypto` (`extensions.hmac(...,'sha1')`), 30 s, 6 dígitos, ventana ±1 paso. |
+
+Diseño:
+
+- **El secreto TOTP no toca el navegador más de una vez.** `bt_admin_mfa_inscribir`
+  lo entrega para inscribir el dispositivo (QR `otpauth://`); ni el inicio de
+  sesión ni la consulta de estado lo devuelven. Reiniciar la inscripción invalida
+  el anterior.
+- **Activar exige un código real.** `bt_admin_mfa_activar` valida con
+  `bt_totp_valido` antes de marcar `totp_activo`; un código equivocado no activa.
+- **Las RPC de inventario exigen MFA.** `bt_admin_sesion_mfa` bloquea con
+  `bt:mfa` mientras el operador no tenga el segundo factor activo. Las consultas
+  de lectura (estado, inscripción, catálogo) permiten terminar la inscripción.
+- **El navegador nunca lleva `service_role`.** Las funciones primitivas
+  (`bt_generar_lote`, `bt_estacion_*`, `bt_resumen_operativo`) siguen revocadas
+  para `anon`; el panel pasa por envoltorios con token.
+- **Token de sesión en `sessionStorage`** (clave `blink.backoffice.sesion`), no en
+  `localStorage`: al cerrar la pestaña, el operador vuelve a autenticarse.
+- **El segundo factor es por cuenta, no por dispositivo.** Tras una pérdida del
+  teléfono, un administrador debe reiniciar la inscripción desde la consola SQL
+  (`totp_secret = null, totp_activo = false`).
 
 ## 4. Protección de datos en tránsito y en reposo
 
@@ -79,7 +115,7 @@ El token se guarda en el navegador (almacenamiento local del portal). No se usa
 | SEC-02 | Tokens de GitHub/Cloudflare/Supabase pegados en chat. | Alto. | Rotar cada token y revocar los anteriores. |
 | SEC-03 | El repositorio es público. | Bajo: solo contiene claves publishable. | Verificar en cada PR que no entre `.env`, dumps ni tokens. |
 | SEC-04 | No hay 2FA obligatorio en las cuentas de la organización. | Medio. | Activar 2FA en GitHub y Cloudflare. |
-| SEC-05 | El back-office no tiene MFA propio; el rol `ADMIN` solo vive en la base. | Medio. | Exigir TOTP en el panel administrativo antes de habilitarlo fuera de la red interna. |
+| SEC-05 | El back-office no tiene MFA propio; el rol `ADMIN` solo vive en la base. | Medio. | **Resuelto en 0007:** TOTP obligatorio en las RPC de inventario. Queda operativo cuando la cuenta administradora inscriba su dispositivo. |
 | SEC-06 | El reclamo se valida solo por serial impreso: quien conozca un serial libre puede reclamarlo. | Medio. | Añadir código de activación por tarjeta o doble confirmación en taquilla para lotes grandes. |
 
 > Regla operativa: **ningún secreto se escribe en archivos del repositorio, en

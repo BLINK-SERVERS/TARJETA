@@ -12,6 +12,59 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 - Recuperación de PIN en el portal.
 - Interfaz de aprobación de recargas para el administrador.
 - Notificaciones por correo al acreditar una recarga.
+- Gestión de operadores y reinicio de TOTP desde la interfaz del back-office.
+- Prueba física de enrolado y cobro con el lector (tarea #28).
+
+## [1.2.0] — 2026-10-29
+
+Back-office separado del portal, con control de acceso por rol y verificación en
+dos pasos; el panel opera con token de sesión, nunca con la clave de servicio.
+
+### Añadido
+
+- **Migración `0007_backoffice_mfa.sql`**: columnas `totp_secret`, `totp_activo`
+  y `totp_confirmado_at` en `accounts`, y verificación TOTP RFC 6238 (HMAC-SHA1,
+  30 s, 6 dígitos, ventana ±1) implementada en PL/pgSQL sobre `pgcrypto`.
+- **Sesiones de back-office**: `bt_admin_sesion` valida token vigente y rol
+  `ADMIN`/`TAQUILLA`; `bt_admin_sesion_mfa` exige además el segundo factor.
+- **Acceso del operador**: `bt_admin_entrar`, `bt_admin_estado`,
+  `bt_admin_mfa_inscribir` y `bt_admin_mfa_activar`. El secreto TOTP solo sale al
+  inscribir el dispositivo.
+- **RPC administrativas con token**: `bt_admin_resumen`, `bt_admin_lote`,
+  `bt_admin_catalogo`, `bt_admin_enrolar` y `bt_admin_asignar`. Concedidas a
+  `anon`; las funciones primitivas de operación siguen cerradas.
+- **Migración `0008_backoffice_lectura.sql`**: consultas de solo lectura
+  `bt_admin_lotes` y `bt_admin_tarjetas` para lotes e inventario.
+- **Aplicación BLINK BACK-OFFICE** (`BLINK-SERVERS/BACKOFFICE`), publicada en
+  https://blink-servers.github.io/BACKOFFICE/: acceso, inscripción TOTP, resumen,
+  lotes, inventario, estación con lector Web Serial y taquilla; exportación CSV.
+- **Documentación**: BLINK-DOC-02/03/04/05/06/07/08/09/10 y el índice pasan a
+  1.2.0 con las migraciones, el contrato del panel y las pruebas de aceptación.
+
+### Cambiado
+
+- El rol de la cuenta se verifica en **cada** RPC del panel, no solo al entrar;
+  retirar el rol invalida la sesión administrativa sin tocar el token.
+- El panel guarda el token en `sessionStorage` (se pierde al cerrar la pestaña).
+- `bt_admin_tarjetas` devuelve `titular` y `cedula` en `null` para tarjetas sin
+  dueño, en lugar del nombre por defecto del plástico.
+
+### Seguridad
+
+- El navegador del operador ya no necesita `service_role`: todas las operaciones
+  pasan por RPC que autentican el token en el servidor.
+- El código TOTP se verifica en la base; el secreto nunca vuelve en el inicio de
+  sesión ni en la consulta de estado.
+- Reiniciar la inscripción invalida el secreto anterior; un secreto mostrado en
+  una captura o chat se considera expuesto.
+- Cinco intentos fallidos siguen bloqueando la cuenta 5 minutos, también en el
+  back-office.
+
+### Base de datos
+
+- `0007` y `0008` aplicadas en producción el 2026-10-29, con prueba de aceptación
+  (`PRUEBAS_0007_OK`) y `ROLLBACK`. Estado posterior: 20 tarjetas `FABRICADA`,
+  1 lote, 1 cuenta administradora con segundo factor pendiente y 0 eventos.
 
 ## [1.1.0] — 2026-10-29
 

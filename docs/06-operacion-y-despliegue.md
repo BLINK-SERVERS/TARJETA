@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-06 |
-| Versión | 1.1.1 |
+| Versión | 1.2.0 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 12207 (operación y mantenimiento) |
@@ -34,6 +34,10 @@ npm run build          # dist/
 cd BLINK_Pasajes_Project/app
 npm ci && npm run dev
 
+# BLINK BACK-OFFICE
+cd BLINK_Backoffice
+npm ci && npm run dev   # http://localhost:5176
+
 # BLINK POS
 cd BLINK_POS_Project/app
 npm ci && npm run dev
@@ -46,7 +50,9 @@ VITE_SUPABASE_URL=https://<ref>.supabase.co
 VITE_SUPABASE_ANON_KEY=<clave publishable>
 ```
 
-Sin ese archivo la app arranca en **modo demostración** (datos locales).
+Sin ese archivo la app arranca en **modo demostración** (datos locales). El
+back-office no tiene modo local: sin esas dos variables muestra el aviso
+«Falta configurar el servidor» y no deja entrar.
 
 ## 3. Despliegue de las aplicaciones
 
@@ -72,7 +78,25 @@ dominio completo `pasajes.blink.com.ve`.
 - El script `npm run dominio` fija el dominio y fuerza HTTPS vía API de GitHub
   (requiere `CLOUDFLARE_API_TOKEN` con acceso a la zona).
 
-### 3.3 BLINK POS (manual)
+### 3.3 BLINK BACK-OFFICE (automático)
+
+Repositorio propio (`BLINK-Servers/BACKOFFICE`), mismo código de base y mismo
+proyecto Supabase. Compila con la base `/BACKOFFICE/` porque no tiene dominio
+propio todavía.
+
+```bash
+git push origin main
+```
+
+- Workflow `.github/workflows/pages.yml`: `npm ci`, `typecheck`,
+  `build --base=/BACKOFFICE/` con las variables `VITE_SUPABASE_URL` y
+  `VITE_SUPABASE_ANON_KEY` del repositorio, y `deploy-pages`.
+- Verificación: `gh run list --repo BLINK-SERVERS/BACKOFFICE --limit 3`
+- URL: https://blink-servers.github.io/BACKOFFICE/
+- La primera publicación requiere habilitar Pages:
+  `gh api -X POST repos/BLINK-SERVERS/BACKOFFICE/pages -f build_type=workflow`.
+
+### 3.4 BLINK POS (manual)
 
 ```bash
 cd BLINK_POS_Project/app
@@ -82,11 +106,11 @@ npm run deploy         # build:pages + gh-pages -d dist -t
 Publica en la rama `gh-pages`; Cloudflare sirve `www.blink.com.ve`. El script
 `postbuild-pages.mjs` genera `404.html` y `.nojekyll` para rutas profundas.
 
-### 3.4 Rollback de una publicación
+### 3.5 Rollback de una publicación
 
 | Producto | Procedimiento |
 | --- | --- |
-| TARJETA / PASAJES | Revertir el commit conflictivo (`git revert`) y empujar; el workflow republica. Alternativa: `gh run rerun <id>` del último run bueno (no cambia el código). |
+| TARJETA / PASAJES / BACKOFFICE | Revertir el commit conflictivo (`git revert`) y empujar; el workflow republica. Alternativa: `gh run rerun <id>` del último run bueno (no cambia el código). |
 | POS | `npm run deploy` desde un checkout del commit anterior, o `git revert` + nuevo deploy. |
 
 ## 4. Dominios y DNS (Cloudflare)
@@ -125,7 +149,7 @@ aplicar migraciones: el editor SQL es la vía alternativa al pooler.
    ```bash
    docker run --rm -d --name blink-eco -p 55433:5432 -e POSTGRES_PASSWORD=local postgres:16-alpine
    psql "postgresql://postgres:local@127.0.0.1:55433/postgres" -f supabase/migrations/0001_tarjeta.sql
-   # … 0002, 0003, 0004, 0005
+   # … 0002, 0003, 0004, 0005, 0006, 0007, 0008
    ```
 
 2. Ejecutar la migración nueva dentro de una transacción con
@@ -174,6 +198,22 @@ select count(*) from public.account_sessions where expira > now();
 
 ### 5.4 Provisión de lotes y estación de asignación
 
+**Vía preferida: el back-office.** Abrir
+https://blink-servers.github.io/BACKOFFICE/ e iniciar sesión con cédula y PIN de
+una cuenta `ADMIN`/`TAQUILLA`. La primera vez el panel pide inscribir el segundo
+factor: escanear el QR con Google Authenticator, Authy o 1Password y escribir el
+código de 6 dígitos. Sin ese paso el panel no deja crear lotes ni asignar.
+
+| Pantalla | Uso |
+| --- | --- |
+| Resumen | Totales de inventario y operación. |
+| Lotes | Crear un lote `FABRICANTE`/`ESTACION` y exportar su hoja en CSV. |
+| Inventario | Filtrar por lote, serial o estado; exportar. |
+| Estación | Conectar el lector (Web Serial), capturar UID y cargar pares en bloque. |
+| Taquilla | Asignar un serial a una cédula ya registrada. |
+
+**Vía SQL (consola o `service_role`), para automatizaciones:**
+
 ```sql
 -- Fase 1 · pre-generación (todas quedan en FABRICADA)
 select public.bt_generar_lote(1000, 'Patrocinante', 23, 1, 'FABRICANTE');
@@ -193,13 +233,29 @@ select public.bt_estacion_enrolar(
 select public.bt_estacion_asignar('23-1-000001-9', 'V-34201580', 'taquilla-01');
 ```
 
-Comprobaciones:
-
 ```sql
+-- Comprobaciones
 select status, count(*) from public.cards group by status order by status;
 select evento, canal, count(*) from public.card_events group by 1, 2 order by 1;
 select clave, ejecutado, detalle from respaldo.bitacora;
 ```
+
+### 5.5 Reiniciar el segundo factor de un operador
+
+Si el operador pierde el teléfono o el reloj del dispositivo se desfasa más de un
+paso, se reinicia la inscripción (la cuenta vuelve a «MFA pendiente» y el panel
+pide inscribir de nuevo):
+
+```sql
+update public.accounts
+   set totp_secret = null, totp_activo = false, totp_confirmado_at = null
+ where cedula_digitos = '<digitos>';
+delete from public.account_sessions
+ where account_id = (select id from public.accounts where cedula_digitos = '<digitos>');
+```
+
+Nunca se documenta ni se comparte un secreto TOTP: si aparece en un chat o en una
+captura, se reinicia la inscripción.
 
 La purga de `0006` es reversible: las filas originales quedan en
 `respaldo.*_0006`. Para restaurar una tabla concreta, copiarla de vuelta con la
@@ -264,3 +320,5 @@ No hay alertas automáticas configuradas; es una mejora pendiente (BLINK-DOC-09 
 - [ ] Sin secretos en `git diff`.
 - [ ] Workflow de Pages en verde y sitio cargando.
 - [ ] Flujo crítico probado en producción (registro, vínculo, recarga).
+- [ ] Si el cambio toca el panel: login con rol administrativo y segundo factor
+      verificado en https://blink-servers.github.io/BACKOFFICE/.

@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-04 |
-| Versión | 1.1.0 |
+| Versión | 1.2.0 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26514 |
@@ -18,7 +18,8 @@
   `bt:<código>:<mensaje en español>` y PostgREST los devuelve con HTTP 400.
   `bt_entrar` es la excepción: devuelve `{error, mensaje}` con HTTP 200 para poder
   **persistir el intento fallido** antes de responder.
-- El cliente (`src/lib/nube.ts`) reconoce los códigos y los convierte en
+- El cliente del portal (`src/lib/nube.ts`) y el del back-office
+  (`BACKOFFICE/src/lib/api.ts`) reconocen los códigos y los convierten en
   `ErrorBlink`.
 
 ### Códigos de error
@@ -33,6 +34,8 @@
 | `duplicada` | Referencia repetida o tarjeta ya vinculada. |
 | `pin-invalido` | PIN trivial o dato de recarga fuera de rango. |
 | `datos` | Validación de formato (cédula, teléfono, correo, banco). |
+| `permiso` | La cuenta no tiene rol `ADMIN`/`TAQUILLA`, o el token no es de back-office. |
+| `mfa` | Segundo factor pendiente o código TOTP inválido/vencido. |
 | `red` | Error de transporte (lo genera el cliente). |
 
 ### Ejemplo de invocación
@@ -134,18 +137,80 @@ La operación es idempotente por par (mismo serial y UID no duplica).
 portal v2 no las usa. No ampliar su alcance; retirarlas en una migración futura
 cuando BLINK PASAJES migre a la cuenta.
 
-## 4. Funciones internas (sin permisos para clientes)
+## 4. Back-office (ejecutables por `anon`, autentican por token)
+
+El panel administrativo corre en un repositorio aparte (`BLINK-Servers/BACKOFFICE`)
+con la misma clave publishable que el portal. **No usa `service_role`**: cada RPC
+recibe `p_token` y resuelve la cuenta en el servidor. Así, el navegador del
+operador nunca lleva una credencial con acceso total a la base.
+
+| Función | Parámetros | Devuelve |
+| --- | --- | --- |
+| `bt_admin_entrar` | `p_cedula, p_pin, p_codigo=''` | `{token, rol, mfa, mfaPendiente, cuenta}` o `{error, mensaje}` |
+| `bt_admin_estado` | `p_token` | Estado de la sesión y del segundo factor |
+| `bt_admin_mfa_inscribir` | `p_token` | `{secreto, uri}` del dispositivo nuevo |
+| `bt_admin_mfa_activar` | `p_token, p_codigo` | `{ok:true}` |
+| `bt_admin_resumen` | `p_token` | Resumen operativo (igual a `bt_resumen_operativo`) |
+| `bt_admin_lote` | `p_token, p_cantidad, p_patrocinante=null, p_estado=23, p_tarifa=1, p_origen='FABRICANTE'` | Lote creado + `creadoPor` |
+| `bt_admin_catalogo` | `p_token, p_lote` | Hoja del lote (serial, UID, estado) |
+| `bt_admin_enrolar` | `p_token, p_lote, p_items, p_operador=''` | `{enroladas, rechazadas, errores[]}` |
+| `bt_admin_asignar` | `p_token, p_serial, p_cedula, p_operador=''` | Tarjeta activada a nombre de la cuenta |
+| `bt_admin_lotes` | `p_token, p_limite=20` | Lotes con `enroladas`, `asignadas`, `fabricadas` |
+| `bt_admin_tarjetas` | `p_token, p_lote=null, p_buscar='', p_estado=null, p_limite=200` | `{total, tarjetas[]}` con titular, cédula y saldo |
+
+### Reglas
+
+1. **Autenticación.** `bt_admin_sesion(token)` valida el token en
+   `account_sessions` (`expira > now()`) y el rol `ADMIN`/`TAQUILLA`. Cualquier
+   RPC del panel responde `bt:sesion` o `bt:permiso` si falla.
+2. **Segundo factor.** `bt_admin_sesion_mfa(token)` exige además `totp_activo`.
+   Resumen, lotes, catálogo, enrolado y asignación responden `bt:mfa` mientras el
+   operador no confirme el dispositivo.
+3. **TOTP en el servidor.** El secreto solo sale una vez, en
+   `bt_admin_mfa_inscribir`; `bt_admin_entrar` y `bt_admin_estado` nunca lo
+   devuelven. La verificación usa RFC 6238 (HMAC-SHA1, 30 s, 6 dígitos) con
+   ventana de ±1 paso por desfase de reloj.
+4. **Inscripción.** `bt_admin_mfa_inscribir` genera un secreto de 32 caracteres y
+   lo deja inactivo; volver a llamarla invalida el anterior. `bt_admin_mfa_activar`
+   comprueba un código real antes de marcar `totp_activo`.
+5. **Contrato de error.** `bt_admin_entrar` también devuelve `{error, mensaje}`
+   con HTTP 200 (`permiso`, `credenciales`, `mfa`) para poder persistir el intento
+   fallido y mantener el bloqueo de 5 fallos / 5 minutos.
+6. **Solo lectura.** `bt_admin_lotes` y `bt_admin_tarjetas` no modifican datos;
+   `p_limite` se acota a 200 tarjetas y 100 lotes.
+7. **Permisos.** Las funciones internas (`bt_admin_sesion`, `bt_admin_sesion_mfa`,
+   `bt_totp_*`) están revocadas para `anon`; solo las once RPC de la tabla
+   anterior se conceden. Las funciones primitivas (`bt_generar_lote`,
+   `bt_estacion_*`, `bt_resumen_operativo`) siguen cerradas a `anon`: el panel
+   llega a ellas únicamente a través de su envoltorio con token.
+
+```bash
+# 1) Entrar: devuelve token y el estado del segundo factor
+curl -sS -X POST "$URL/rest/v1/rpc/bt_admin_entrar" \
+  -H "apikey: $CLAVE" -H "Authorization: Bearer $CLAVE" \
+  -H "Content-Type: application/json" \
+  -d '{"p_cedula":"V-34201580","p_pin":"******"}'
+
+# 2) Operar con el token de la sesión (nunca con service_role)
+curl -sS -X POST "$URL/rest/v1/rpc/bt_admin_tarjetas" \
+  -H "apikey: $CLAVE" -H "Authorization: Bearer $CLAVE" \
+  -H "Content-Type: application/json" \
+  -d '{"p_token":"<uuid-de-sesion>","p_estado":"FABRICADA","p_limite":50}'
+```
+
+## 5. Funciones internas (sin permisos para clientes)
 
 `bt_pin_valido`, `bt_pin6_valido`, `bt_luhn_valido`, `bt_luhn_digito`,
 `bt_solo_digitos`, `bt_normalizar_mac`, `bt_tope_recarga`, `bt_tocar_actualizada`,
 `bt_estado_portal`, `bt_tarjeta_vigente`, `bt_tarjeta_json`, `bt_movimiento_json`,
 `bt_cuenta_json`, `bt_tarjeta_cuenta_json`, `bt_billetera_json`,
-`bt_tarjeta_de_cuenta`, `bt_sesion_cuenta`.
+`bt_tarjeta_de_cuenta`, `bt_sesion_cuenta`, `bt_totp_base32`, `bt_totp_codigo`,
+`bt_totp_valido`, `bt_admin_sesion`, `bt_admin_sesion_mfa`.
 
 `revoke all` aplica a `public`, `anon` y `authenticated`. Solo se invocan desde
 otras funciones `security definer`.
 
-## 5. Forma de los objetos devueltos
+## 6. Forma de los objetos devueltos
 
 ```jsonc
 // Billetera
@@ -169,7 +234,7 @@ otras funciones `security definer`.
   "fecha": "2026-10-29T22:17:00Z" }
 ```
 
-## 6. Versionado del contrato
+## 7. Versionado del contrato
 
 - Añadir parámetros **con valor por defecto** al final es compatible.
 - Cambiar el nombre o el tipo de un parámetro requiere:

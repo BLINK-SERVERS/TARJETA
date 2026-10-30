@@ -3,11 +3,11 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-08 |
-| Versión | 1.0.0 |
+| Versión | 1.1.0 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 26511 · 26512 |
-| Público | Pasajero, chofer, administrador de línea |
+| Público | Pasajero, chofer, operador de taquilla, administrador de línea |
 
 ## 1. BLINK TARJETA — el pasajero
 
@@ -97,7 +97,32 @@ Sitio: https://pasajes.blink.com.ve/ · Módulo **Lector**
 Módulos **Fiscal** y **Admin** del panel muestran los totales del día y permiten
 aprobar recargas y liquidar la unidad, según el rol del operador.
 
-## 3. BLINK POS — el comercio
+## 3. BLINK BACK-OFFICE — la operación
+
+Sitio: https://blink-servers.github.io/BACKOFFICE/ (escritorio; el lector usa
+Web Serial, disponible en Chromium/Edge).
+
+1. **Entrar:** cédula (V/E) y PIN de 6 dígitos de una cuenta con rol
+   Administrador o Taquilla. Un pasajero no puede entrar.
+2. **Inscribir el teléfono (solo la primera vez):** escanear el QR con Google
+   Authenticator, Authy o 1Password y escribir el código de 6 dígitos. Sin este
+   paso el panel no deja crear lotes ni asignar tarjetas.
+3. **Resumen:** totales de tarjetas fabricadas, activas y asignadas.
+4. **Lotes:** elegir cantidad, patrocinante y origen; el sistema genera los
+   seriales en estado «Fabricada / Inactiva / No asignada» y permite exportar la
+   hoja en CSV para imprimir.
+5. **Estación:** conectar el lector USB, pasar cada tarjeta y capturar su UID;
+   revisar la lista y cargar en bloque. Los pares rechazados se muestran con el
+   motivo sin detener la carga.
+6. **Taquilla:** escribir el serial y la cédula del pasajero ya registrado para
+   activar la tarjeta a su nombre.
+7. **Inventario:** filtrar por lote, serial o estado y exportar.
+8. **Salir** al terminar: el token vive solo en la pestaña.
+
+Si se pierde el teléfono, el segundo factor se reinicia desde la consola SQL
+(BLINK-DOC-06 §5.5) y se vuelve a inscribir.
+
+## 4. BLINK POS — el comercio
 
 Sitio: https://www.blink.com.ve/
 
@@ -107,7 +132,7 @@ Sitio: https://www.blink.com.ve/
 4. **Instalar como app:** desde el navegador, "Añadir a la pantalla de inicio".
 5. Cada 12 h se pide la sesión de nuevo por seguridad.
 
-## 4. Administración de la línea
+## 5. Administración de la línea
 
 Tareas que hoy se hacen por RPC de servicio o consola:
 
@@ -123,7 +148,7 @@ Tareas que hoy se hacen por RPC de servicio o consola:
 | Liquidar unidad | `bt_liquidar(<vehicle>, desde, hasta)` |
 | Provisionar validador | `bt_validador_emitir_token(<mac>)` |
 
-## 5. Soporte
+## 6. Soporte
 
 - **Atención al cliente:** 0800-BLINK-00 (valor en `settings.publico.atencion`).
 - **Recuperación de PIN:** solo presencial o por el canal de atención; el PIN no se

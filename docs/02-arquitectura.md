@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-02 |
-| Versión | 1.0.0 |
+| Versión | 1.1.0 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26514 · ISO/IEC/IEEE 42010 |
@@ -17,6 +17,9 @@ flowchart LR
   V -->|HTTPS + token| S[(Supabase<br/>PostgreSQL 17)]
   O[Operador] --> J[BLINK PASAJES<br/>pasajes.blink.com.ve]
   J -->|Web Serial 115200| L[Lector ESP32<br/>BLINK_Lector]
+  A[Administrador] --> B[BLINK BACK-OFFICE<br/>Pages /BACKOFFICE]
+  B -->|RPC bt_admin_*<br/>token + TOTP| S
+  B -->|Web Serial 115200| L
   A[Administrador] --> K[BLINK POS<br/>www.blink.com.ve]
   K -->|Auth + RLS| S
   T -->|RPC bt_*| S
@@ -33,6 +36,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | BLINK TARJETA | React 19 · Vite 8 · TS strict | GitHub Pages (Actions), base `/TARJETA/` | Cuenta, billetera, recargas, extracto. |
 | BLINK PASAJES | React 19 · Vite 8 · Web Serial | GitHub Pages (Actions), base `/` | Lector, fiscal, admin, portal pasajero. |
+| BLINK BACK-OFFICE | React 19 · Vite 8 · TS strict · Web Serial | GitHub Pages (Actions), base `/BACKOFFICE/` | Lotes, inventario, estación y taquilla; exige rol administrativo y TOTP. |
 | BLINK POS | React 19 · Vite 8 · Konsta · Supabase JS | GitHub Pages rama `gh-pages` + Cloudflare | Comercio: ventas, caja, catálogo. |
 | Backend | Supabase (PostgREST + PostgreSQL 17.11) | Gestionado | Datos, RLS, RPC `bt_*`, pgcrypto. |
 | Firmware lector | ESP32 + MFRC522 (Arduino) | Flasheo local | Emite `READY,BLINK,1`, `CARD,<UID>`, `PONG`. |

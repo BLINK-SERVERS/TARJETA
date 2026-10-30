@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-09 |
-| Versión | 1.1.1 |
+| Versión | 1.2.0 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 12207 (riesgos) · ISO/IEC 27001 (A.5.7) |
@@ -21,7 +21,9 @@ Escalas: probabilidad e impacto **A**lta / **M**edia / **B**aja. Estado:
 | R-04 | Repositorios públicos con historial de configuración. | B | M | Revisar que solo haya claves publishable; nunca commitear `.env`. | **Mitigado** |
 | R-05 | Un mismo proyecto Supabase aloja comercio y transporte. | M | A | RLS estricto y dominios sin FK cruzadas; evaluar proyecto separado si crece. | **Aceptado** |
 | R-06 | `bt_registrar` no tiene límite por IP (solo unicidad). | M | M | Añadir rate limiting en PostgREST/Cloudflare o captcha. | **Abierto** |
-| R-07 | PIN de 6 dígitos de baja entropía protege la cuenta `ADMIN`. | M | A | Cambiar el PIN de arranque, no reutilizarlo en otros sistemas y exigir MFA en el back-office. | **Abierto** |
+| R-07 | PIN de 6 dígitos de baja entropía protege la cuenta `ADMIN`. | M | A | Segunda capa implementada: TOTP RFC 6238 obligatorio en las RPC de inventario (0007). Falta que el operador inscriba su dispositivo. No reutilizar el PIN de arranque. | **Mitigado** (inscripción pendiente) |
+| R-08 | Pérdida del teléfono del operador: el segundo factor solo se reinicia desde SQL. | B | M | Procedimiento documentado (BLINK-DOC-06 §5.5); añadir una RPC de reinicio asistido con doble aprobación. | **Aceptado** |
+| R-09 | Si un secreto TOTP se muestra en una captura o chat, el factor queda expuesto. | B | M | Se reinicia la inscripción (invalida el secreto) y se considera expuesto. | **Mitigado** |
 
 ## 2. Brechas funcionales frente al diseño técnico
 
@@ -36,12 +38,13 @@ La fuente de verdad es `Documentación Técnica del Ecosistema Blink Pasajes`
 | B-04 | Aprobación de recargas sin interfaz: solo RPC de servicio. | M | El admin de PASAJES debería consumir `bt_recargas_pendientes`/`bt_aprobar_recarga`. |
 | B-05 | Recuperación de PIN inexistente en el portal. | M | Requiere flujo de atención o verificación por correo. |
 | B-06 | Telemetría fiscal sin exportación oficial (GTFS/CSV). | B | El módulo Fiscal muestra totales, no descarga. |
-| B-07 | Estación de enrolado: la carga masiva UID↔serial existe en `0006`, falta el circuito físico completo con la placa. | M | `bt_estacion_enrolar` + `bt_estacion_catalogo` cubren el alta; la prueba con lector depende de la tarea #28. |
+| B-07 | Estación de enrolado: la carga masiva UID↔serial existe en `0006` y su interfaz en el back-office (`BACKOFFICE`), falta el circuito físico completo con la placa. | M | Falta conectar el lector y probar el alta en el panel; depende de la tarea #28. |
 | B-08 | Sin notificaciones al pasajero (correo/SMS) al aprobar recargas. | B | El correo se captura pero no se usa. |
 | B-09 | Firmas HMAC de peticiones no aplicadas en el portal. | B | Se reservan para servidor-a-servidor: la clave pública vive en el navegador (ver BLINK-DOC-05 §4). |
 | B-10 | Sin verificación automatizada de TLS 1.3 en las publicaciones. | M | GitHub Pages no permite fijar la versión; revisar trimestralmente con `openssl s_client`. |
 | B-11 | Argon2id no disponible en el `pgcrypto` de Supabase. | B | Se usa bcrypt costo 10 con bloqueo por intentos; revisar si el proveedor habilita Argon2. |
 | B-12 | Reclamo solo por serial: sin código de activación por tarjeta. | M | Añadir un segundo factor impreso o activación asistida en taquilla para lotes grandes (SEC-06). |
+| B-13 | El back-office no tiene recuperación de TOTP ni gestión de operadores en la interfaz. | B | Alta y reinicio de operadores por SQL; evaluar pantalla de cuentas para rol `ADMIN`. |
 
 ## 3. Deuda técnica
 
@@ -70,6 +73,8 @@ La fuente de verdad es `Documentación Técnica del Ecosistema Blink Pasajes`
 | # | Acción | Responsable | Plazo |
 | --- | --- | --- | --- |
 | 1 | ~~Aplicar `0006` en producción~~ (hecho el 2026-10-29; ver BLINK-DOC-07 §3.2). | Administrador | Cerrado |
+| 1b | ~~Aplicar `0007` y `0008`; publicar el back-office~~ (hecho el 2026-10-29; ver BLINK-DOC-07 §3.3, §3.4 y §4.2). | Administrador | Cerrado |
+| 1c | Inscribir el segundo factor de la cuenta administradora desde el teléfono del operador. | Operador | Inmediato |
 | 2 | Rotar contraseña de PostgreSQL y tokens expuestos. | Administrador | Inmediato |
 | 3 | Mover firmware a un repositorio con `firmware/`. | Desarrollo | Corto |
 | 4 | Migrar BLINK PASAJES al esquema `bt_*`. | Desarrollo | Medio |
@@ -80,5 +85,5 @@ La fuente de verdad es `Documentación Técnica del Ecosistema Blink Pasajes`
 ## 6. Revisión
 
 Este registro se actualiza al cerrar cada hito. La última revisión corresponde al
-2026-10-29, tras aplicar la migración 0006 en producción y ejecutar su prueba de
-aceptación con `ROLLBACK`.
+2026-10-29, tras aplicar las migraciones `0007` y `0008`, publicar el back-office
+en https://blink-servers.github.io/BACKOFFICE/ y verificar su flujo completo.

@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-07 |
-| Versión | 1.1.1 |
+| Versión | 1.2.0 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 26513 · ISO/IEC 25010 |
@@ -28,6 +28,7 @@ es una brecha declarada (BLINK-DOC-09 R-05).
 | TARJETA | `npm test` | **60 pruebas, 4 archivos, todas en verde** |
 | TARJETA | `npm run typecheck` | Sin errores |
 | PASAJES | `npm test` | **56 pruebas, 4 archivos, todas en verde** |
+| BACKOFFICE | `npm run typecheck` / `npm run build` | Sin errores; bundle principal 254 kB con QR cargado bajo demanda |
 | POS | `npm test` / `npm run qa` | Suite propia; requiere Chromium instalado |
 
 Cobertura funcional de TARJETA por archivo:
@@ -126,7 +127,51 @@ final del bloque: devolvió `PRUEBAS_0006_OK`. Tras la prueba, los conteos
 siguieron en 20 tarjetas `FABRICADA`, 1 cuenta y 0 eventos, y
 `23-1-000001-9` continuó `FABRICADA` sin dueño.
 
+### 3.3 Migración 0007 (back-office con RBAC y TOTP)
+
+Ejecutada sobre una base nueva (PostgreSQL 16) con `0001`→`0007` y repetida
+contra producción dentro de una transacción con `ROLLBACK` (marcador
+`PRUEBAS_0007_OK`):
+
+| # | Caso | Resultado |
+| --- | --- | --- |
+| 1 | Base32 de `GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ` | `12345678901234567890` (vector RFC 6238) |
+| 2 | TOTP en t=59 s, t=1111111109, t=1111111111 | `287082`, `081804`, `279037` |
+| 3 | Código con un paso de desfase | Aceptado (ventana ±1) |
+| 4 | Login de un pasajero en el panel | `{error:"permiso"}` |
+| 5 | PIN incorrecto | `{error:"credenciales"}`; contador de fallos sube |
+| 6 | Primer login de la cuenta administradora | `mfaPendiente=true` |
+| 7 | Operar sin segundo factor | `bt:mfa` |
+| 8 | Inscribir y activar con código válido | `{ok:true}`, `totp_activo=true` |
+| 9 | Activar con código inválido | `{error:"mfa"}` |
+| 10 | Login con MFA sin código / con código erróneo / correcto | `mfa` / `mfa` / token |
+| 11 | `bt_admin_resumen` con token | Totales coherentes |
+| 12 | `bt_admin_lote(FABRICANTE, tarifa 1)` | Lote creado; `creadoPor` = operador |
+| 13 | `bt_admin_catalogo` / `bt_admin_enrolar` / `bt_admin_asignar` | Inventario y bitácora correctos |
+| 14 | Matriz de privilegios con `has_function_privilege` | `anon` solo ve las 11 RPC de panel; primitivas en 401 |
+
+La respuesta de `bt_admin_entrar` y `bt_admin_estado` se inspeccionó para
+comprobar que **no** incluye `totp_secret`.
+
+### 3.4 Migración 0008 (lectura del panel)
+
+| # | Caso | Resultado |
+| --- | --- | --- |
+| 1 | `bt_admin_lotes` sin token | `bt:sesion` |
+| 2 | `bt_admin_lotes` con token | Lote con `enroladas`, `asignadas`, `fabricadas` |
+| 3 | `bt_admin_tarjetas` filtrado por estado | 20 `FABRICADA` |
+| 4 | `bt_admin_tarjetas` de una tarjeta `FABRICADA` | `titular` y `cedula` en `null` |
+| 5 | `bt_admin_tarjetas` tras asignar | Titular y cédula de la cuenta |
+| 6 | `p_limite` fuera de rango | Acotado a 200 |
+
+0008 se aplicó dos veces: la primera reveló que las tarjetas `FABRICADA`
+mostraban el nombre por defecto `'Titular'` del plástico; se corrigió la función
+para devolver `null` cuando `account_id` es nulo y se limpiaron los nombres
+heredados.
+
 ## 4. Prueba de sistema en producción (2026-10-29)
+
+### 4.1 Portal del pasajero
 
 Entorno: `https://blink-servers.github.io/TARJETA/`, Chromium, datos reales de
 Supabase. Cuenta de prueba creada y eliminada al terminar; datos restaurados.
@@ -143,6 +188,30 @@ Supabase. Cuenta de prueba creada y eliminada al terminar; datos restaurados.
 | Perfil: datos, fuente de pago, tarjeta, apariencia, seguridad | OK |
 | Enlaces a PASAJES y blink.com.ve | OK (PASAJES apunta a `pasajes.blink.com.ve`) |
 | Limpieza de datos de prueba | OK; `accounts` volvió a 0 y la tarjeta a `account_id = null` |
+
+### 4.2 Back-office
+
+Entorno: `https://blink-servers.github.io/BACKOFFICE/`, Chromium, cuenta
+administradora real. Los datos de prueba (1 cuenta, 1 lote, 20 tarjetas) se
+crearon y purgaron al terminar.
+
+| Paso | Resultado |
+| --- | --- |
+| Carga del panel público (sin aviso de configuración faltante) | OK |
+| Acceso con cédula + PIN de la cuenta `ADMIN` | OK |
+| Pantalla de inscripción TOTP con QR y secreto agrupado | OK |
+| Activación con el código del autenticador | OK |
+| Resumen, Lotes, Inventario, Estación y Taquilla | OK |
+| Crear lote de 20 `FABRICANTE` | OK; `creadoPor` visible |
+| Captura de UID en la estación y carga en bloque | OK |
+| Asignación en taquilla a una cuenta | OK; estado `ACTIVE` |
+| Inventario con titular y saldo correctos | OK |
+| Cierre de sesión y token descartado | OK |
+| Purga de datos de prueba | OK; 20 tarjetas `FABRICADA`, 1 lote, 1 cuenta |
+
+Tras la prueba se reinició el segundo factor de la cuenta administradora (ver
+BLINK-DOC-06 §5.5) para que cada operador inscriba su propio dispositivo; la
+cuenta queda en «MFA pendiente».
 
 ## 5. Prueba de la tarjeta virtual (ID-1 / CR80)
 
@@ -164,6 +233,7 @@ solapamiento de contenido. **Cumplido** tras sustituir `min-height` por
 | Migración 0005 aplicada sin errores | Cumplido |
 | Despliegue automático en verde | Cumplido |
 | Proporción y radio de la tarjeta | Cumplido |
+| Back-office separado con rol administrativo y TOTP | Cumplido |
 | Pruebas unitarias en verde | Cumplido |
 | Enrolado y cobro con tarjeta física | **Pendiente** (requiere lector y plástico) |
 
@@ -186,3 +256,6 @@ solapamiento de contenido. **Cumplido** tras sustituir `min-height` por
 2. Añadir pruebas de RPC al CI con una base efímera (Docker + PostgreSQL 16).
 3. Probar el validador con tarjeta física y modo offline (tarea #28).
 4. Añadir prueba de regresión visual de la tarjeta en varios viewports.
+5. Probar el back-office con Playwright (acceso, TOTP y carga en bloque) sobre un
+   proyecto de pruebas, porque los códigos TOTP no se pueden reutilizar en CI sin
+   un secreto conocido.

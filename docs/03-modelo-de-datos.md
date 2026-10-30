@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-03 |
-| Versión | 1.1.1 |
+| Versión | 1.2.0 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26514 |
@@ -32,6 +32,8 @@
 | `0004_validador_token.sql` | Token por validador (`vehicles.sync_token_hash`) y RPC de emisión/revocación. | Aplicada |
 | `0005_cuentas.sql` | Cuenta del pasajero, billetera multi-tarjeta, PIN de 6 dígitos, Pago Móvil de la cuenta y RPC del portal v2. | Aplicada el 2026-10-29 |
 | `0006_lotes_corporativos.sql` | Aprovisionamiento en lote: estado `FABRICADA`, activación por reclamo, estación UID↔serial, bitácora `card_events`, purga archivada y cuenta administradora. | Aplicada el 2026-10-29 · prueba de aceptación en verde |
+| `0007_backoffice_mfa.sql` | Segundo factor TOTP en `accounts`, sesión de back-office con RBAC, verificación RFC 6238 en el servidor y RPC administrativas que autentican por token (sin `service_role` en el navegador). | Aplicada el 2026-10-29 · prueba de aceptación en verde |
+| `0008_backoffice_lectura.sql` | Consultas de solo lectura del panel: `bt_admin_lotes` y `bt_admin_tarjetas` (lotes e inventario con titular, estado y saldo). | Aplicada el 2026-10-29 |
 
 Reglas:
 
@@ -59,6 +61,9 @@ Reglas:
 | `pago_propio` | boolean | `true` = usa los datos del registro |
 | `pago_banco`, `pago_telefono`, `pago_cedula` | text | fuente alterna (familiar) |
 | `rol` | text | `PASAJERO` (defecto), `TAQUILLA` o `ADMIN`; base del control de acceso del back-office |
+| `totp_secret` | text | secreto TOTP en base32 sin relleno; nulo hasta inscribir el dispositivo |
+| `totp_activo` | boolean | `true` cuando el operador confirmó el primer código; habilita las RPC de inventario |
+| `totp_confirmado_at` | timestamptz | sello de activación del segundo factor |
 | `created_at`, `updated_at` | timestamptz | trigger de actualización |
 
 Índices: `accounts_cedula_idx` (único por cédula), `accounts_correo_idx`
@@ -68,6 +73,12 @@ Reglas:
 
 `token` (uuid PK), `account_id` (FK con `on delete cascade`), `creada`, `expira`
 (12 h). Se purgan las vencidas en cada registro/entrada. RLS activo.
+
+La misma tabla sirve al portal y al back-office. Lo que distingue una sesión
+administrativa no es la fila, sino el `rol` de la cuenta, que `bt_admin_sesion`
+vuelve a verificar en **cada** llamada: revocar el rol invalida el panel sin
+tocar el token. `totp_secret` nunca sale de la base; solo lo leen las funciones
+`security definer`.
 
 ### 3.3 `cards` — plásticos emitidos
 
@@ -174,6 +185,9 @@ erDiagram
 | Activación | `bt_vincular`/`bt_estacion_asignar` pasan a `ACTIVE`, sellan `asignada_at` y escriben en `card_events` |
 | UID único | índice único en `cards.chip_uid`; la estación rechaza el UID repetido |
 | Pérdida | prohibida sobre `FABRICADA` (aún sin dueño) |
+| Acceso al back-office | `bt_admin_sesion` exige token vigente y `rol in (ADMIN, TAQUILLA)` |
+| Operación con inventario | `bt_admin_sesion_mfa` exige además `totp_activo = true` |
+| Código TOTP | RFC 6238 (HMAC-SHA1, 30 s, 6 dígitos) con ventana de ±1 paso |
 
 ## 6. Compatibilidad con el esquema del comercio (POS)
 
@@ -189,7 +203,7 @@ propiedad (`businesses.owner_id = auth.uid()`). Al crear una migración nueva:
 
 - Supabase realiza copias automáticas diarias (plan del proyecto). Para una copia
   lógica manual: `pg_dump` contra el pooler (`sslmode=require`).
-- **Restauración:** crear una base nueva, aplicar `0001`→`0006` y cargar el dump.
+- **Restauración:** crear una base nueva, aplicar `0001`→`0008` y cargar el dump.
   Verificar `select count(*)` de `cards`, `card_movements` y `accounts`.
 - La contraseña de la base **no se documenta aquí**; vive en el gestor de secretos
   del equipo (ver BLINK-DOC-05 §6).

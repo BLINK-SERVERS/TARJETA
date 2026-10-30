@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-00 |
-| Versión | 1.1.1 |
+| Versión | 1.2.0 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Autor | Equipo BLINK (desarrollo asistido) |
@@ -27,14 +27,15 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | --- | --- | --- | --- |
 | BLINK POS (sitio de la línea y punto de venta) | `BLINK-SERVERS/POS` | https://www.blink.com.ve | 1.19.0 |
 | BLINK PASAJES (lector, fiscal, admin) | `BLINK-SERVERS/PASAJES` | https://pasajes.blink.com.ve | 0.1.0 |
-| BLINK TARJETA (portal del pasajero) | `BLINK-SERVERS/TARJETA` | https://blink-servers.github.io/TARJETA/ | 1.1.0 |
+| BLINK TARJETA (portal del pasajero) | `BLINK-SERVERS/TARJETA` | https://blink-servers.github.io/TARJETA/ | 1.2.0 |
+| BLINK BACK-OFFICE (consola administrativa) | `BLINK-SERVERS/BACKOFFICE` | https://blink-servers.github.io/BACKOFFICE/ | 1.0.0 |
 | Backend (Supabase) | proyecto `gakkfzqcrapxeierfdhk` | — | PostgreSQL 17.11 |
 
-> **Base de datos compartida.** Las tres aplicaciones apuntan al **mismo proyecto
-> de Supabase**. BLINK TARJETA usa el esquema `bt_*` (transporte); BLINK POS usa
-> Supabase Auth y las tablas `businesses` y `catalogo_global`; BLINK PASAJES opera
-> hoy en modo local con Web Serial y es la siguiente en migrar al esquema `bt_*`.
-> Cualquier cambio de esquema debe evaluarse contra las tres.
+> **Base de datos compartida.** Las cuatro aplicaciones apuntan al **mismo proyecto
+> de Supabase** (TARJETA y BACKOFFICE usan además el mismo esquema `bt_*`).
+> BLINK POS usa Supabase Auth y las tablas `businesses` y `catalogo_global`;
+> BLINK PASAJES opera hoy en modo local con Web Serial y es la siguiente en migrar
+> al esquema `bt_*`. Cualquier cambio de esquema debe evaluarse contra todas.
 
 ## 3. Documentos
 
@@ -71,6 +72,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | 1.0.0 | 2026-10-29 | Creación de la suite completa tras el despliegue de la cuenta multi-tarjeta. | Equipo BLINK |
 | 1.1.0 | 2026-10-29 | Aprovisionamiento en lote (FABRICADA), estación de asignación, bitácora y purga archivada. | Equipo BLINK |
 | 1.1.1 | 2026-10-29 | 0006 aplicada en producción; DOC-03/06/07/09 pasan a 1.1.1 con el estado verificado. | Equipo BLINK |
+| 1.2.0 | 2026-10-29 | Back-office separado (repo `BACKOFFICE`) con RBAC y TOTP; migraciones 0007 y 0008 aplicadas; suite pasa a 1.2.0. | Equipo BLINK |
 
 Reglas de mantenimiento:
 
@@ -92,3 +94,5 @@ Reglas de mantenimiento:
 | **RPC** | Función PostgreSQL expuesta por PostgREST (`POST /rest/v1/rpc/<nombre>`). |
 | **RLS** | Row Level Security: política de filas de PostgreSQL. |
 | **Pago Móvil** | Transferencia bancaria venezolana que el pasajero reporta y un admin aprueba. |
+| **Back-office** | Consola administrativa separada del portal; exige rol `ADMIN`/`TAQUILLA` y TOTP. |
+| **TOTP** | Código de 6 dígitos cada 30 s (RFC 6238); BLINK lo verifica en la base, no en el navegador. |
