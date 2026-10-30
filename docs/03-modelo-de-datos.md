@@ -1,0 +1,161 @@
+# Modelo de datos
+
+| Campo | Valor |
+| --- | --- |
+| Código | BLINK-DOC-03 |
+| Versión | 1.0.0 |
+| Fecha | 2026-10-29 |
+| Estado | Vigente |
+| Norma | ISO/IEC/IEEE 26514 |
+| Motor | PostgreSQL 17.11 (Supabase) |
+| Esquema | `public` · criptografía en `extensions` |
+
+## 1. Principios
+
+1. **Una sola base** para todo el ecosistema: proyecto `gakkfzqcrapxeierfdhk`. Los
+   cambios se versionan como migraciones SQL.
+2. **RLS activo** en todas las tablas: `anon` y `authenticated` no leen tablas
+   directamente; solo ejecutan RPC `security definer`.
+3. **Identidad en `accounts`**, no en el plástico. `cards.cedula` y
+   `cards.pin_hash` quedan como legado de 0001–0004.
+4. **Saldos como `numeric`**, nunca `float`, para evitar errores de redondeo.
+5. **Trazabilidad**: `created_at`/`updated_at` con trigger `bt_tocar_actualizada()`
+   en las tablas mutables.
+
+## 2. Migraciones
+
+| Archivo | Contenido | Estado en producción |
+| --- | --- | --- |
+| `0001_tarjeta.sql` | Núcleo: settings, lotes, rutas, vehículos, tarjetas, movimientos, recargas, liquidaciones, telemetría, sesiones de tarjeta y RPC del portal v1. | Aplicada |
+| `0002_demo.sql` | Datos de demostración (3 tarjetas, rutas, vehículos, movimientos). | Aplicada |
+| `0003_operacion.sql` | Operación: emisión, cobro, aprobación de recargas, bloqueo, lotes, pérdida, acreditación, sincronización y liquidación. | Aplicada |
+| `0004_validador_token.sql` | Token por validador (`vehicles.sync_token_hash`) y RPC de emisión/revocación. | Aplicada |
+| `0005_cuentas.sql` | Cuenta del pasajero, billetera multi-tarjeta, PIN de 6 dígitos, Pago Móvil de la cuenta y RPC del portal v2. | Aplicada el 2026-10-29 |
+
+Reglas:
+
+- Las migraciones son **idempotentes** (`if not exists`, `create or replace`) y se
+  ejecutan en una sola transacción.
+- Nunca se edita una migración ya aplicada: se crea la siguiente.
+- Antes de aplicar en producción, se prueba en PostgreSQL local (contenedor
+  `blink-eco`, puerto 55433) y se ejecuta el flujo RPC completo con `SET LOCAL ROLE
+  anon` dentro de una transacción que termina en `ROLLBACK`.
+
+## 3. Tablas del dominio de transporte
+
+### 3.1 `accounts` — identidad del pasajero
+
+| Columna | Tipo | Regla |
+| --- | --- | --- |
+| `id` | uuid | PK, `gen_random_uuid()` |
+| `nombres`, `apellidos` | text | 2–60 caracteres sin dígitos |
+| `cedula` | text | `^[VE]-\d{6,8}$` |
+| `cedula_digitos` | text generada | dígitos de la cédula, índice único |
+| `telefono` | text | `^0\d{10}$` |
+| `correo` | text | formato de correo, índice único en minúsculas |
+| `pin_hash` | text | `crypt(pin, gen_salt('bf',10))` |
+| `intentos` / `bloqueado_hasta` | int / timestamptz | bloqueo 5 min tras 5 fallos |
+| `pago_propio` | boolean | `true` = usa los datos del registro |
+| `pago_banco`, `pago_telefono`, `pago_cedula` | text | fuente alterna (familiar) |
+| `created_at`, `updated_at` | timestamptz | trigger de actualización |
+
+Índices: `accounts_cedula_idx` (único por cédula), `accounts_correo_idx`
+(único por correo en minúsculas). RLS activo, sin políticas para `anon`.
+
+### 3.2 `account_sessions` — sesión de la cuenta
+
+`token` (uuid PK), `account_id` (FK con `on delete cascade`), `creada`, `expira`
+(12 h). Se purgan las vencidas en cada registro/entrada. RLS activo.
+
+### 3.3 `cards` — plásticos emitidos
+
+Columnas relevantes: `visible_id` (ID BLINK único), `chip_uid`, `barcode_data`,
+`state_code`, `fare_type`, `virtual_balance`, `last_chip_balance`, `status`
+(`ACTIVE`/`BLOCKED`/`LOST`), `batch_id`, `nombre`, `tarifa`, `emitida`, `vence`,
+`account_id` (FK a `accounts`, `on delete set null`).
+
+`account_id` es la pertenencia a la billetera. Una tarjeta solo puede estar en una
+cuenta; el RPC `bt_vincular` lo garantiza con `for update`.
+
+### 3.4 `card_movements` — extracto
+
+`card_id`, `tipo` (`recarga`, `viaje`, …), `monto`, `saldo_despues`, `detalle`,
+`estado` (`pendiente`, `aprobada`, `rechazada`), `unidad`, `banco`, `referencia`,
+`at`.
+
+### 3.5 `recharges` — reportes de Pago Móvil
+
+`card_id`, `movement_id`, `amount`, `bank`, `bank_reference`, `sender_phone`,
+`status`, `synced_to_chip`, `synced_at`, `created_at`, `resolved_at`,
+`resolved_by`. Índice parcial de pendientes.
+
+### 3.6 `trips_telemetry` — telemetría de viajes
+
+`card_id`, `vehicle_id`, `route_id`, `movement_id`, `fare_charged`, `fare_type`,
+`latitude`, `longitude`, `validator_mac`, `offline_id` (único por tap),
+`chip_balance_after`, `settled`, `settlement_id`, `tapped_at`, `synced_at`.
+
+### 3.7 `settlements` — liquidaciones
+
+`vehicle_id`, `period_start`, `period_end`, `trips_count`, `gross`,
+`commission_pct`, `commission`, `line_fee`, `net`, `status`, `bank_reference`,
+`created_at`, `paid_at`.
+
+### 3.8 Catálogo y configuración
+
+- `settings` (`clave`, `valor jsonb`, `actualizada`): configuración pública
+  (`publico` → atención, Pago Móvil, `topeRecarga`).
+- `card_batches`: lotes de producción.
+- `transit_routes`: rutas y tarifas general/estudiante.
+- `vehicles`: unidades, chofer, datos bancarios, MAC del validador,
+  `commission_pct`, `line_fee`, `sync_token_hash`.
+
+## 4. Relaciones
+
+```mermaid
+erDiagram
+  accounts ||--o{ cards : "billetera"
+  accounts ||--o{ account_sessions : "sesión"
+  card_batches ||--o{ cards : "lote"
+  cards ||--o{ card_movements : "extracto"
+  cards ||--o{ recharges : "reportes"
+  cards ||--o{ trips_telemetry : "viajes"
+  cards ||--o{ card_sessions : "sesión legada"
+  transit_routes ||--o{ vehicles : "ruta"
+  vehicles ||--o{ trips_telemetry : "tap"
+  vehicles ||--o{ settlements : "liquidación"
+  settlements ||--o{ trips_telemetry : "cierre"
+  card_movements ||--o| recharges : "origen"
+```
+
+## 5. Reglas de negocio en base de datos
+
+| Regla | Implementación |
+| --- | --- |
+| PIN de 6 dígitos no trivial | `bt_pin6_valido` |
+| Serial con Luhn | `bt_luhn_valido` |
+| Vigencia de la tarjeta | `bt_tarjeta_vigente` (vence > hoy) |
+| Tope de recarga | `bt_tope_recarga` lee `settings.publico.topeRecarga` (defecto 5.000) |
+| Referencia duplicada | `bt_recargar` consulta `recharges` por tarjeta+banco+referencia |
+| Ráfaga de reportes | máximo 6 reportes por tarjeta en 10 minutos |
+| Bloqueo por PIN | 5 fallos → 5 minutos (`intentos`, `bloqueado_hasta`) |
+| Sesión | 12 h por token |
+
+## 6. Compatibilidad con el esquema del comercio (POS)
+
+BLINK POS usa `auth.users`, `businesses` y `catalogo_global` en el mismo proyecto.
+No hay claves foráneas entre ambos dominios: el aislamiento es por RLS y por
+propiedad (`businesses.owner_id = auth.uid()`). Al crear una migración nueva:
+
+1. No renombrar ni eliminar objetos de `businesses`/`catalogo_global`.
+2. No conceder permisos a `anon` sobre tablas nuevas.
+3. Probar el `npm test` de POS antes de aplicar en producción.
+
+## 7. Copias de seguridad y recuperación
+
+- Supabase realiza copias automáticas diarias (plan del proyecto). Para una copia
+  lógica manual: `pg_dump` contra el pooler (`sslmode=require`).
+- **Restauración:** crear una base nueva, aplicar `0001`→`0005` y cargar el dump.
+  Verificar `select count(*)` de `cards`, `card_movements` y `accounts`.
+- La contraseña de la base **no se documenta aquí**; vive en el gestor de secretos
+  del equipo (ver BLINK-DOC-05 §6).
