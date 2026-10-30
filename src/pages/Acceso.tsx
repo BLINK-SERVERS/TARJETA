@@ -4,11 +4,19 @@ import { PinEntrada } from "../components/PinEntrada";
 import { Hoja } from "../components/Hoja";
 import { ErrorBlink } from "../lib/repo";
 import { repositorio, type Repositorio } from "../lib/repo";
-import { validarCedula, validarPin, validarSerial } from "../lib/dominio";
-import { formatearCedula, formatearSerial, formatearTelefono, soloDigitos } from "../lib/formato";
-import type { Sesion } from "../lib/tipos";
+import {
+  erroresDatosPago,
+  validarCedula,
+  validarCorreo,
+  validarNombre,
+  validarPin,
+  validarTelefono,
+} from "../lib/dominio";
+import { formatearCedula, formatearTelefono, soloDigitos } from "../lib/formato";
+import { BANCOS, type DatosPago, type Sesion, type TipoDocumento } from "../lib/tipos";
 
-type Modo = "entrar" | "activar";
+type Modo = "entrar" | "registro";
+type PasoRegistro = "datos" | "pago";
 
 interface Props {
   repo?: Repositorio;
@@ -17,11 +25,26 @@ interface Props {
 
 export function Acceso({ repo = repositorio, alEntrar }: Props) {
   const [modo, setModo] = useState<Modo>("entrar");
+
+  // Entrar
   const [cedula, setCedula] = useState("");
   const [pin, setPin] = useState("");
-  const [serial, setSerial] = useState("");
+
+  // Registro
+  const [paso, setPaso] = useState<PasoRegistro>("datos");
+  const [tipo, setTipo] = useState<TipoDocumento>("V");
+  const [documento, setDocumento] = useState("");
+  const [nombres, setNombres] = useState("");
+  const [apellidos, setApellidos] = useState("");
   const [telefono, setTelefono] = useState("");
+  const [correo, setCorreo] = useState("");
   const [pinNuevo, setPinNuevo] = useState("");
+  const [pinRepetido, setPinRepetido] = useState("");
+  const [pagoPropio, setPagoPropio] = useState<boolean | null>(null);
+  const [pagoBanco, setPagoBanco] = useState("");
+  const [pagoTelefono, setPagoTelefono] = useState("");
+  const [pagoCedula, setPagoCedula] = useState("");
+
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [aviso, setAviso] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -34,58 +57,117 @@ export function Acceso({ repo = repositorio, alEntrar }: Props) {
     setErrores({});
     setAviso(null);
     setPin("");
-    setPinNuevo("");
+    setPaso("datos");
+    setPagoPropio(null);
   }
 
-  function validar(pinActual = pin): boolean {
+  function cedulaCompleta(): string {
+    return documento ? `${tipo}-${documento}` : "";
+  }
+
+  async function enviarLogin(evento?: FormEvent, pinActual = pin) {
+    evento?.preventDefault();
+    if (enviando) return;
     const nuevos: Record<string, string> = {};
     const errorCedula = validarCedula(cedula);
     if (errorCedula) nuevos.cedula = errorCedula;
+    if (pinActual.length !== 6) nuevos.pin = "Escribe tu PIN de 6 dígitos.";
+    setErrores(nuevos);
+    if (Object.keys(nuevos).length > 0) return;
 
-    if (modo === "entrar") {
-      if (pinActual.length !== 4) nuevos.pin = "Escribe tu PIN de 4 dígitos.";
-    } else {
-      const errorSerial = validarSerial(serial);
-      if (errorSerial) nuevos.serial = errorSerial;
-      if (!/^0\d{10}$/.test(soloDigitos(telefono))) {
-        nuevos.telefono = "Escribe el teléfono con 11 dígitos (0414-1234567).";
-      }
-      const errorPin = validarPin(pinActual);
-      if (errorPin) nuevos.pin = errorPin;
-      if (pinNuevo !== pinActual) nuevos.pinNuevo = "Los dos PIN no coinciden.";
+    setEnviando(true);
+    setAviso(null);
+    try {
+      alEntrar(await repo.entrar(cedula, pinActual));
+    } catch (error) {
+      setAviso(
+        error instanceof ErrorBlink
+          ? error.message
+          : "No pudimos completar la operación. Inténtalo de nuevo."
+      );
+      setPin("");
+    } finally {
+      setEnviando(false);
     }
+  }
 
+  function validarDatosRegistro(): boolean {
+    const nuevos: Record<string, string> = {};
+    const nombre = validarNombre(nombres, "nombre");
+    if (nombre) nuevos.nombres = nombre;
+    const apellido = validarNombre(apellidos, "apellido");
+    if (apellido) nuevos.apellidos = apellido;
+    const cedulaTexto = cedulaCompleta();
+    const errorCedula = validarCedula(cedulaTexto);
+    if (errorCedula) nuevos.documento = errorCedula;
+    const errorTelefono = validarTelefono(telefono);
+    if (errorTelefono) nuevos.telefono = errorTelefono;
+    const errorCorreo = validarCorreo(correo);
+    if (errorCorreo) nuevos.correo = errorCorreo;
+    const errorPin = validarPin(pinNuevo);
+    if (errorPin) nuevos.pinNuevo = errorPin;
+    if (pinRepetido !== pinNuevo) nuevos.pinRepetido = "Los dos PIN no coinciden.";
     setErrores(nuevos);
     return Object.keys(nuevos).length === 0;
   }
 
-  async function enviar(evento?: FormEvent, pinActual = pin) {
-    evento?.preventDefault();
-    if (enviando || !validar(pinActual)) return;
+  function continuarDatos(evento: FormEvent) {
+    evento.preventDefault();
+    setAviso(null);
+    if (!validarDatosRegistro()) return;
+    setPaso("pago");
+  }
+
+  async function registrarCuenta(datosPago: DatosPago) {
+    if (enviando) return;
     setEnviando(true);
     setAviso(null);
     try {
-      const sesion =
-        modo === "entrar"
-          ? await repo.entrar(cedula, pinActual)
-          : await repo.activar({
-              cedula,
-              serial: formatearSerial(soloDigitos(serial)),
-              telefono: soloDigitos(telefono),
-              pin: pinActual,
-            });
+      const sesion = await repo.registrar({
+        nombres,
+        apellidos,
+        cedula: cedulaCompleta(),
+        telefono: soloDigitos(telefono),
+        correo,
+        pin: pinNuevo,
+        datosPago,
+      });
       alEntrar(sesion);
     } catch (error) {
-      const mensaje =
+      setAviso(
         error instanceof ErrorBlink
           ? error.message
-          : "No pudimos completar la operación. Inténtalo de nuevo.";
-      setAviso(mensaje);
-      setPin("");
-      setPinNuevo("");
+          : "No pudimos crear tu cuenta. Inténtalo de nuevo."
+      );
     } finally {
       setEnviando(false);
     }
+  }
+
+  function usarMisDatos() {
+    setPagoPropio(true);
+    void registrarCuenta({
+      propio: true,
+      banco: "",
+      telefono: soloDigitos(telefono),
+      cedula: cedulaCompleta(),
+    });
+  }
+
+  function guardarOtraCuenta(evento: FormEvent) {
+    evento.preventDefault();
+    const datosPago: DatosPago = {
+      propio: false,
+      banco: pagoBanco,
+      telefono: soloDigitos(pagoTelefono),
+      cedula: pagoCedula,
+    };
+    const problemas = erroresDatosPago(datosPago);
+    const nuevos: Record<string, string> = { ...problemas };
+    if (!pagoBanco) nuevos.banco = "Selecciona el banco de tu cuenta.";
+    setErrores(nuevos);
+    if (Object.keys(nuevos).length > 0) return;
+    void registrarCuenta(datosPago);
   }
 
   return (
@@ -100,7 +182,7 @@ export function Acceso({ repo = repositorio, alEntrar }: Props) {
           BLINK<em>TARJETA</em>
         </span>
         <p className="acceso__lema">
-          Tu tarjeta de transporte,<br />
+          Tu billetera de transporte,<br />
           en el bolsillo.
         </p>
       </header>
@@ -119,143 +201,394 @@ export function Acceso({ repo = repositorio, alEntrar }: Props) {
           <button
             type="button"
             role="tab"
-            aria-selected={modo === "activar"}
-            className={`segmentado__opcion${modo === "activar" ? " segmentado__opcion--activa" : ""}`}
-            onClick={() => cambiarModo("activar")}
+            aria-selected={modo === "registro"}
+            className={`segmentado__opcion${modo === "registro" ? " segmentado__opcion--activa" : ""}`}
+            onClick={() => cambiarModo("registro")}
           >
-            Activar
+            Crear cuenta
           </button>
         </div>
 
-        <form className="acceso__form" onSubmit={enviar} noValidate>
-          <div className="campo">
-            <label className="campo__etiqueta" htmlFor="cedula">
-              Cédula del titular
-            </label>
-            <input
-              id="cedula"
-              className="entrada mono"
-              inputMode="numeric"
-              autoComplete="off"
-              autoCapitalize="characters"
-              spellCheck={false}
-              placeholder="V-12345678"
-              value={cedula}
-              onChange={(evento) => setCedula(formatearCedula(evento.target.value))}
-              aria-invalid={errores.cedula ? true : undefined}
-              aria-describedby={errores.cedula ? "cedula-error" : undefined}
-            />
-            {errores.cedula && (
-              <p className="campo__error" id="cedula-error">
-                {errores.cedula}
-              </p>
-            )}
-          </div>
-
-          {modo === "activar" && (
-            <>
-              <div className="campo">
-                <label className="campo__etiqueta" htmlFor="serial">
-                  Serial de la tarjeta
-                </label>
-                <input
-                  id="serial"
-                  className="entrada mono"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  placeholder="23-1-000001-9"
-                  value={serial}
-                  onChange={(evento) => setSerial(formatearSerial(soloDigitos(evento.target.value)))}
-                  aria-invalid={errores.serial ? true : undefined}
-                  aria-describedby={errores.serial ? "serial-error" : "serial-ayuda"}
-                />
-                <span className="campo__ayuda" id="serial-ayuda">
-                  Está impreso al reverso del plástico, debajo del código de barras.
-                </span>
-                {errores.serial && (
-                  <p className="campo__error" id="serial-error">
-                    {errores.serial}
-                  </p>
-                )}
-              </div>
-
-              <div className="campo">
-                <label className="campo__etiqueta" htmlFor="telefono">
-                  Teléfono de contacto
-                </label>
-                <input
-                  id="telefono"
-                  className="entrada mono"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel-national"
-                  placeholder="0414-1234567"
-                  maxLength={12}
-                  value={telefono}
-                  onChange={(evento) => setTelefono(formatearTelefono(evento.target.value))}
-                  aria-invalid={errores.telefono ? true : undefined}
-                  aria-describedby={errores.telefono ? "telefono-error" : undefined}
-                />
-                {errores.telefono && (
-                  <p className="campo__error" id="telefono-error">
-                    {errores.telefono}
-                  </p>
-                )}
-              </div>
-            </>
-          )}
-
-          <div className="campo">
-            <span className="campo__etiqueta" id="pin-etiqueta">
-              {modo === "entrar" ? "PIN de acceso" : "Crea tu PIN de 4 dígitos"}
-            </span>
-            <PinEntrada
-              valor={pin}
-              alCambiar={setPin}
-              alCompletar={(completo) => {
-                if (modo === "entrar") void enviar(undefined, completo);
-              }}
-              error={Boolean(errores.pin)}
-              etiqueta={modo === "entrar" ? "PIN de acceso" : "PIN nuevo"}
-            />
-            {errores.pin && <p className="campo__error">{errores.pin}</p>}
-          </div>
-
-          {modo === "activar" && (
+        {modo === "entrar" ? (
+          <form className="acceso__form" onSubmit={enviarLogin} noValidate>
             <div className="campo">
-              <span className="campo__etiqueta">Repite el PIN</span>
-              <PinEntrada
-                valor={pinNuevo}
-                alCambiar={setPinNuevo}
-                error={Boolean(errores.pinNuevo)}
-                etiqueta="Repite el PIN"
+              <label className="campo__etiqueta" htmlFor="cedula">
+                Cédula del titular
+              </label>
+              <input
+                id="cedula"
+                className="entrada mono"
+                inputMode="numeric"
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                placeholder="V-12345678"
+                value={cedula}
+                onChange={(evento) => setCedula(formatearCedula(evento.target.value))}
+                aria-invalid={errores.cedula ? true : undefined}
+                aria-describedby={errores.cedula ? "cedula-error" : undefined}
               />
-              {errores.pinNuevo && <p className="campo__error">{errores.pinNuevo}</p>}
+              {errores.cedula && (
+                <p className="campo__error" id="cedula-error">
+                  {errores.cedula}
+                </p>
+              )}
             </div>
-          )}
 
-          {aviso && (
-            <div className="aviso aviso--peligro" role="alert">
-              <Icon name="alerta" />
-              <p>{aviso}</p>
+            <div className="campo">
+              <span className="campo__etiqueta" id="pin-etiqueta">
+                PIN de acceso
+              </span>
+              <PinEntrada
+                valor={pin}
+                alCambiar={setPin}
+                alCompletar={(completo) => void enviarLogin(undefined, completo)}
+                error={Boolean(errores.pin)}
+                etiqueta="PIN de acceso"
+              />
+              {errores.pin && <p className="campo__error">{errores.pin}</p>}
             </div>
-          )}
 
-          <button type="submit" className="boton boton--primario" disabled={enviando}>
-            {enviando ? (
-              <span className="girador" aria-label="Verificando" />
-            ) : (
-              <>
-                <Icon name={modo === "entrar" ? "candado" : "check-circulo"} />
-                {modo === "entrar" ? "Entrar a mi tarjeta" : "Activar mi tarjeta"}
-              </>
+            {aviso && (
+              <div className="aviso aviso--peligro" role="alert">
+                <Icon name="alerta" />
+                <p>{aviso}</p>
+              </div>
             )}
-          </button>
 
-          <button type="button" className="enlace-sutil" onClick={() => setAyuda(true)}>
-            ¿Olvidaste tu PIN o no tienes tarjeta?
-          </button>
-        </form>
+            <button type="submit" className="boton boton--primario" disabled={enviando}>
+              {enviando ? (
+                <span className="girador" aria-label="Verificando" />
+              ) : (
+                <>
+                  <Icon name="candado" />
+                  Entrar a mi cuenta
+                </>
+              )}
+            </button>
+
+            <button type="button" className="enlace-sutil" onClick={() => setAyuda(true)}>
+              ¿Olvidaste tu PIN o no tienes cuenta?
+            </button>
+          </form>
+        ) : (
+          <div className="acceso__form">
+            <ol className="registro__pasos" aria-label={`Paso ${paso === "datos" ? 1 : 2} de 2`}>
+              <li className={`registro__paso${paso === "datos" ? " registro__paso--actual" : " registro__paso--hecho"}`}>
+                <span>1</span> Tus datos
+              </li>
+              <li className={`registro__paso${paso === "pago" ? " registro__paso--actual" : ""}`}>
+                <span>2</span> Pago Móvil
+              </li>
+            </ol>
+
+            {paso === "datos" ? (
+              <form className="registro" onSubmit={continuarDatos} noValidate>
+                <div className="form-grid">
+                  <div className="campo">
+                    <label className="campo__etiqueta" htmlFor="nombres">
+                      Nombres
+                    </label>
+                    <input
+                      id="nombres"
+                      className="entrada"
+                      autoComplete="given-name"
+                      placeholder="María Fernanda"
+                      value={nombres}
+                      onChange={(evento) => setNombres(evento.target.value)}
+                      aria-invalid={errores.nombres ? true : undefined}
+                    />
+                    {errores.nombres && <p className="campo__error">{errores.nombres}</p>}
+                  </div>
+
+                  <div className="campo">
+                    <label className="campo__etiqueta" htmlFor="apellidos">
+                      Apellidos
+                    </label>
+                    <input
+                      id="apellidos"
+                      className="entrada"
+                      autoComplete="family-name"
+                      placeholder="Fernández"
+                      value={apellidos}
+                      onChange={(evento) => setApellidos(evento.target.value)}
+                      aria-invalid={errores.apellidos ? true : undefined}
+                    />
+                    {errores.apellidos && <p className="campo__error">{errores.apellidos}</p>}
+                  </div>
+                </div>
+
+                <div className="campo">
+                  <label className="campo__etiqueta" htmlFor="documento">
+                    Cédula de identidad
+                  </label>
+                  <div className="entrada--grupo">
+                    <select
+                      className="entrada entrada--tipo"
+                      aria-label="Tipo de documento"
+                      value={tipo}
+                      onChange={(evento) => setTipo(evento.target.value as TipoDocumento)}
+                    >
+                      <option value="V">V</option>
+                      <option value="E">E</option>
+                    </select>
+                    <input
+                      id="documento"
+                      className="entrada mono"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      placeholder="12345678"
+                      maxLength={8}
+                      value={documento}
+                      onChange={(evento) => setDocumento(soloDigitos(evento.target.value).slice(0, 8))}
+                      aria-invalid={errores.documento ? true : undefined}
+                      aria-describedby="documento-ayuda"
+                    />
+                  </div>
+                  <span className="campo__ayuda" id="documento-ayuda">
+                    V para venezolano, E para extranjero. Es tu identidad legal en BLINK.
+                  </span>
+                  {errores.documento && <p className="campo__error">{errores.documento}</p>}
+                </div>
+
+                <div className="campo">
+                  <label className="campo__etiqueta" htmlFor="telefono">
+                    Teléfono móvil
+                  </label>
+                  <input
+                    id="telefono"
+                    className="entrada mono"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel-national"
+                    placeholder="0414-1234567"
+                    maxLength={12}
+                    value={telefono}
+                    onChange={(evento) => setTelefono(formatearTelefono(evento.target.value))}
+                    aria-invalid={errores.telefono ? true : undefined}
+                  />
+                  {errores.telefono && <p className="campo__error">{errores.telefono}</p>}
+                </div>
+
+                <div className="campo">
+                  <label className="campo__etiqueta" htmlFor="correo">
+                    Correo electrónico
+                  </label>
+                  <input
+                    id="correo"
+                    className="entrada"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    placeholder="tucorreo@ejemplo.com"
+                    value={correo}
+                    onChange={(evento) => setCorreo(evento.target.value)}
+                    aria-invalid={errores.correo ? true : undefined}
+                  />
+                  <span className="campo__ayuda">
+                    Recibirás avisos de recarga y podrás recuperar el acceso con él.
+                  </span>
+                  {errores.correo && <p className="campo__error">{errores.correo}</p>}
+                </div>
+
+                <div className="campo">
+                  <span className="campo__etiqueta">PIN de acceso de 6 dígitos</span>
+                  <PinEntrada
+                    valor={pinNuevo}
+                    alCambiar={setPinNuevo}
+                    error={Boolean(errores.pinNuevo)}
+                    etiqueta="PIN nuevo de 6 dígitos"
+                  />
+                  {errores.pinNuevo && <p className="campo__error">{errores.pinNuevo}</p>}
+                </div>
+
+                <div className="campo">
+                  <span className="campo__etiqueta">Repite el PIN</span>
+                  <PinEntrada
+                    valor={pinRepetido}
+                    alCambiar={setPinRepetido}
+                    error={Boolean(errores.pinRepetido)}
+                    etiqueta="Repite el PIN"
+                  />
+                  {errores.pinRepetido && <p className="campo__error">{errores.pinRepetido}</p>}
+                </div>
+
+                {aviso && (
+                  <div className="aviso aviso--peligro" role="alert">
+                    <Icon name="alerta" />
+                    <p>{aviso}</p>
+                  </div>
+                )}
+
+                <button type="submit" className="boton boton--primario">
+                  Continuar
+                  <Icon name="adelante" />
+                </button>
+              </form>
+            ) : (
+              <div className="registro">
+                <section className="pregunta-pago">
+                  <span className="pregunta-pago__icono">
+                    <Icon name="banco" />
+                  </span>
+                  <h2 className="pregunta-pago__titulo">
+                    ¿Los datos desde donde harás tus recargas (Pago Móvil) son los mismos de tu
+                    registro?
+                  </h2>
+                  <p className="pregunta-pago__texto">
+                    Muchas familias pagan las recargas con el banco o el teléfono de un familiar.
+                    Puedes usar los datos de tu registro o configurar una cuenta alterna.
+                  </p>
+
+                  {pagoPropio === null ? (
+                    <div className="pregunta-pago__acciones">
+                      <button
+                        type="button"
+                        className="boton boton--primario"
+                        onClick={usarMisDatos}
+                        disabled={enviando}
+                      >
+                        {enviando ? (
+                          <span className="girador" aria-label="Creando cuenta" />
+                        ) : (
+                          <>
+                            <Icon name="check" />
+                            Sí, usar mis datos
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        className="boton boton--secundario"
+                        onClick={() => setPagoPropio(false)}
+                      >
+                        No, configurar otra cuenta
+                      </button>
+                    </div>
+                  ) : (
+                    <form className="registro" onSubmit={guardarOtraCuenta} noValidate>
+                      <p className="campo__ayuda">
+                        Usaremos estos datos solo para conciliar tu Pago Móvil con la recarga.
+                      </p>
+
+                      <div className="campo">
+                        <label className="campo__etiqueta" htmlFor="pago-banco">
+                          Banco emisor
+                        </label>
+                        <select
+                          id="pago-banco"
+                          className="entrada"
+                          value={pagoBanco}
+                          onChange={(evento) => setPagoBanco(evento.target.value)}
+                          aria-invalid={errores.banco ? true : undefined}
+                        >
+                          <option value="">Selecciona tu banco…</option>
+                          {BANCOS.map((banco) => (
+                            <option key={banco.codigo} value={banco.nombre}>
+                              {banco.codigo} · {banco.nombre}
+                            </option>
+                          ))}
+                        </select>
+                        {errores.banco && <p className="campo__error">{errores.banco}</p>}
+                      </div>
+
+                      <div className="campo">
+                        <label className="campo__etiqueta" htmlFor="pago-telefono">
+                          Teléfono afiliado al Pago Móvil
+                        </label>
+                        <input
+                          id="pago-telefono"
+                          className="entrada mono"
+                          type="tel"
+                          inputMode="tel"
+                          placeholder="0414-1234567"
+                          maxLength={12}
+                          value={pagoTelefono}
+                          onChange={(evento) =>
+                            setPagoTelefono(formatearTelefono(evento.target.value))
+                          }
+                          aria-invalid={errores.telefono ? true : undefined}
+                        />
+                        {errores.telefono && <p className="campo__error">{errores.telefono}</p>}
+                      </div>
+
+                      <div className="campo">
+                        <label className="campo__etiqueta" htmlFor="pago-cedula">
+                          Cédula del titular de la cuenta
+                        </label>
+                        <input
+                          id="pago-cedula"
+                          className="entrada mono"
+                          inputMode="numeric"
+                          placeholder="V-12345678"
+                          value={pagoCedula}
+                          onChange={(evento) => setPagoCedula(formatearCedula(evento.target.value))}
+                          aria-invalid={errores.cedula ? true : undefined}
+                        />
+                        {errores.cedula && <p className="campo__error">{errores.cedula}</p>}
+                      </div>
+
+                      {aviso && (
+                        <div className="aviso aviso--peligro" role="alert">
+                          <Icon name="alerta" />
+                          <p>{aviso}</p>
+                        </div>
+                      )}
+
+                      <div className="acciones-paso">
+                        <button
+                          type="button"
+                          className="boton boton--fantasma"
+                          onClick={() => {
+                            setPagoPropio(null);
+                            setErrores({});
+                          }}
+                        >
+                          <Icon name="atras" />
+                          Atrás
+                        </button>
+                        <button
+                          type="submit"
+                          className="boton boton--primario"
+                          disabled={enviando}
+                        >
+                          {enviando ? (
+                            <span className="girador" aria-label="Creando cuenta" />
+                          ) : (
+                            <>
+                              <Icon name="check-circulo" />
+                              Crear mi cuenta
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  <button
+                    type="button"
+                    className="enlace-sutil"
+                    onClick={() => {
+                      setPaso("datos");
+                      setPagoPropio(null);
+                      setAviso(null);
+                    }}
+                  >
+                    <Icon name="atras" />
+                    Volver a mis datos
+                  </button>
+                </section>
+
+                {aviso && pagoPropio === null && (
+                  <div className="aviso aviso--peligro" role="alert">
+                    <Icon name="alerta" />
+                    <p>{aviso}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       <footer className="acceso__pie">
@@ -263,7 +596,7 @@ export function Acceso({ repo = repositorio, alEntrar }: Props) {
           <p className="acceso__demo">
             <Icon name="rayo" />
             Demostración: <strong className="mono">V-12345678</strong> · PIN{" "}
-            <strong className="mono">1234</strong>
+            <strong className="mono">194628</strong>
           </p>
         )}
         <p className="acceso__legal">
@@ -286,8 +619,8 @@ export function Acceso({ repo = repositorio, alEntrar }: Props) {
             <div>
               <strong>Olvidaste el PIN</strong>
               <p>
-                Acércate a un punto de atención con tu cédula y la tarjeta. Un agente
-                verifica tu identidad y restablece el PIN en el momento.
+                Acércate a un punto de atención con tu cédula. Un agente verifica tu identidad y
+                restablece el PIN en el momento.
               </p>
             </div>
           </li>
@@ -296,10 +629,10 @@ export function Acceso({ repo = repositorio, alEntrar }: Props) {
               <Icon name="tarjeta" />
             </span>
             <div>
-              <strong>Todavía no tienes tarjeta</strong>
+              <strong>Todavía no tienes cuenta</strong>
               <p>
-                La primera tarjeta se entrega en taquilla al comprar el primer viaje. Si ya
-                la tienes y nunca la activaste, usa «Activar» con el serial impreso.
+                La primera tarjeta se entrega en taquilla al comprar el primer viaje. Crea tu
+                cuenta aquí y vincula el serial impreso al reverso del plástico.
               </p>
             </div>
           </li>

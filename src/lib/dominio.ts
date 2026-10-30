@@ -1,4 +1,5 @@
-import type { Ajustes, Movimiento } from "./tipos";
+import type { Ajustes, DatosPago, Movimiento } from "./tipos";
+import { bancoPorNombre } from "./tipos";
 import { soloDigitos } from "./formato.ts";
 
 export interface BorradorRecarga {
@@ -15,27 +16,86 @@ export const CAMPOS_RECARGA: CampoRecarga[] = ["monto", "telefono", "banco", "re
 export type ErroresRecarga = Partial<Record<CampoRecarga, string>>;
 
 /**
- * Cédula venezolana: una letra (V, E, J, G) y entre 6 y 8 dígitos.
- * Se acepta sin letra al escribir porque la máscara la agrega sola.
+ * Cédula del pasajero: documento V (venezolano) o E (extranjero) con 6 a 8
+ * dígitos. Se acepta sin letra al escribir porque la máscara la agrega sola.
  */
 export function validarCedula(texto: string): string | null {
   const digitos = soloDigitos(texto);
   if (digitos.length < 6) return "La cédula debe tener al menos 6 dígitos.";
   if (digitos.length > 8) return "La cédula no puede tener más de 8 dígitos.";
-  if (!/^[VEJG]-\d{6,8}$/.test(texto.toUpperCase()) && texto.trim() !== "") {
-    // La máscara normaliza; si llega raro (letra en medio) se avisa.
-    if (/[^0-9VEJGvejg-]/.test(texto)) return "Escribe la cédula como V-12345678.";
+  const letra = texto.trim().charAt(0).toUpperCase();
+  if (letra && letra !== "V" && letra !== "E") {
+    return "Usa V para venezolano o E para extranjero.";
+  }
+  if (/[^0-9VE-]/.test(texto.toUpperCase())) return "Escribe la cédula como V-12345678.";
+  return null;
+}
+
+/** PIN de 6 dígitos, sin secuencias ni repeticiones obvias. */
+export function validarPin(pin: string): string | null {
+  if (!/^\d{6}$/.test(pin)) return "El PIN debe tener 6 dígitos.";
+  if (/^(\d)\1{5}$/.test(pin)) return "No uses el mismo dígito seis veces.";
+  const ascendente = "0123456789";
+  const descendente = "9876543210";
+  for (let i = 0; i + 6 <= 10; i += 1) {
+    if (ascendente.slice(i, i + 6) === pin || descendente.slice(i, i + 6) === pin) {
+      return "Evita secuencias como 123456 o 987654.";
+    }
   }
   return null;
 }
 
-/** PIN de 4 dígitos, sin secuencias ni repeticiones obvias. */
-export function validarPin(pin: string): string | null {
-  if (!/^\d{4}$/.test(pin)) return "El PIN debe tener 4 dígitos.";
-  if (/^(\d)\1{3}$/.test(pin)) return "No uses el mismo dígito cuatro veces.";
-  const ascendente = "0123456789".includes(pin) || "9876543210".includes(pin);
-  if (ascendente) return "Evita secuencias como 1234 o 9876.";
+const NOMBRE = /^\p{L}[\p{L}\s'.-]{1,59}$/u;
+
+/** Nombres y apellidos como aparecen en la cédula. */
+export function validarNombre(texto: string, campo: "nombre" | "apellido"): string | null {
+  const limpio = texto.trim();
+  if (!limpio) {
+    return campo === "nombre" ? "Escribe tus nombres." : "Escribe tus apellidos.";
+  }
+  if (!NOMBRE.test(limpio)) {
+    return "Solo letras, espacios, guiones y apóstrofos (2 a 60 caracteres).";
+  }
   return null;
+}
+
+/** Correo para notificaciones y recuperación de acceso. */
+export function validarCorreo(texto: string): string | null {
+  const limpio = texto.trim();
+  if (!limpio) return "Escribe un correo electrónico.";
+  if (limpio.length > 120) return "El correo es demasiado largo.";
+  if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(limpio)) {
+    return "Revisa el correo: falta la arroba o el dominio.";
+  }
+  return null;
+}
+
+/** Teléfono móvil venezolano de 11 dígitos que empieza por 0. */
+export function validarTelefono(texto: string): string | null {
+  if (!/^0\d{10}$/.test(soloDigitos(texto))) {
+    return "Escribe el teléfono con 11 dígitos (0414-1234567).";
+  }
+  return null;
+}
+
+export type CampoPago = "banco" | "telefono" | "cedula";
+export type ErroresPago = Partial<Record<CampoPago, string>>;
+
+/**
+ * Datos de la cuenta bancaria desde la que se fondea la billetera. El banco
+ * puede quedar vacío mientras el pasajero usa los datos del registro; en la
+ * recarga se le pide elegirlo.
+ */
+export function erroresDatosPago(datos: DatosPago): ErroresPago {
+  const errores: ErroresPago = {};
+  if (datos.banco && !bancoPorNombre(datos.banco)) {
+    errores.banco = "Selecciona un banco del directorio oficial.";
+  }
+  const telefono = validarTelefono(datos.telefono);
+  if (telefono) errores.telefono = telefono;
+  const cedula = validarCedula(datos.cedula);
+  if (cedula) errores.cedula = cedula;
+  return errores;
 }
 
 /**
@@ -72,6 +132,17 @@ export function validarSerial(texto: string): string | null {
 export function pasajesEquivalentes(saldo: number, tarifa: number): number {
   if (!Number.isFinite(tarifa) || tarifa <= 0) return 0;
   return Math.max(0, Math.floor(saldo / tarifa));
+}
+
+export type PerfilTarifa = "GENERAL" | "ESTUDIANTE";
+
+/**
+ * El segundo grupo del serial identifica el perfil tarifario: 1 general,
+ * 2 estudiante. 23-2-000001-8 sería la misma tarjeta con tarifa estudiantil.
+ */
+export function perfilTarifa(serial: string): PerfilTarifa {
+  const grupo = soloDigitos(serial.split("-")[1] ?? "");
+  return grupo === "2" ? "ESTUDIANTE" : "GENERAL";
 }
 
 /** Bs que aún alcanzan para N pasajes (para el bloque "te alcanza para"). */

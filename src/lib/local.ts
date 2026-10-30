@@ -1,8 +1,18 @@
-import type { Ajustes, EstadoMovimiento, Movimiento, RecargaNueva, Sesion, Tarjeta } from "./tipos";
+import type {
+  Ajustes,
+  Cuenta,
+  CuentaNueva,
+  DatosPago,
+  EstadoMovimiento,
+  Movimiento,
+  RecargaNueva,
+  Sesion,
+  Tarjeta,
+} from "./tipos";
 import { AJUSTES_POR_DEFECTO } from "./tipos";
 import { hashPin, verificarPin } from "./pin";
-import { soloDigitos } from "./formato";
-import { validarSerial } from "./dominio";
+import { formatearCedula, formatearSerial, formatearTelefono, soloDigitos } from "./formato";
+import { erroresDatosPago, validarPin, validarSerial } from "./dominio";
 
 export type CodigoError =
   | "credenciales"
@@ -11,6 +21,7 @@ export type CodigoError =
   | "ya-activada"
   | "pin-invalido"
   | "duplicada"
+  | "datos"
   | "red"
   | "sesion";
 
@@ -27,36 +38,41 @@ export class ErrorBlink extends Error {
 export interface Repositorio {
   modo: "local" | "nube";
   entrar(cedula: string, pin: string): Promise<Sesion>;
-  activar(datos: {
-    cedula: string;
-    serial: string;
-    telefono: string;
-    pin: string;
-  }): Promise<Sesion>;
-  tarjeta(token: string): Promise<Tarjeta>;
-  movimientos(token: string): Promise<Movimiento[]>;
-  reportarRecarga(token: string, recarga: RecargaNueva): Promise<Movimiento>;
+  registrar(cuenta: CuentaNueva): Promise<Sesion>;
+  sesion(token: string): Promise<Sesion>;
+  vincular(token: string, serial: string): Promise<Sesion>;
+  movimientos(token: string, serial: string): Promise<Movimiento[]>;
+  reportarRecarga(token: string, serial: string, recarga: RecargaNueva): Promise<Movimiento>;
   cambiarPin(token: string, actual: string, nuevo: string): Promise<void>;
+  actualizarPago(token: string, datosPago: DatosPago): Promise<Cuenta>;
   salir(token: string): Promise<void>;
   ajustes(): Promise<Ajustes>;
 }
 
 // ------------------------------------------------------------------
-// Modo local: la app funciona sin backend con las tarjetas de prueba.
+// Modo local: la app funciona sin backend con las cuentas de prueba.
 // El PIN se guarda con PBKDF2, nunca en claro, igual que haría la nube.
 // ------------------------------------------------------------------
 
-const CLAVE = "blink.tarjeta.v1";
+const CLAVE = "blink.tarjeta.v3";
 const VIDA_SESION = 1000 * 60 * 60 * 12;
 const MAX_INTENTOS = 5;
 const BLOQUEO_INTENTOS = 1000 * 60 * 5;
 
-interface TarjetaLocal extends Tarjeta {
+const PIN_DEMO = "194628";
+
+interface CuentaLocal extends Cuenta {
   pinHash: string;
 }
 
+interface TarjetaLocal extends Tarjeta {
+  /** Cédula (solo dígitos) de la cuenta dueña de la billetera. */
+  cuenta: string;
+}
+
 interface BaseLocal {
-  version: 2;
+  version: 3;
+  cuentas: CuentaLocal[];
   tarjetas: TarjetaLocal[];
   movimientos: Movimiento[];
   sesiones: Record<string, { cedula: string; expira: number }>;
@@ -72,7 +88,56 @@ function isoDiasAtras(dias: number, hora: number, minuto: number): string {
   return fecha.toISOString();
 }
 
+function datosPagoPropio(telefono: string, cedula: string): DatosPago {
+  return { propio: true, banco: "", telefono, cedula };
+}
+
 function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
+  const cuentas: CuentaLocal[] = [
+    {
+      nombres: "María Fernanda",
+      apellidos: "Fernández",
+      cedula: "V-12345678",
+      telefono: "04141234567",
+      correo: "maria.fernandez@example.com",
+      datosPago: {
+        propio: true,
+        banco: "Banesco Banco Universal",
+        telefono: "04141234567",
+        cedula: "V-12345678",
+      },
+      pinHash: pin1,
+    },
+    {
+      nombres: "Carlos Andrés",
+      apellidos: "Rondón",
+      cedula: "V-87654321",
+      telefono: "04248765432",
+      correo: "carlos.rondon@example.com",
+      datosPago: {
+        propio: false,
+        banco: "Banco Mercantil",
+        telefono: "04129876543",
+        cedula: "E-81234567",
+      },
+      pinHash: pin2,
+    },
+    {
+      nombres: "Luis Enrique",
+      apellidos: "Pérez",
+      cedula: "V-11223344",
+      telefono: "04125556677",
+      correo: "luis.perez@example.com",
+      datosPago: {
+        propio: true,
+        banco: "BBVA Provincial",
+        telefono: "04125556677",
+        cedula: "V-11223344",
+      },
+      pinHash: pin3,
+    },
+  ];
+
   const tarjetas: TarjetaLocal[] = [
     {
       serial: "23-1-000001-9",
@@ -83,7 +148,18 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
       emitida: "2025-03-14T12:00:00.000Z",
       vence: "2030-03-14T12:00:00.000Z",
       tarifa: TARIFA,
-      pinHash: pin1,
+      cuenta: "12345678",
+    },
+    {
+      serial: "23-1-000004-3",
+      uid: "6A21C40D",
+      titular: { nombre: "Diego Andrés Fernández", cedula: "V-30445566", telefono: "0414-1234567" },
+      saldo: 60,
+      estado: "activa",
+      emitida: "2025-08-09T12:00:00.000Z",
+      vence: "2030-08-09T12:00:00.000Z",
+      tarifa: TARIFA,
+      cuenta: "12345678",
     },
     {
       serial: "23-1-000002-7",
@@ -94,7 +170,7 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
       emitida: "2025-06-02T12:00:00.000Z",
       vence: "2030-06-02T12:00:00.000Z",
       tarifa: TARIFA,
-      pinHash: pin2,
+      cuenta: "87654321",
     },
     {
       serial: "23-1-000003-5",
@@ -105,7 +181,7 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
       emitida: "2024-11-20T12:00:00.000Z",
       vence: "2029-11-20T12:00:00.000Z",
       tarifa: TARIFA,
-      pinHash: pin3,
+      cuenta: "11223344",
     },
   ];
 
@@ -141,7 +217,7 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
       at: isoDiasAtras(1, 18, 20),
       detalle: "Pago Móvil aprobado",
       estado: "aprobado",
-      banco: "Banesco",
+      banco: "Banesco Banco Universal",
       referencia: "4821",
     },
     {
@@ -175,8 +251,45 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
       at: isoDiasAtras(6, 9, 12),
       detalle: "Pago Móvil aprobado",
       estado: "aprobado",
-      banco: "Mercantil",
+      banco: "Banco Mercantil",
       referencia: "9034",
+    },
+  ];
+
+  const serie4: Movimiento[] = [
+    {
+      id: "mv-0011",
+      serial: "23-1-000004-3",
+      tipo: "viaje",
+      monto: -TARIFA,
+      saldoDespues: 60,
+      at: isoDiasAtras(0, 7, 15),
+      detalle: "Pasaje en la línea",
+      estado: "aprobado",
+      unidad: "Demo-03",
+    },
+    {
+      id: "mv-0012",
+      serial: "23-1-000004-3",
+      tipo: "viaje",
+      monto: -TARIFA,
+      saldoDespues: 75,
+      at: isoDiasAtras(1, 17, 40),
+      detalle: "Pasaje en la línea",
+      estado: "aprobado",
+      unidad: "Demo-03",
+    },
+    {
+      id: "mv-0013",
+      serial: "23-1-000004-3",
+      tipo: "recarga",
+      monto: 90,
+      saldoDespues: 90,
+      at: isoDiasAtras(2, 8, 5),
+      detalle: "Pago Móvil aprobado",
+      estado: "aprobado",
+      banco: "Banesco Banco Universal",
+      referencia: "5540",
     },
   ];
 
@@ -189,7 +302,7 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
     at: isoDiasAtras(0, 8, 3),
     detalle: "Pago Móvil en revisión",
     estado: "pendiente",
-    banco: "Banco de Venezuela",
+    banco: "Banco de Venezuela, S.A.",
     referencia: "1177",
   };
 
@@ -206,9 +319,10 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
   };
 
   return {
-    version: 2,
+    version: 3,
+    cuentas,
     tarjetas,
-    movimientos: [pendiente, ...serie1, viaje2].sort(
+    movimientos: [pendiente, ...serie1, ...serie4, viaje2].sort(
       (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()
     ),
     sesiones: {},
@@ -221,7 +335,7 @@ function leer(): BaseLocal | null {
     const crudo = localStorage.getItem(CLAVE);
     if (!crudo) return null;
     const datos = JSON.parse(crudo) as BaseLocal;
-    if (datos.version !== 2) return null;
+    if (datos.version !== 3) return null;
     return datos;
   } catch {
     return null;
@@ -240,9 +354,9 @@ async function base(): Promise<BaseLocal> {
   if (!inicializando) {
     inicializando = (async () => {
       const [p1, p2, p3] = await Promise.all([
-        hashPin("1234"),
-        hashPin("1234"),
-        hashPin("1234"),
+        hashPin(PIN_DEMO),
+        hashPin(PIN_DEMO),
+        hashPin(PIN_DEMO),
       ]);
       const datos = semilla(p1, p2, p3);
       guardar(datos);
@@ -252,29 +366,51 @@ async function base(): Promise<BaseLocal> {
   return inicializando;
 }
 
-function aTarjeta({ pinHash: _pinHash, ...tarjeta }: TarjetaLocal): Tarjeta {
+function aTarjeta({ cuenta: _cuenta, ...tarjeta }: TarjetaLocal): Tarjeta {
   return tarjeta;
 }
 
-function buscar(datos: BaseLocal, cedula: string): TarjetaLocal | undefined {
+function aCuenta({ pinHash: _pinHash, ...cuenta }: CuentaLocal): Cuenta {
+  return { ...cuenta, datosPago: { ...cuenta.datosPago } };
+}
+
+function buscarCuenta(datos: BaseLocal, cedula: string): CuentaLocal | undefined {
   const digitos = soloDigitos(cedula);
-  return datos.tarjetas.find((t) => soloDigitos(t.titular.cedula) === digitos);
+  return datos.cuentas.find((c) => soloDigitos(c.cedula) === digitos);
 }
 
-function abrirSesion(datos: BaseLocal, tarjeta: TarjetaLocal): Sesion {
-  const token = crypto.randomUUID();
-  datos.sesiones[token] = { cedula: tarjeta.titular.cedula, expira: Date.now() + VIDA_SESION };
-  return { token, tarjeta: aTarjeta(tarjeta) };
+function tarjetasDe(datos: BaseLocal, cuenta: CuentaLocal): Tarjeta[] {
+  const digitos = soloDigitos(cuenta.cedula);
+  return datos.tarjetas.filter((t) => t.cuenta === digitos).map(aTarjeta);
 }
 
-function porToken(datos: BaseLocal, token: string): TarjetaLocal {
+function sesionDe(datos: BaseLocal, cuenta: CuentaLocal, token: string): Sesion {
+  return { token, cuenta: aCuenta(cuenta), tarjetas: tarjetasDe(datos, cuenta) };
+}
+
+function porToken(datos: BaseLocal, token: string): CuentaLocal {
   const sesion = datos.sesiones[token];
   if (!sesion || sesion.expira < Date.now()) {
     throw new ErrorBlink("sesion", "La sesión expiró. Vuelve a entrar con tu PIN.");
   }
-  const tarjeta = buscar(datos, sesion.cedula);
-  if (!tarjeta) throw new ErrorBlink("sesion", "No encontramos tu tarjeta.");
+  const cuenta = buscarCuenta(datos, sesion.cedula);
+  if (!cuenta) throw new ErrorBlink("sesion", "No encontramos tu cuenta.");
+  return cuenta;
+}
+
+function tarjetaDe(datos: BaseLocal, cuenta: CuentaLocal, serial: string): TarjetaLocal {
+  const normalizado = formatearSerial(soloDigitos(serial));
+  const tarjeta = datos.tarjetas.find(
+    (t) => t.cuenta === soloDigitos(cuenta.cedula) && t.serial === normalizado
+  );
+  if (!tarjeta) throw new ErrorBlink("sin-tarjeta", "Esa tarjeta no está en tu billetera.");
   return tarjeta;
+}
+
+function abrirSesion(datos: BaseLocal, cuenta: CuentaLocal): Sesion {
+  const token = crypto.randomUUID();
+  datos.sesiones[token] = { cedula: cuenta.cedula, expira: Date.now() + VIDA_SESION };
+  return sesionDe(datos, cuenta, token);
 }
 
 export const repositorioLocal: Repositorio = {
@@ -292,12 +428,12 @@ export const repositorioLocal: Repositorio = {
       );
     }
 
-    const tarjeta = buscar(datos, cedula);
-    if (!tarjeta) {
-      throw new ErrorBlink("sin-tarjeta", "No encontramos una tarjeta con esa cédula.");
+    const cuenta = buscarCuenta(datos, cedula);
+    if (!cuenta) {
+      throw new ErrorBlink("sin-tarjeta", "No encontramos una cuenta con esa cédula.");
     }
 
-    const correcto = await verificarPin(pin, tarjeta.pinHash);
+    const correcto = await verificarPin(pin, cuenta.pinHash);
     if (!correcto) {
       const fallos = (intento?.fallos ?? 0) + 1;
       datos.intentos[llave] = {
@@ -315,65 +451,106 @@ export const repositorioLocal: Repositorio = {
     }
 
     delete datos.intentos[llave];
-    const sesion = abrirSesion(datos, tarjeta);
+    const sesion = abrirSesion(datos, cuenta);
     guardar(datos);
     return sesion;
   },
 
-  async activar({ cedula, serial, telefono, pin }) {
+  async registrar(datosCuenta) {
     const datos = await base();
-    const existente = buscar(datos, cedula);
+    const cedula = formatearCedula(datosCuenta.cedula);
+
+    if (buscarCuenta(datos, cedula)) {
+      throw new ErrorBlink("ya-activada", "Esa cédula ya tiene una cuenta. Entra con tu PIN.");
+    }
+
+    const problemaPin = validarPin(datosCuenta.pin);
+    if (problemaPin) throw new ErrorBlink("pin-invalido", problemaPin);
+
+    const telefono = soloDigitos(datosCuenta.telefono);
+    const datosPago: DatosPago = datosCuenta.datosPago.propio
+      ? datosPagoPropio(telefono, cedula)
+      : { ...datosCuenta.datosPago };
+    const problemas = erroresDatosPago(datosPago);
+    const primerProblema = Object.values(problemas)[0];
+    if (primerProblema) throw new ErrorBlink("datos", primerProblema);
+
+    const cuenta: CuentaLocal = {
+      nombres: datosCuenta.nombres.trim(),
+      apellidos: datosCuenta.apellidos.trim(),
+      cedula,
+      telefono,
+      correo: datosCuenta.correo.trim().toLowerCase(),
+      datosPago,
+      pinHash: await hashPin(datosCuenta.pin),
+    };
+
+    datos.cuentas.push(cuenta);
+    const sesion = abrirSesion(datos, cuenta);
+    guardar(datos);
+    return sesion;
+  },
+
+  async sesion(token) {
+    const datos = await base();
+    const cuenta = porToken(datos, token);
+    return sesionDe(datos, cuenta, token);
+  },
+
+  async vincular(token, serial) {
+    const datos = await base();
+    const cuenta = porToken(datos, token);
+    const normalizado = formatearSerial(soloDigitos(serial));
+
+    const errorSerial = validarSerial(normalizado);
+    if (errorSerial) throw new ErrorBlink("sin-tarjeta", errorSerial);
+
+    const existente = datos.tarjetas.find((t) => t.serial === normalizado);
     if (existente) {
+      if (existente.cuenta === soloDigitos(cuenta.cedula)) {
+        throw new ErrorBlink("duplicada", "Esa tarjeta ya está en tu billetera.");
+      }
       throw new ErrorBlink(
         "ya-activada",
-        "Esa cédula ya tiene una tarjeta activa. Entra con tu PIN."
+        "Esa tarjeta ya está vinculada a otra cuenta. Verifica el serial."
       );
     }
-    const serialNormalizado = serial.trim();
-    const errorSerial = validarSerial(serialNormalizado);
-    if (errorSerial) {
-      throw new ErrorBlink("sin-tarjeta", errorSerial);
-    }
+
     const hoy = new Date();
     const vence = new Date(hoy);
     vence.setFullYear(hoy.getFullYear() + 5);
-    const tarjeta: TarjetaLocal = {
-      serial: serialNormalizado,
+    datos.tarjetas.push({
+      serial: normalizado,
       uid: "",
       titular: {
-        nombre: "Titular nuevo",
-        cedula,
-        telefono: telefono.replace(/\D/g, ""),
+        nombre: `${cuenta.nombres} ${cuenta.apellidos}`,
+        cedula: cuenta.cedula,
+        telefono: formatearTelefono(cuenta.telefono),
       },
       saldo: 0,
       estado: "activa",
       emitida: hoy.toISOString(),
       vence: vence.toISOString(),
       tarifa: TARIFA,
-      pinHash: await hashPin(pin),
-    };
-    datos.tarjetas.push(tarjeta);
-    const sesion = abrirSesion(datos, tarjeta);
+      cuenta: soloDigitos(cuenta.cedula),
+    });
     guardar(datos);
-    return sesion;
+    return sesionDe(datos, cuenta, token);
   },
 
-  async tarjeta(token) {
+  async movimientos(token, serial) {
     const datos = await base();
-    return aTarjeta(porToken(datos, token));
-  },
-
-  async movimientos(token) {
-    const datos = await base();
-    const tarjeta = porToken(datos, token);
+    const cuenta = porToken(datos, token);
+    const tarjeta = tarjetaDe(datos, cuenta, serial);
     return datos.movimientos
       .filter((m) => m.serial === tarjeta.serial)
       .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
   },
 
-  async reportarRecarga(token, recarga) {
+  async reportarRecarga(token, serial, recarga) {
     const datos = await base();
-    const tarjeta = porToken(datos, token);
+    const cuenta = porToken(datos, token);
+    const tarjeta = tarjetaDe(datos, cuenta, serial);
     const referencia = soloDigitos(recarga.referencia).slice(-4);
     const duplicada = datos.movimientos.some(
       (m) =>
@@ -405,12 +582,28 @@ export const repositorioLocal: Repositorio = {
 
   async cambiarPin(token, actual, nuevo) {
     const datos = await base();
-    const tarjeta = porToken(datos, token);
-    if (!(await verificarPin(actual, tarjeta.pinHash))) {
+    const cuenta = porToken(datos, token);
+    if (!(await verificarPin(actual, cuenta.pinHash))) {
       throw new ErrorBlink("credenciales", "El PIN actual no coincide.");
     }
-    tarjeta.pinHash = await hashPin(nuevo);
+    const problema = validarPin(nuevo);
+    if (problema) throw new ErrorBlink("pin-invalido", problema);
+    if (nuevo === actual) {
+      throw new ErrorBlink("pin-invalido", "El PIN nuevo debe ser distinto al actual.");
+    }
+    cuenta.pinHash = await hashPin(nuevo);
     guardar(datos);
+  },
+
+  async actualizarPago(token, datosPago) {
+    const datos = await base();
+    const cuenta = porToken(datos, token);
+    const problemas = erroresDatosPago(datosPago);
+    const primerProblema = Object.values(problemas)[0];
+    if (primerProblema) throw new ErrorBlink("datos", primerProblema);
+    cuenta.datosPago = { ...datosPago };
+    guardar(datos);
+    return aCuenta(cuenta);
   },
 
   async salir(token) {

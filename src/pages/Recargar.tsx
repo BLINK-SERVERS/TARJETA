@@ -5,8 +5,8 @@ import { CAMPOS_RECARGA, buscarRecargaDuplicada, erroresRecarga, pasajesEquivale
 import type { BorradorRecarga, CampoRecarga, ErroresRecarga } from "../lib/dominio";
 import { formatearBs, formatearEntero, formatearMovimiento, formatearTelefono, soloDigitos } from "../lib/formato";
 import { useCopiar } from "../lib/hooks";
-import { BANCOS_EMISORES } from "../lib/tipos";
-import type { Ajustes, Movimiento, RecargaNueva, Tarjeta } from "../lib/tipos";
+import { BANCOS } from "../lib/tipos";
+import type { Ajustes, DatosPago, Movimiento, RecargaNueva, Tarjeta } from "../lib/tipos";
 
 type Paso = "monto" | "pago" | "revision" | "listo";
 
@@ -17,20 +17,36 @@ const PASOS: { id: Paso; etiqueta: string }[] = [
   { id: "revision", etiqueta: "Confirmar" },
 ];
 
-const BORRADOR_VACIO: BorradorRecarga = { monto: "", telefono: "", banco: "", referencia: "" };
+
 
 interface Props {
   tarjeta: Tarjeta;
+  datosPago: DatosPago;
   ajustes: Ajustes;
   movimientos: Movimiento[];
   alReportar: (recarga: RecargaNueva) => Promise<Movimiento>;
   alInicio: () => void;
   alVerMovimientos: () => void;
+  alEditarPago: () => void;
 }
 
-export function Recargar({ tarjeta, ajustes, movimientos, alReportar, alInicio, alVerMovimientos }: Props) {
+export function Recargar({
+  tarjeta,
+  datosPago,
+  ajustes,
+  movimientos,
+  alReportar,
+  alInicio,
+  alVerMovimientos,
+  alEditarPago,
+}: Props) {
   const [paso, setPaso] = useState<Paso>("monto");
-  const [borrador, setBorrador] = useState<BorradorRecarga>(BORRADOR_VACIO);
+  const [borrador, setBorrador] = useState<BorradorRecarga>(() => ({
+    monto: "",
+    telefono: formatearTelefono(datosPago.telefono),
+    banco: datosPago.banco,
+    referencia: "",
+  }));
   const [errores, setErrores] = useState<ErroresRecarga>({});
   const [aviso, setAviso] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -138,7 +154,12 @@ export function Recargar({ tarjeta, ajustes, movimientos, alReportar, alInicio, 
   }
 
   function otraRecarga() {
-    setBorrador(BORRADOR_VACIO);
+    setBorrador({
+      monto: "",
+      telefono: formatearTelefono(datosPago.telefono),
+      banco: datosPago.banco,
+      referencia: "",
+    });
     setReportada(null);
     setErrores({});
     irA("monto");
@@ -376,6 +397,23 @@ export function Recargar({ tarjeta, ajustes, movimientos, alReportar, alInicio, 
           <form className="tarjeta-panel" onSubmit={continuarPago} noValidate>
             <p className="form-titulo">Ahora reporta el pago</p>
 
+            <div className="fuente-pago">
+              <span className="fuente-pago__icono">
+                <Icon name="banco" />
+              </span>
+              <div className="fuente-pago__texto">
+                <strong>
+                  {datosPago.banco ? `Pagas desde ${datosPago.banco}` : "Elige tu banco emisor"}
+                </strong>
+                <span className="mono">
+                  {formatearTelefono(datosPago.telefono)} · {datosPago.cedula}
+                </span>
+              </div>
+              <button type="button" className="seccion__enlace" onClick={alEditarPago}>
+                Cambiar
+              </button>
+            </div>
+
             <div className="campo">
               <label className="campo__etiqueta" htmlFor="rc-banco">
                 Banco emisor
@@ -389,9 +427,9 @@ export function Recargar({ tarjeta, ajustes, movimientos, alReportar, alInicio, 
                 aria-describedby={errores.banco ? "rc-banco-error" : undefined}
               >
                 <option value="">Selecciona…</option>
-                {BANCOS_EMISORES.map((banco) => (
-                  <option key={banco} value={banco}>
-                    {banco}
+                {BANCOS.map((banco) => (
+                  <option key={banco.codigo} value={banco.nombre}>
+                    {banco.codigo} · {banco.nombre}
                   </option>
                 ))}
               </select>

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { soloDigitos } from "../lib/formato";
 
 interface Props {
@@ -11,17 +11,18 @@ interface Props {
   deshabilitado?: boolean;
 }
 
-/** PIN de 4 dígitos con cajas, como el campo de clave de iOS. */
+/** PIN de 6 dígitos con cajas, como el campo de clave de iOS. */
 export function PinEntrada({
   valor,
   alCambiar,
   alCompletar,
   error = false,
-  etiqueta = "PIN de 4 dígitos",
+  etiqueta = "PIN de 6 dígitos",
   autoFocus = false,
   deshabilitado = false,
 }: Props) {
   const input = useRef<HTMLInputElement>(null);
+  const [enfocado, setEnfocado] = useState(false);
 
   useEffect(() => {
     if (autoFocus) {
@@ -35,12 +36,12 @@ export function PinEntrada({
       className={`pin${error ? " pin--error" : ""}${deshabilitado ? " pin--off" : ""}`}
       onClick={() => input.current?.focus()}
     >
-      {[0, 1, 2, 3].map((indice) => (
+      {[0, 1, 2, 3, 4, 5].map((indice) => (
         <span
           key={indice}
-          className={`pin__caja${valor.length === indice ? " pin__caja--activa" : ""}${
-            valor[indice] ? " pin__caja--llena" : ""
-          }`}
+          className={`pin__caja${
+            enfocado && valor.length === indice ? " pin__caja--activa" : ""
+          }${valor[indice] ? " pin__caja--llena" : ""}`}
           aria-hidden="true"
         >
           {valor[indice] ? "•" : ""}
@@ -53,15 +54,17 @@ export function PinEntrada({
         inputMode="numeric"
         autoComplete="one-time-code"
         pattern="[0-9]*"
-        maxLength={4}
+        maxLength={6}
         value={valor}
         aria-label={etiqueta}
         aria-invalid={error || undefined}
         disabled={deshabilitado}
+        onFocus={() => setEnfocado(true)}
+        onBlur={() => setEnfocado(false)}
         onChange={(evento) => {
-          const limpio = soloDigitos(evento.target.value).slice(0, 4);
+          const limpio = soloDigitos(evento.target.value).slice(0, 6);
           alCambiar(limpio);
-          if (limpio.length === 4) alCompletar?.(limpio);
+          if (limpio.length === 6) alCompletar?.(limpio);
         }}
       />
     </div>

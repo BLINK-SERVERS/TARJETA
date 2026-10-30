@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   buscarRecargaDuplicada,
+  erroresDatosPago,
   erroresRecarga,
   pasajesEquivalentes,
+  perfilTarifa,
   saldoParaPasajes,
   digitoLuhn,
   validarCedula,
+  validarCorreo,
+  validarNombre,
   validarPin,
   validarSerial,
+  validarTelefono,
   type BorradorRecarga,
 } from "./dominio";
 import type { Movimiento } from "./tipos";
@@ -37,15 +42,18 @@ function recarga(estado: Movimiento["estado"], referencia = "4821"): Movimiento 
 }
 
 describe("validarCedula", () => {
-  it("acepta cédulas venezolanas con letra y 6 a 8 dígitos", () => {
+  it("acepta cédulas V y E con 6 a 8 dígitos", () => {
     expect(validarCedula("V-12345678")).toBeNull();
     expect(validarCedula("E-123456")).toBeNull();
-    expect(validarCedula("J-1234567")).toBeNull();
   });
 
   it("rechaza cédulas cortas o largas", () => {
     expect(validarCedula("V-12345")).toMatch(/al menos 6/);
     expect(validarCedula("V-123456789")).toMatch(/más de 8/);
+  });
+
+  it("solo admite venezolano o extranjero", () => {
+    expect(validarCedula("J-1234567")).toMatch(/venezolano o E/);
   });
 
   it("rechaza caracteres que la máscara no admite", () => {
@@ -54,15 +62,54 @@ describe("validarCedula", () => {
 });
 
 describe("validarPin", () => {
-  it("acepta cuatro dígitos sin patrón", () => {
-    expect(validarPin("1492")).toBeNull();
+  it("acepta seis dígitos sin patrón", () => {
+    expect(validarPin("149205")).toBeNull();
   });
 
   it("rechaza repeticiones y secuencias", () => {
-    expect(validarPin("1111")).toMatch(/mismo dígito/);
-    expect(validarPin("1234")).toMatch(/secuencias/);
-    expect(validarPin("9876")).toMatch(/secuencias/);
-    expect(validarPin("123")).toMatch(/4 dígitos/);
+    expect(validarPin("111111")).toMatch(/mismo dígito/);
+    expect(validarPin("123456")).toMatch(/secuencias/);
+    expect(validarPin("987654")).toMatch(/secuencias/);
+    expect(validarPin("12345")).toMatch(/6 dígitos/);
+  });
+});
+
+describe("datos del registro", () => {
+  it("valida nombres y apellidos", () => {
+    expect(validarNombre("María Fernanda", "nombre")).toBeNull();
+    expect(validarNombre("O'Brien", "apellido")).toBeNull();
+    expect(validarNombre("", "nombre")).toMatch(/nombres/);
+    expect(validarNombre("Ana3", "nombre")).toMatch(/letras/);
+  });
+
+  it("valida el correo", () => {
+    expect(validarCorreo("maria@example.com")).toBeNull();
+    expect(validarCorreo("maria.example.com")).toMatch(/arroba/);
+    expect(validarCorreo("")).toMatch(/correo/);
+  });
+
+  it("valida el teléfono venezolano", () => {
+    expect(validarTelefono("0414-1234567")).toBeNull();
+    expect(validarTelefono("4141234567")).toMatch(/11 dígitos/);
+  });
+
+  it("valida la fuente de pago contra el directorio de bancos", () => {
+    expect(
+      erroresDatosPago({
+        propio: false,
+        banco: "Banesco Banco Universal",
+        telefono: "04141234567",
+        cedula: "V-12345678",
+      })
+    ).toEqual({});
+    expect(
+      erroresDatosPago({
+        propio: false,
+        banco: "Banco Inventado",
+        telefono: "0414",
+        cedula: "V-1",
+      })
+    ).toMatchObject({ banco: expect.any(String), telefono: expect.any(String), cedula: expect.any(String) });
   });
 });
 
@@ -133,6 +180,18 @@ describe("pasajesEquivalentes", () => {
   it("sabe si el saldo alcanza para N pasajes", () => {
     expect(saldoParaPasajes(45, 15, 3)).toBe(true);
     expect(saldoParaPasajes(44.99, 15, 3)).toBe(false);
+  });
+});
+
+describe("perfilTarifa", () => {
+  it("lee el perfil del segundo grupo del serial", () => {
+    expect(perfilTarifa("23-1-000001-9")).toBe("GENERAL");
+    expect(perfilTarifa("23-2-000001-8")).toBe("ESTUDIANTE");
+  });
+
+  it("cae en general con seriales incompletos", () => {
+    expect(perfilTarifa("")).toBe("GENERAL");
+    expect(perfilTarifa("23")).toBe("GENERAL");
   });
 });
 

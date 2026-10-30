@@ -1,6 +1,8 @@
-// Dominio de BLINK TARJETA: la tarjeta recargable vista por su titular.
+// Dominio de BLINK TARJETA: la cuenta del pasajero y su billetera de plásticos.
 
 export type EstadoTarjeta = "activa" | "bloqueada";
+
+export type TipoDocumento = "V" | "E";
 
 export interface Titular {
   nombre: string;
@@ -51,10 +53,93 @@ export interface RecargaNueva {
   referencia: string;
 }
 
-/** Respuesta de entrar/activar: la tarjeta y un token de sesión. */
+/** Banco emisor venezolano del directorio oficial (SUDEBAN). */
+export interface Banco {
+  codigo: string;
+  nombre: string;
+}
+
+export const BANCOS: Banco[] = [
+  { codigo: "0102", nombre: "Banco de Venezuela, S.A." },
+  { codigo: "0104", nombre: "Banco Venezolano de Crédito" },
+  { codigo: "0105", nombre: "Banco Mercantil" },
+  { codigo: "0108", nombre: "BBVA Provincial" },
+  { codigo: "0114", nombre: "Bancaribe" },
+  { codigo: "0115", nombre: "Banco Exterior" },
+  { codigo: "0128", nombre: "Banco Caroní" },
+  { codigo: "0134", nombre: "Banesco Banco Universal" },
+  { codigo: "0137", nombre: "Banco Sofitasa" },
+  { codigo: "0138", nombre: "Banco Plaza" },
+  { codigo: "0146", nombre: "Bangente" },
+  { codigo: "0149", nombre: "Banco del Pueblo Soberano" },
+  { codigo: "0151", nombre: "Banco Fondo Común (BFC)" },
+  { codigo: "0156", nombre: "100% Banco" },
+  { codigo: "0157", nombre: "DelSur Banco Universal" },
+  { codigo: "0163", nombre: "Banco del Tesoro" },
+  { codigo: "0166", nombre: "Banco Agrícola de Venezuela" },
+  { codigo: "0168", nombre: "Bancrecer" },
+  { codigo: "0169", nombre: "Mi Banco (Banco Microfinanciero)" },
+  { codigo: "0171", nombre: "Banco Activo" },
+  { codigo: "0172", nombre: "Bancamiga Banco Universal" },
+  { codigo: "0173", nombre: "Banco Internacional de Desarrollo" },
+  { codigo: "0175", nombre: "Banco Digital de los Trabajadores / Banco Bicentenario" },
+  { codigo: "0177", nombre: "BANFANB (Banco de la Fuerza Armada Nacional Bolivariana)" },
+  { codigo: "0178", nombre: "N58 Banco Digital" },
+  { codigo: "0190", nombre: "Citibank N.A." },
+  { codigo: "0191", nombre: "Banco Nacional de Crédito (BNC)" },
+  { codigo: "0601", nombre: "Instituto Municipal de Crédito Popular" },
+];
+
+export function bancoPorCodigo(codigo: string): Banco | undefined {
+  return BANCOS.find((banco) => banco.codigo === codigo);
+}
+
+export function bancoPorNombre(nombre: string): Banco | undefined {
+  return BANCOS.find((banco) => banco.nombre === nombre);
+}
+
+/**
+ * Fuente de fondos con la que el pasajero paga sus recargas. No siempre es la
+ * misma persona de la cuenta: un familiar puede fondear la billetera.
+ */
+export interface DatosPago {
+  /** true cuando usa el teléfono y la cédula del registro. */
+  propio: boolean;
+  /** Nombre del banco del directorio; "" mientras no se elige. */
+  banco: string;
+  /** 11 dígitos sin guiones. */
+  telefono: string;
+  /** Cédula del titular de la cuenta bancaria: V-12345678. */
+  cedula: string;
+}
+
+/** Cuenta matriz del pasajero: identidad y fuente de pago. */
+export interface Cuenta {
+  nombres: string;
+  apellidos: string;
+  /** Documento de identidad: V-12345678 o E-12345678. */
+  cedula: string;
+  /** 11 dígitos sin guiones. */
+  telefono: string;
+  correo: string;
+  datosPago: DatosPago;
+}
+
+export interface CuentaNueva {
+  nombres: string;
+  apellidos: string;
+  cedula: string;
+  telefono: string;
+  correo: string;
+  pin: string;
+  datosPago: DatosPago;
+}
+
+/** Respuesta de entrar/registrar: la cuenta, su billetera y un token. */
 export interface Sesion {
   token: string;
-  tarjeta: Tarjeta;
+  cuenta: Cuenta;
+  tarjetas: Tarjeta[];
 }
 
 /** Datos de Pago Móvil que el Admin configura para recibir recargas. */
@@ -72,18 +157,6 @@ export interface Ajustes {
   /** Teléfono de atención al cliente. */
   atencion: string;
 }
-
-export const BANCOS_EMISORES = [
-  "Banesco",
-  "Banco de Venezuela",
-  "Mercantil",
-  "Provincial",
-  "BNC",
-  "Banplus",
-  "Bancamiga",
-  "Bicentenario",
-  "Otro",
-];
 
 export const AJUSTES_POR_DEFECTO: Ajustes = {
   pagoMovil: {

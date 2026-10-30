@@ -30,7 +30,9 @@ export type IconName =
   | "escudo"
   | "ayuda"
   | "actualizar"
-  | "punto";
+  | "punto"
+  | "mas"
+  | "correo";
 
 const trazos: Record<IconName, React.ReactNode> = {
   tarjeta: (
@@ -59,6 +61,18 @@ const trazos: Record<IconName, React.ReactNode> = {
       <circle cx="12" cy="12" r="8.6" />
       <path d="M12 8v8" />
       <path d="M8 12h8" />
+    </>
+  ),
+  mas: (
+    <>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </>
+  ),
+  correo: (
+    <>
+      <rect x="3" y="5.5" width="18" height="13" rx="3" />
+      <path d="m4.5 8 7.5 5.2L19.5 8" />
     </>
   ),
   perfil: (

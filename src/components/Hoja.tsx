@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
 
 interface Props {
@@ -41,7 +42,7 @@ export function Hoja({ abierta, alCerrar, titulo, descripcion, children, pie }: 
 
   if (!abierta) return null;
 
-  return (
+  return createPortal(
     <div className="hoja-fondo" onClick={alCerrar}>
       <div
         ref={panel}
@@ -77,6 +78,7 @@ export function Hoja({ abierta, alCerrar, titulo, descripcion, children, pie }: 
         <div className="hoja__cuerpo">{children}</div>
         {pie && <footer className="hoja__pie">{pie}</footer>}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

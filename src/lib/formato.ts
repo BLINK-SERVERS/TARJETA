@@ -161,3 +161,8 @@ export function iniciales(nombre: string): string {
   const segunda = partes.length > 1 ? partes[partes.length - 1][0] ?? "" : "";
   return (primera + segunda).toUpperCase();
 }
+
+/** "María Fernanda Fernández": nombres y apellidos de la cuenta. */
+export function nombreCompleto(nombres: string, apellidos: string): string {
+  return `${nombres.trim()} ${apellidos.trim()}`.trim();
+}

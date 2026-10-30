@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BarraTabs, type Pestana } from "./components/BarraTabs";
 import { Hoja } from "./components/Hoja";
+import { HojaVincular } from "./components/HojaVincular";
 import { Icon } from "./components/Icon";
 import { Acceso } from "./pages/Acceso";
 import { Inicio } from "./pages/Inicio";
@@ -10,8 +11,8 @@ import { Recargar } from "./pages/Recargar";
 import { ajustesPorDefecto } from "./lib/ajustes";
 import { repositorio } from "./lib/repo";
 import { aplicarTema, leerTema, useCopiar, type ModoTema } from "./lib/hooks";
-import { formatearBs } from "./lib/formato";
-import type { Ajustes, Movimiento, RecargaNueva, Sesion, Tarjeta } from "./lib/tipos";
+import { formatearBs, formatearSerial, soloDigitos } from "./lib/formato";
+import type { Ajustes, Cuenta, DatosPago, Movimiento, RecargaNueva, Sesion, Tarjeta } from "./lib/tipos";
 
 const CLAVE_SESION = "blink.tarjeta.sesion";
 const BLOQUEO_INACTIVO = 30 * 60 * 1000;
@@ -40,7 +41,7 @@ function guardarSesion(token: string) {
 
 export function App() {
   const [sesion, setSesion] = useState<Sesion | null>(null);
-  const [tarjeta, setTarjeta] = useState<Tarjeta | null>(null);
+  const [serialActiva, setSerialActiva] = useState<string | null>(null);
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
   const [ajustes, setAjustes] = useState<Ajustes>(ajustesPorDefecto());
   const [pestana, setPestana] = useState<Pestana>("inicio");
@@ -48,8 +49,18 @@ export function App() {
   const [saldoOculto, setSaldoOculto] = useState(false);
   const [restaurando, setRestaurando] = useState(true);
   const [pagoMovilAbierto, setPagoMovilAbierto] = useState(false);
+  const [vinculoAbierto, setVinculoAbierto] = useState(false);
   const [copiado, copiar] = useCopiar();
   const ocultoDesde = useRef<number | null>(null);
+
+  const token = sesion?.token ?? null;
+
+  const tarjeta = useMemo<Tarjeta | null>(() => {
+    if (!sesion) return null;
+    return (
+      sesion.tarjetas.find((t) => t.serial === serialActiva) ?? sesion.tarjetas[0] ?? null
+    );
+  }, [sesion, serialActiva]);
 
   useEffect(() => {
     let vivo = true;
@@ -59,14 +70,10 @@ export function App() {
         if (vivo) setAjustes(config);
         const guardada = leerSesionGuardada();
         if (!guardada) return;
-        const [tarjetaActual, historial] = await Promise.all([
-          repositorio.tarjeta(guardada.token),
-          repositorio.movimientos(guardada.token),
-        ]);
+        const actual = await repositorio.sesion(guardada.token);
         if (!vivo) return;
-        setSesion({ token: guardada.token, tarjeta: tarjetaActual });
-        setTarjeta(tarjetaActual);
-        setMovimientos(historial);
+        setSesion(actual);
+        setSerialActiva(actual.tarjetas[0]?.serial ?? null);
       } catch {
         localStorage.removeItem(CLAVE_SESION);
       } finally {
@@ -82,36 +89,52 @@ export function App() {
     window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
   }, [pestana]);
 
+  useEffect(() => {
+    if (!token || !serialActiva) {
+      setMovimientos([]);
+      return;
+    }
+    let vivo = true;
+    repositorio
+      .movimientos(token, serialActiva)
+      .then((lista) => {
+        if (vivo) setMovimientos(lista);
+      })
+      .catch(() => {
+        if (vivo) setMovimientos([]);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [token, serialActiva]);
+
   const refrescar = useCallback(async () => {
-    if (!sesion) return;
+    if (!token || !serialActiva) return;
     try {
-      const [tarjetaActual, historial] = await Promise.all([
-        repositorio.tarjeta(sesion.token),
-        repositorio.movimientos(sesion.token),
-      ]);
-      setTarjeta(tarjetaActual);
-      setMovimientos(historial);
+      const actual = await repositorio.sesion(token);
+      setSesion(actual);
+      setMovimientos(await repositorio.movimientos(token, serialActiva));
     } catch {
       // La sesión pudo expirar; el siguiente intento de acción lo dirá.
     }
-  }, [sesion]);
+  }, [token, serialActiva]);
 
   const salir = useCallback(async () => {
-    const token = sesion?.token;
+    const actual = token;
     setSesion(null);
-    setTarjeta(null);
+    setSerialActiva(null);
     setMovimientos([]);
     setPestana("inicio");
     setSaldoOculto(false);
     localStorage.removeItem(CLAVE_SESION);
-    if (token) {
+    if (actual) {
       try {
-        await repositorio.salir(token);
+        await repositorio.salir(actual);
       } catch {
         // El token ya no existe en el servidor: nada que limpiar.
       }
     }
-  }, [sesion]);
+  }, [token]);
 
   useEffect(() => {
     function alCambiarVisibilidad() {
@@ -131,28 +154,43 @@ export function App() {
     return () => document.removeEventListener("visibilitychange", alCambiarVisibilidad);
   }, [salir, refrescar, sesion]);
 
-  async function alEntrar(nueva: Sesion) {
+  function alEntrar(nueva: Sesion) {
     guardarSesion(nueva.token);
     setSesion(nueva);
-    setTarjeta(nueva.tarjeta);
+    setSerialActiva(nueva.tarjetas[0]?.serial ?? null);
     setPestana("inicio");
-    try {
-      setMovimientos(await repositorio.movimientos(nueva.token));
-    } catch {
-      setMovimientos([]);
-    }
+  }
+
+  async function vincular(serial: string) {
+    if (!token) throw new Error("Sin sesión activa.");
+    const normalizado = formatearSerial(soloDigitos(serial));
+    const actual = await repositorio.vincular(token, normalizado);
+    setSesion(actual);
+    setSerialActiva(
+      actual.tarjetas.find((t) => t.serial === normalizado)?.serial ??
+        actual.tarjetas[0]?.serial ??
+        null
+    );
+    setPestana("inicio");
   }
 
   async function reportarRecarga(recarga: RecargaNueva) {
-    if (!sesion) throw new Error("Sin sesión activa.");
-    const movimiento = await repositorio.reportarRecarga(sesion.token, recarga);
-    setMovimientos(await repositorio.movimientos(sesion.token));
+    if (!token || !tarjeta) throw new Error("Sin sesión activa.");
+    const movimiento = await repositorio.reportarRecarga(token, tarjeta.serial, recarga);
+    await refrescar();
     return movimiento;
   }
 
   async function cambiarPin(actual: string, nuevo: string) {
-    if (!sesion) throw new Error("Sin sesión activa.");
-    await repositorio.cambiarPin(sesion.token, actual, nuevo);
+    if (!token) throw new Error("Sin sesión activa.");
+    await repositorio.cambiarPin(token, actual, nuevo);
+  }
+
+  async function actualizarPago(datosPago: DatosPago): Promise<Cuenta> {
+    if (!token) throw new Error("Sin sesión activa.");
+    const cuenta = await repositorio.actualizarPago(token, datosPago);
+    setSesion((previa) => (previa ? { ...previa, cuenta } : previa));
+    return cuenta;
   }
 
   function cambiarPestana(nueva: Pestana) {
@@ -176,8 +214,8 @@ export function App() {
     );
   }
 
-  if (!sesion || !tarjeta) {
-    return <Acceso alEntrar={(nueva) => void alEntrar(nueva)} />;
+  if (!sesion) {
+    return <Acceso alEntrar={alEntrar} />;
   }
 
   return (
@@ -185,35 +223,68 @@ export function App() {
       <main className="app__main" id="contenido">
         {pestana === "inicio" && (
           <Inicio
+            cuenta={sesion.cuenta}
+            tarjetas={sesion.tarjetas}
             tarjeta={tarjeta}
             movimientos={movimientos}
             saldoOculto={saldoOculto}
             alAlternarSaldo={() => setSaldoOculto((valor) => !valor)}
+            alSeleccionar={setSerialActiva}
+            alVincular={() => setVinculoAbierto(true)}
             alRecargar={() => cambiarPestana("recargar")}
             alVerMovimientos={() => cambiarPestana("movimientos")}
             alVerPerfil={() => cambiarPestana("perfil")}
             alAbrirPagoMovil={() => setPagoMovilAbierto(true)}
           />
         )}
-        {pestana === "movimientos" && <Movimientos tarjeta={tarjeta} movimientos={movimientos} />}
-        {pestana === "recargar" && (
+
+        {pestana !== "inicio" && !tarjeta && (
+          <div className="vista">
+            <section className="billetera-vacia">
+              <span className="billetera-vacia__icono">
+                <Icon name="tarjeta" />
+              </span>
+              <h1>Tu billetera está vacía</h1>
+              <p>Vincula el serial impreso al reverso de tu plástico para empezar a recargar.</p>
+              <button
+                type="button"
+                className="boton boton--primario"
+                onClick={() => setVinculoAbierto(true)}
+              >
+                <Icon name="mas" />
+                Vincular una tarjeta
+              </button>
+            </section>
+          </div>
+        )}
+
+        {tarjeta && pestana === "movimientos" && (
+          <Movimientos tarjeta={tarjeta} movimientos={movimientos} />
+        )}
+        {tarjeta && pestana === "recargar" && (
           <Recargar
             tarjeta={tarjeta}
+            datosPago={sesion.cuenta.datosPago}
             ajustes={ajustes}
             movimientos={movimientos}
             alReportar={reportarRecarga}
             alInicio={() => cambiarPestana("inicio")}
             alVerMovimientos={() => cambiarPestana("movimientos")}
+            alEditarPago={() => cambiarPestana("perfil")}
           />
         )}
         {pestana === "perfil" && (
           <Perfil
-            tarjeta={tarjeta}
+            cuenta={sesion.cuenta}
+            tarjetas={sesion.tarjetas}
+            tarjetaActiva={tarjeta}
             ajustes={ajustes}
             tema={tema}
             modoDatos={repositorio.modo}
             alCambiarTema={cambiarTema}
             alCambiarPin={cambiarPin}
+            alActualizarPago={actualizarPago}
+            alVincular={() => setVinculoAbierto(true)}
             alSalir={() => void salir()}
           />
         )}
@@ -253,8 +324,8 @@ export function App() {
         <ol className="pasos">
           <li>Abre tu banco y elige Pago Móvil.</li>
           <li>
-            Paga {formatearBs(tarjeta.tarifa * 10)} o el monto que quieras a los datos de
-            arriba.
+            Paga {formatearBs((tarjeta?.tarifa ?? 15) * 10)} o el monto que quieras a los datos
+            de arriba.
           </li>
           <li>Vuelve aquí, toca Recargar y reporta la referencia.</li>
         </ol>
@@ -270,6 +341,12 @@ export function App() {
           Reportar una recarga
         </button>
       </Hoja>
+
+      <HojaVincular
+        abierta={vinculoAbierto}
+        alCerrar={() => setVinculoAbierto(false)}
+        alVincular={vincular}
+      />
     </div>
   );
 }

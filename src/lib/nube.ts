@@ -1,10 +1,10 @@
-import type { Ajustes, Movimiento, RecargaNueva, Sesion, Tarjeta } from "./tipos";
+import type { Ajustes, Cuenta, DatosPago, Movimiento, RecargaNueva, Sesion, Tarjeta } from "./tipos";
 import { AJUSTES_POR_DEFECTO } from "./tipos";
 import { ErrorBlink, type CodigoError, type Repositorio } from "./local";
 
 // Cliente mínimo de Supabase por REST. No se usa `supabase-js` porque la app
-// solo necesita seis llamadas RPC: así el bundle no carga la librería de auth
-// ni la de realtime (más de 100 KB) para consultar una tarjeta.
+// solo necesita las llamadas RPC del portal: así el bundle no carga la
+// librería de auth ni la de realtime (más de 100 KB).
 //
 // Las credenciales son la URL del proyecto y la llave pública (anon /
 // publishable). La llave de servicio NUNCA viaja al navegador: las funciones
@@ -22,6 +22,7 @@ const CODIGOS: CodigoError[] = [
   "ya-activada",
   "pin-invalido",
   "duplicada",
+  "datos",
   "red",
   "sesion",
 ];
@@ -88,50 +89,71 @@ async function rpc<T>(funcion: string, argumentos: Record<string, unknown>): Pro
   return datos as T;
 }
 
-interface TarjetaRpc {
-  serial: string;
-  uid: string;
-  titular: { nombre: string; cedula: string; telefono: string };
-  saldo: number;
-  estado: Tarjeta["estado"];
-  emitida: string;
-  vence: string;
-  tarifa: number;
+interface CuentaRpc {
+  nombres: string;
+  apellidos: string;
+  cedula: string;
+  telefono: string;
+  correo: string;
+  datosPago: DatosPago;
 }
 
-function aSesion(datos: { token: string; tarjeta: TarjetaRpc }): Sesion {
-  return { token: datos.token, tarjeta: datos.tarjeta };
+interface BilleteraRpc {
+  token: string;
+  cuenta: CuentaRpc;
+  tarjetas: Tarjeta[];
+}
+
+function aSesion(datos: BilleteraRpc): Sesion {
+  return { token: datos.token, cuenta: datos.cuenta as Cuenta, tarjetas: datos.tarjetas };
 }
 
 export const repositorioNube: Repositorio = {
   modo: "nube",
 
   entrar(cedula, pin) {
-    return rpc<Sesion>("bt_entrar", { p_cedula: cedula, p_pin: pin }).then(aSesion);
+    return rpc<BilleteraRpc>("bt_entrar", { p_cedula: cedula, p_pin: pin }).then(aSesion);
   },
 
-  activar(datos) {
-    return rpc<Sesion>("bt_activar", {
-      p_cedula: datos.cedula,
-      p_serial: datos.serial,
-      p_telefono: datos.telefono,
-      p_pin: datos.pin,
+  registrar(cuenta) {
+    return rpc<BilleteraRpc>("bt_registrar", {
+      p_nombres: cuenta.nombres,
+      p_apellidos: cuenta.apellidos,
+      p_cedula: cuenta.cedula,
+      p_telefono: cuenta.telefono,
+      p_correo: cuenta.correo,
+      p_pin: cuenta.pin,
+      p_pago_propio: cuenta.datosPago.propio,
+      p_pago_banco: cuenta.datosPago.banco,
+      p_pago_telefono: cuenta.datosPago.telefono,
+      p_pago_cedula: cuenta.datosPago.cedula,
     }).then(aSesion);
   },
 
-  tarjeta(token) {
-    return rpc<{ tarjeta: Tarjeta }>("bt_tarjeta", { p_token: token }).then((r) => r.tarjeta);
+  async sesion(token) {
+    const datos = await rpc<Omit<BilleteraRpc, "token">>("bt_sesion", { p_token: token });
+    return { token, cuenta: datos.cuenta as Cuenta, tarjetas: datos.tarjetas };
   },
 
-  movimientos(token) {
-    return rpc<{ movimientos: Movimiento[] }>("bt_movimientos", { p_token: token }).then(
-      (r) => r.movimientos
-    );
+  async vincular(token, serial) {
+    const datos = await rpc<Omit<BilleteraRpc, "token">>("bt_vincular", {
+      p_token: token,
+      p_serial: serial,
+    });
+    return { token, cuenta: datos.cuenta as Cuenta, tarjetas: datos.tarjetas };
   },
 
-  reportarRecarga(token, recarga: RecargaNueva) {
+  movimientos(token, serial) {
+    return rpc<{ movimientos: Movimiento[] }>("bt_movimientos", {
+      p_token: token,
+      p_serial: serial,
+    }).then((r) => r.movimientos);
+  },
+
+  reportarRecarga(token, serial, recarga: RecargaNueva) {
     return rpc<{ movimiento: Movimiento }>("bt_recargar", {
       p_token: token,
+      p_serial: serial,
       p_monto: recarga.monto,
       p_telefono: recarga.telefono,
       p_banco: recarga.banco,
@@ -141,6 +163,16 @@ export const repositorioNube: Repositorio = {
 
   async cambiarPin(token, actual, nuevo) {
     await rpc<null>("bt_cambiar_pin", { p_token: token, p_actual: actual, p_nuevo: nuevo });
+  },
+
+  async actualizarPago(token, datosPago) {
+    return rpc<{ cuenta: Cuenta }>("bt_actualizar_pago", {
+      p_token: token,
+      p_propio: datosPago.propio,
+      p_banco: datosPago.banco,
+      p_telefono: datosPago.telefono,
+      p_cedula: datosPago.cedula,
+    }).then((r) => r.cuenta);
   },
 
   async salir(token) {
