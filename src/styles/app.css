@@ -408,6 +408,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
+  /* Referencia para el radio proporcional (3,7 % del ancho). */
+  container-type: inline-size;
 }
 
 .tarjeta {
@@ -417,8 +419,9 @@ body {
   --brillo-y: 0%;
   position: relative;
   width: 100%;
+  /* ID-1 / CR80: 85,60 × 53,98 mm. La proporción manda; nada de
+     alturas mínimas que la deformen en pantallas angostas. */
   aspect-ratio: 1.586 / 1;
-  min-height: 14.5rem;
   perspective: 1200px;
   animation: subir 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -447,25 +450,30 @@ body {
   inset: 0;
   display: flex;
   flex-direction: column;
-  border-radius: 22px;
+  /* Troquel real: 2,88–3,48 mm ≈ 3,7 % del ancho (12–16 px en móvil). */
+  border-radius: 14px;
+  border-radius: clamp(12px, 3.7cqw, 16px);
   overflow: hidden;
   color: #fffefb;
   background:
     radial-gradient(120% 130% at 88% -10%, rgb(0 195 255 / 0.42), transparent 58%),
     linear-gradient(150deg, #0a63e8 0%, #0052d4 52%, #003399 100%);
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.28),
-    inset 0 0 0 1px rgb(255 255 255 / 0.18),
-    0 22px 44px -24px rgb(3 32 90 / 0.8),
-    0 8px 18px -12px rgb(0 82 212 / 0.6);
+    /* bisel del plástico: brillo arriba, canto abajo */
+    inset 0 1px 0 rgb(255 255 255 / 0.34),
+    inset 0 -1px 0 rgb(0 24 72 / 0.35),
+    inset 0 0 0 1px rgb(255 255 255 / 0.14),
+    /* 0,76 mm de PVC: apoyo mínimo + sombra ambiente difusa */
+    0 2px 3px -1px rgb(3 32 90 / 0.28),
+    0 14px 32px -20px rgb(3 32 90 / 0.55);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
 
 .tarjeta__cara--anverso {
   justify-content: space-between;
-  gap: 0.4rem;
-  padding: 0.95rem 1.1rem 0.9rem;
+  gap: 1.7cqw;
+  padding: 4.1cqw 4.7cqw 3.9cqw;
 }
 
 .tarjeta__cara--bloqueada {
@@ -521,17 +529,17 @@ body {
 }
 
 .tarjeta__orbes span:first-child {
-  width: 230px;
-  height: 230px;
-  top: -96px;
-  right: -70px;
+  width: 62cqw;
+  height: 62cqw;
+  top: -25.9cqw;
+  right: -18.9cqw;
 }
 
 .tarjeta__orbes span:last-child {
-  width: 150px;
-  height: 150px;
-  bottom: -86px;
-  left: -44px;
+  width: 40.4cqw;
+  height: 40.4cqw;
+  bottom: -23.2cqw;
+  left: -11.9cqw;
   background: rgb(255 255 255 / 0.04);
 }
 
@@ -540,7 +548,7 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.6rem;
+  gap: 2.6cqw;
 }
 
 .tarjeta__marca {
@@ -551,13 +559,13 @@ body {
     "lema lema";
   align-items: center;
   justify-content: start;
-  column-gap: 0.32rem;
-  row-gap: 0.1rem;
+  column-gap: 1.4cqw;
+  row-gap: 0.4cqw;
 }
 
 .tarjeta__logo {
   grid-area: logo;
-  font-size: 1.3rem;
+  font-size: 5.6cqw;
   font-weight: 900;
   font-style: italic;
   letter-spacing: -0.05em;
@@ -566,17 +574,17 @@ body {
 
 .tarjeta__guiño {
   grid-area: guino;
-  width: 1.15rem;
+  width: 5cqw;
   height: auto;
   fill: currentColor;
   align-self: start;
-  margin-top: 0.12rem;
+  margin-top: 0.5cqw;
 }
 
 .tarjeta__marca em {
   grid-area: lema;
   font-style: normal;
-  font-size: 0.5rem;
+  font-size: 2.2cqw;
   font-weight: 700;
   letter-spacing: 0.4em;
   opacity: 0.82;
@@ -585,13 +593,13 @@ body {
 .tarjeta__pastilla {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 1.5cqw;
   max-width: 55%;
-  padding: 0.26rem 0.6rem;
+  padding: 1.1cqw 2.6cqw;
   border: 1px solid rgb(255 255 255 / 0.22);
   border-radius: var(--radius-pill);
   background: rgb(0 0 0 / 0.22);
-  font-size: 0.5625rem;
+  font-size: max(8px, 2.4cqw);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -601,8 +609,8 @@ body {
 }
 
 .tarjeta__punto {
-  width: 6px;
-  height: 6px;
+  width: 1.6cqw;
+  height: 1.6cqw;
   flex: none;
   border-radius: 50%;
   background: #30d158;
@@ -615,8 +623,8 @@ body {
 }
 
 .tarjeta__contacto {
-  width: 22px;
-  height: 18px;
+  width: 5.9cqw;
+  height: 4.9cqw;
   flex: none;
   fill: none;
   stroke: rgb(255 255 255 / 0.85);
@@ -629,13 +637,13 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.12rem;
+  gap: 0.5cqw;
   min-height: 0;
 }
 
 .tarjeta__etiqueta {
   display: block;
-  font-size: 0.625rem;
+  font-size: max(8px, 2.7cqw);
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -645,12 +653,12 @@ body {
 .tarjeta__monto {
   display: flex;
   align-items: baseline;
-  gap: 0.3rem;
-  margin-top: 0.05rem;
+  gap: 1.3cqw;
+  margin-top: 0.2cqw;
 }
 
 .tarjeta__monto strong {
-  font-size: clamp(2rem, 9vw, 2.35rem);
+  font-size: clamp(1.4rem, 8.6cqw, 2.6rem);
   font-weight: 800;
   letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
@@ -658,7 +666,7 @@ body {
 }
 
 .tarjeta__moneda {
-  font-size: 1rem;
+  font-size: max(11px, 4.3cqw);
   font-weight: 600;
   color: rgb(255 255 255 / 0.86);
 }
@@ -672,10 +680,10 @@ body {
 .tarjeta__ojo {
   display: inline-grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 7.5cqw;
+  height: 7.5cqw;
   align-self: center;
-  margin-left: 0.15rem;
+  margin-left: 0.6cqw;
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -690,21 +698,21 @@ body {
 }
 
 .tarjeta__ojo .icon {
-  width: 1rem;
-  height: 1rem;
+  width: 4.3cqw;
+  height: 4.3cqw;
 }
 
 .tarjeta__capsula {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 1.5cqw;
   align-self: flex-start;
-  margin-top: 0.3rem;
-  padding: 0.2rem 0.55rem;
+  margin-top: 1.3cqw;
+  padding: 0.9cqw 2.4cqw;
   border: 1px solid rgb(255 255 255 / 0.25);
   border-radius: var(--radius-pill);
   background: rgb(255 255 255 / 0.15);
-  font-size: 0.625rem;
+  font-size: max(8px, 2.7cqw);
   font-weight: 600;
   line-height: 1.3;
   backdrop-filter: blur(6px);
@@ -713,8 +721,8 @@ body {
 }
 
 .tarjeta__capsula .icon {
-  width: 0.85rem;
-  height: 0.85rem;
+  width: 3.7cqw;
+  height: 3.7cqw;
 }
 
 .tarjeta__capsula--bajo {
@@ -734,20 +742,20 @@ body {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 0.6rem;
-  padding-top: 0.5rem;
+  gap: 2.6cqw;
+  padding-top: 2.2cqw;
   border-top: 1px solid rgb(255 255 255 / 0.16);
 }
 
 .tarjeta__identidad {
   display: flex;
   flex-direction: column;
-  gap: 0.14rem;
+  gap: 0.6cqw;
   min-width: 0;
 }
 
 .tarjeta__titular {
-  font-size: 0.625rem;
+  font-size: max(8px, 2.7cqw);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -760,10 +768,11 @@ body {
 .tarjeta__serial {
   display: inline-flex;
   align-items: center;
-  gap: 0.15rem;
-  font-size: 0.75rem;
+  gap: 0.5cqw;
+  font-size: max(9px, 3.2cqw);
   letter-spacing: 0.02em;
   color: rgb(255 255 255 / 0.92);
+  white-space: nowrap;
 }
 
 .tarjeta__serial strong {
@@ -773,12 +782,12 @@ body {
 .tarjeta__copiar {
   display: inline-grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
-  margin-left: 0.1rem;
+  width: 6.5cqw;
+  height: 6.5cqw;
+  margin-left: 0.4cqw;
   padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: 2.2cqw;
   background: transparent;
   color: rgb(255 255 255 / 0.78);
   cursor: pointer;
@@ -795,28 +804,28 @@ body {
 }
 
 .tarjeta__copiar .icon {
-  width: 0.85rem;
-  height: 0.85rem;
+  width: 3.7cqw;
+  height: 3.7cqw;
 }
 
 .tarjeta__acciones {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 1.9cqw;
   flex: none;
 }
 
 .tarjeta__voltear {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.3rem 0.55rem;
+  gap: 1.3cqw;
+  padding: 1.3cqw 2.4cqw;
   border: 0;
-  border-radius: 10px;
+  border-radius: 2.7cqw;
   background: rgb(255 255 255 / 0.16);
   color: #fff;
   font-family: inherit;
-  font-size: 0.625rem;
+  font-size: max(8px, 2.7cqw);
   font-weight: 600;
   cursor: pointer;
   backdrop-filter: blur(6px);
@@ -833,13 +842,13 @@ body {
 }
 
 .tarjeta__voltear .icon {
-  width: 0.8rem;
-  height: 0.8rem;
+  width: 3.5cqw;
+  height: 3.5cqw;
 }
 
 .tarjeta__voltear--claro {
-  padding: 0.18rem 0.45rem;
-  font-size: 0.5625rem;
+  padding: 0.8cqw 1.9cqw;
+  font-size: max(8px, 2.4cqw);
   background: rgb(255 255 255 / 0.24);
 }
 
@@ -853,15 +862,15 @@ body {
 .tarjeta__reverso-texto {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 1.7cqw;
   width: 74%;
   min-width: 0;
-  padding: 0.85rem 0.8rem 0.75rem 1rem;
+  padding: 3.7cqw 3.5cqw 3.2cqw 4.3cqw;
 }
 
 .tarjeta__lema {
   margin: 0;
-  font-size: 0.625rem;
+  font-size: max(8px, 2.7cqw);
   font-weight: 800;
   font-style: italic;
   line-height: 1.25;
@@ -872,18 +881,18 @@ body {
 .tarjeta__recarga {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 2.6cqw;
   margin-block: auto;
 }
 
 .tarjeta__qr {
   display: grid;
   place-items: center;
-  width: 60px;
-  height: 60px;
+  width: 16.2cqw;
+  height: 16.2cqw;
   flex: none;
-  padding: 4px;
-  border-radius: 10px;
+  padding: 1.1cqw;
+  border-radius: 2.7cqw;
   background: #fff;
   color: #1d1d1f;
   box-shadow: 0 6px 14px -8px rgb(0 0 0 / 0.55);
@@ -896,19 +905,19 @@ body {
 }
 
 .tarjeta__qr .icon {
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 4.6cqw;
+  height: 4.6cqw;
 }
 
 .tarjeta__recarga-titulo {
   margin: 0;
-  font-size: 0.6875rem;
+  font-size: max(8px, 3cqw);
   font-weight: 700;
 }
 
 .tarjeta__recarga-texto {
-  margin: 0.1rem 0 0;
-  font-size: 0.5625rem;
+  margin: 0.4cqw 0 0;
+  font-size: max(7.5px, 2.4cqw);
   line-height: 1.4;
   color: rgb(255 255 255 / 0.85);
 }
@@ -917,10 +926,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.4rem;
-  padding-top: 0.4rem;
+  gap: 1.7cqw;
+  padding-top: 1.7cqw;
   border-top: 1px solid rgb(255 255 255 / 0.16);
-  font-size: 0.5rem;
+  font-size: max(7px, 2.2cqw);
   line-height: 1.3;
   color: rgb(255 255 255 / 0.82);
 }
@@ -934,9 +943,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.12rem;
+  gap: 0.5cqw;
   width: 26%;
-  padding: 0.55rem 0.2rem 0.5rem;
+  padding: 2.4cqw 0.9cqw 2.2cqw;
   background: #fff;
   color: #0b1b33;
 }
@@ -949,27 +958,27 @@ body {
 }
 
 .tarjeta__franja-serial {
-  font-size: 0.5rem;
+  font-size: max(7px, 2.2cqw);
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 
 .tarjeta__franja-etiqueta {
-  font-size: 0.4375rem;
+  font-size: max(6.5px, 1.9cqw);
   color: #5b6b80;
 }
 
 .tarjeta__barras {
   height: 76%;
   width: auto;
-  max-width: 2.4rem;
+  max-width: 10.3cqw;
   object-fit: contain;
 }
 
 .tarjeta__barras-espera {
   height: 76%;
-  width: 1.6rem;
-  border-radius: 4px;
+  width: 6.9cqw;
+  border-radius: 1.1cqw;
   background: repeating-linear-gradient(90deg, #0b1b33 0 2px, transparent 2px 4px);
   opacity: 0.25;
 }
