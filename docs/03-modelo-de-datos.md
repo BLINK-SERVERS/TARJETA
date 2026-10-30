@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-03 |
-| Versión | 1.3.0 |
+| Versión | 1.3.1 |
 | Fecha | 2026-10-30 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26514 |
@@ -34,7 +34,8 @@
 | `0006_lotes_corporativos.sql` | Aprovisionamiento en lote: estado `FABRICADA`, activación por reclamo, estación UID↔serial, bitácora `card_events`, purga archivada y cuenta administradora. | Aplicada el 2026-10-29 · prueba de aceptación en verde |
 | `0007_backoffice_mfa.sql` | Segundo factor TOTP en `accounts`, sesión de back-office con RBAC, verificación RFC 6238 en el servidor y RPC administrativas que autentican por token (sin `service_role` en el navegador). | Aplicada el 2026-10-29 · prueba de aceptación en verde |
 | `0008_backoffice_lectura.sql` | Consultas de solo lectura del panel: `bt_admin_lotes` y `bt_admin_tarjetas` (lotes e inventario con titular, estado y saldo). | Aplicada el 2026-10-29 |
-| `0009_serie_siete_digitos.sql` | Serie de 7 dígitos (`23-1-0000001-9`) con Luhn genérico de 10 y 11 dígitos, tarjeta maestra `00-0-000000-0`, `fare_type = 0` y renumeración de las tarjetas `FABRICADA` sin uso. | Aplicada el 2026-10-30 · prueba de aceptación en verde |
+| `0009_serie_siete_digitos.sql` | Serie de 7 dígitos (`23-1-0000001-9`) con Luhn genérico de 10 y 11 dígitos, tarjeta maestra, `fare_type = 0` y renumeración de las tarjetas `FABRICADA` sin uso. | Aplicada el 2026-10-30 · prueba de aceptación en verde |
+| `0010_maestra_once_digitos.sql` | Serial maestro de 11 dígitos `00-0-0000000-0`: reescribe `bt_crear_tarjeta_maestra`, renumera la maestra existente y deja el evento `ASIGNADA` de canal `sistema`. | Aplicada el 2026-10-30 · prueba de aceptación en verde |
 
 Reglas:
 
@@ -99,7 +100,7 @@ Restricciones de `visible_id` (migración 0009):
   serie nueva y 10 para la heredada.
 
 `fare_type` admite `0`, `1` y `2`: `0` identifica la **tarjeta maestra**
-`00-0-000000-0`, `1` la tarifa general y `2` la estudiante. La maestra nace
+`00-0-0000000-0`, `1` la tarifa general y `2` la estudiante. La maestra nace
 `ACTIVE`, tiene `batch_id` nulo, se asigna a una cuenta y cobra la tarifa general
 como cualquier otra tarjeta (ver BLINK-DOC-12).
 
@@ -191,7 +192,7 @@ erDiagram
 | --- | --- |
 | PIN de 6 dígitos no trivial | `bt_pin6_valido` |
 | Serial con Luhn | `bt_luhn_valido` (10 u 11 dígitos, serie heredada y nueva) |
-| Tarjeta maestra | `bt_crear_tarjeta_maestra` inserta `00-0-000000-0` con `fare_type = 0`; solo `service_role` |
+| Tarjeta maestra | `bt_crear_tarjeta_maestra` inserta `00-0-0000000-0` con `fare_type = 0`; solo `service_role` |
 | Vigencia de la tarjeta | `bt_tarjeta_vigente` (vence > hoy) |
 | Tope de recarga | `bt_tope_recarga` lee `settings.publico.topeRecarga` (defecto 5.000) |
 | Referencia duplicada | `bt_recargar` consulta `recharges` por tarjeta+banco+referencia |
@@ -220,7 +221,7 @@ propiedad (`businesses.owner_id = auth.uid()`). Al crear una migración nueva:
 
 - Supabase realiza copias automáticas diarias (plan del proyecto). Para una copia
   lógica manual: `pg_dump` contra el pooler (`sslmode=require`).
-- **Restauración:** crear una base nueva, aplicar `0001`→`0009` y cargar el dump.
+- **Restauración:** crear una base nueva, aplicar `0001`→`0010` y cargar el dump.
   Verificar `select count(*)` de `cards`, `card_movements` y `accounts`.
 - La contraseña de la base **no se documenta aquí**; vive en el gestor de secretos
   del equipo (ver BLINK-DOC-05 §6).

@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-00 |
-| Versión | 1.4.0 |
+| Versión | 1.5.0 |
 | Fecha | 2026-10-30 |
 | Estado | Vigente |
 | Autor | Equipo BLINK (desarrollo asistido) |
@@ -27,7 +27,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | --- | --- | --- | --- |
 | BLINK POS (sitio de la línea y punto de venta) | `BLINK-SERVERS/POS` | https://www.blink.com.ve | 1.19.0 |
 | BLINK PASAJES (lector, fiscal, admin) | `BLINK-SERVERS/PASAJES` | https://pasajes.blink.com.ve | 0.1.0 |
-| BLINK TARJETA (portal del pasajero) | `BLINK-SERVERS/TARJETA` | https://blink-servers.github.io/TARJETA/ | 1.3.0 |
+| BLINK TARJETA (portal del pasajero) | `BLINK-SERVERS/TARJETA` | https://blink-servers.github.io/TARJETA/ | 1.4.0 |
 | BLINK BACK-OFFICE (consola administrativa) | `BLINK-SERVERS/BACKOFFICE` | https://blink-servers.github.io/BACKOFFICE/ | 1.0.0 |
 | Backend (Supabase) | proyecto `gakkfzqcrapxeierfdhk` | — | PostgreSQL 17.11 |
 
@@ -52,7 +52,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | BLINK-DOC-09 | [Riesgos, brechas y deuda técnica](09-riesgos-y-brechas.md) | 12207 · 27001 |
 | BLINK-DOC-10 | [Guía para retomar el desarrollo](10-guia-de-retoma.md) | 26515 |
 | BLINK-DOC-11 | [Rotación de claves y secretos](11-rotacion-de-claves.md) | 27001 |
-| BLINK-DOC-12 | [Enrolado de lotes y tarjeta maestra](12-enrolado-de-lotes.md) | 26512 · 26513 |
+| BLINK-DOC-12 | [Enrolado y producción de lotes de tarjetas](12-enrolado-de-lotes.md) | 7810 · 7812-1 · 15417 · PDF/VT |
 | — | [CHANGELOG](../CHANGELOG.md) | Keep a Changelog 1.1.0 + SemVer |
 
 ## 4. Convenciones de esta suite
@@ -77,6 +77,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | 1.2.0 | 2026-10-29 | Back-office separado (repo `BACKOFFICE`) con RBAC y TOTP; migraciones 0007 y 0008 aplicadas; suite pasa a 1.2.0. | Equipo BLINK |
 | 1.3.0 | 2026-10-30 | Nuevo BLINK-DOC-11: checklist de rotación de claves, inventario de secretos y verificación. | Equipo BLINK |
 | 1.4.0 | 2026-10-30 | Nuevo BLINK-DOC-12: enrolado de lotes y tarjeta maestra; serie de 7 dígitos (`23-1-0000001-9`) con migración 0009. | Equipo BLINK |
+| 1.5.0 | 2026-10-30 | BLINK-DOC-12 pasa a 2.0.0 con el estándar de producción del propietario; migración 0010 y serial maestro `00-0-0000000-0`. | Equipo BLINK |
 
 Reglas de mantenimiento:
 

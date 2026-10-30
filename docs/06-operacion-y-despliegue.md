@@ -149,7 +149,7 @@ aplicar migraciones: el editor SQL es la vía alternativa al pooler.
    ```bash
    docker run --rm -d --name blink-eco -p 55433:5432 -e POSTGRES_PASSWORD=local postgres:16-alpine
    psql "postgresql://postgres:local@127.0.0.1:55433/postgres" -f supabase/migrations/0001_tarjeta.sql
-   # … 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009
+   # … 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010
    ```
 
 2. Ejecutar la migración nueva dentro de una transacción con

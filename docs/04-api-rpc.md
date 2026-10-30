@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-04 |
-| Versión | 1.3.0 |
+| Versión | 1.3.1 |
 | Fecha | 2026-10-30 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26514 |
@@ -106,7 +106,7 @@ entorno de confianza (script de administración, validador con token o consola S
 | `bt_emitir_tarjeta(serial, nombre, cedula, telefono, tarifa)` | Emite un plástico. |
 | `bt_enrolar_tarjeta(visible_id, chip_uid)` | Asocia el UID del chip al serial (una tarjeta por vez). |
 | `bt_generar_lote(cantidad, patrocinante, estado, tarifa, origen='FABRICANTE', desde=null)` | Genera un lote con seriales Luhn de 7 dígitos en estado `FABRICADA`; `desde` fija el primer secuencial (ver §3.1). |
-| `bt_crear_tarjeta_maestra(cedula, uid=null, operador='', tarifa=15)` | Crea `00-0-000000-0` (`fare_type = 0`) y la asigna a la cuenta de esa cédula (ver §3.2). |
+| `bt_crear_tarjeta_maestra(cedula, uid=null, operador='', tarifa=15)` | Crea `00-0-0000000-0` (`fare_type = 0`) y la asigna a la cuenta de esa cédula (ver §3.2). |
 | `bt_estacion_enrolar(lote, items, operador='')` | Carga masiva UID↔serial desde el lector; devuelve `enroladas`, `rechazadas` y `errores[]`. |
 | `bt_estacion_catalogo(lote)` | Devuelve el lote con serial, UID y estado de cada tarjeta (hoja de la estación). |
 | `bt_estacion_asignar(serial, cedula, operador='')` | Activa el plástico a nombre de una cuenta ya registrada (taquilla). |
@@ -148,7 +148,7 @@ select public.bt_generar_lote(100, 'Transporte Ejemplo, C.A.', 23, 1, 'FABRICANT
 select public.bt_generar_lote(100, 'Transporte Ejemplo, C.A.', 23, 1, 'FABRICANTE', 101);
 ```
 
-### 3.2 Tarjeta maestra `00-0-000000-0`
+### 3.2 Tarjeta maestra `00-0-0000000-0`
 
 `bt_crear_tarjeta_maestra(p_cedula, p_uid default null, p_operador default '',
 p_tarifa default 15)` crea el plástico del propietario:
@@ -156,10 +156,10 @@ p_tarifa default 15)` crea el plástico del propietario:
 1. Valida la cédula (6–8 dígitos) y busca la cuenta; sin cuenta responde
    `bt:sin-cuenta`.
 2. Rechaza un segundo registro (`bt:duplicada`) de la maestra o de un UID ya usado.
-3. Inserta `visible_id = '00-0-000000-0'`, `state_code = 0`, `fare_type = 0`,
+3. Inserta `visible_id = '00-0-0000000-0'`, `state_code = 0`, `fare_type = 0`,
    `status = 'ACTIVE'`, `batch_id` nulo, `asignada_at = now()` y
    `asignada_por = p_operador`, copiando nombre y teléfono de la cuenta.
-4. Deja dos eventos en `card_events`: `ASIGNADA` (canal `taquilla`, detalle
+4. Deja dos eventos en `card_events`: `ASIGNADA` (canal `sistema`, detalle
    `serie: MAESTRA`) y, si se pasó UID, `ENROLADA` (canal `estacion`).
 5. Solo `service_role` puede ejecutarla. Con `p_uid` nulo se crea sin chip y se
    enrola después en la estación con `bt_estacion_enrolar` o `ENROLAR` por consola.

@@ -1,5 +1,7 @@
 -- ============================================================
 -- Prueba de aceptación de 0009_serie_siete_digitos.sql
+-- (con 0010_maestra_once_digitos.sql aplicada: la maestra es
+-- 00-0-0000000-0, de 11 dígitos)
 -- Requiere una base migrada con 0001→0009 y al menos una cuenta.
 --
 --   psql "$CADENA" -v ON_ERROR_STOP=1 -f supabase/pruebas/0009_serie.sql
@@ -31,6 +33,10 @@ begin
   end if;
 
   -- 2. La serie nueva de 11 dígitos usa la misma regla, con otra paridad.
+  --    El serial maestro heredado de 10 dígitos sigue validando.
+  if not public.bt_luhn_valido('00-0-000000-0') then
+    raise exception 'el serial maestro heredado 00-0-000000-0 dejó de validar';
+  end if;
   v_luhn := public.bt_luhn_digito('2310000001');
   if v_luhn <> '9' then
     raise exception 'Luhn de 2310000001 = % (esperado 9)', v_luhn;
@@ -61,19 +67,19 @@ begin
   -- En producción la maestra ya existe: se retira dentro de esta
   -- transacción para probar la creación desde cero. El ROLLBACK la
   -- devuelve intacta junto con su bitácora.
-  if exists (select 1 from public.cards where visible_id = '00-0-000000-0') then
-    delete from public.cards where visible_id = '00-0-000000-0';
+  if exists (select 1 from public.cards where visible_id = '00-0-0000000-0') then
+    delete from public.cards where visible_id = '00-0-0000000-0';
   end if;
 
   v_maestra := public.bt_crear_tarjeta_maestra(v_cedula, 'AABBCCDD', 'prueba');
 
-  if v_maestra #>> '{tarjeta,serial}' <> '00-0-000000-0' then
+  if v_maestra #>> '{tarjeta,serial}' <> '00-0-0000000-0' then
     raise exception 'serial de la maestra = %', v_maestra #>> '{tarjeta,serial}';
   end if;
-  if (select fare_type from public.cards where visible_id = '00-0-000000-0') <> 0 then
+  if (select fare_type from public.cards where visible_id = '00-0-0000000-0') <> 0 then
     raise exception 'la maestra no quedó con tarifa 0';
   end if;
-  if (select state_code from public.cards where visible_id = '00-0-000000-0') <> 0 then
+  if (select state_code from public.cards where visible_id = '00-0-0000000-0') <> 0 then
     raise exception 'la maestra no quedó con entidad 00';
   end if;
 

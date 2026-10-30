@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-09 |
-| Versión | 1.3.0 |
+| Versión | 1.4.0 |
 | Fecha | 2026-10-30 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 12207 (riesgos) · ISO/IEC 27001 (A.5.7) |
@@ -45,6 +45,10 @@ La fuente de verdad es `Documentación Técnica del Ecosistema Blink Pasajes`
 | B-11 | Argon2id no disponible en el `pgcrypto` de Supabase. | B | Se usa bcrypt costo 10 con bloqueo por intentos; revisar si el proveedor habilita Argon2. |
 | B-12 | Reclamo solo por serial: sin código de activación por tarjeta. | M | Añadir un segundo factor impreso o activación asistida en taquilla para lotes grandes (SEC-06). |
 | B-13 | El back-office no tiene recuperación de TOTP ni gestión de operadores en la interfaz. | B | Alta y reinicio de operadores por SQL; evaluar pantalla de cuentas para rol `ADMIN`. |
+| B-14 | La estación web no graba el chip: solo registra UID↔serial; la escritura del bloque de identidad y de las llaves se hace por la consola serie (`ENROLAR`). | A | Impide operar la distribución pre-enrolada solo con el back-office (BLINK-DOC-12 §10). |
+| B-15 | Sin cola secuencial, *tap & next* ni punto de control anti-desfase en la estación. | M | El enrolado de 1000 tarjetas obliga a tipear o escanear cada serial; riesgo de desfase de pila. |
+| B-16 | Sin carga de artes ni paquete de producción (ZIP VDP y PDF/VT): hoy el generador entrega CSV y hoja A4. | M | La imprenta recibe el material por fuera del sistema y el CSV no trae `orden_impresion`, `lote_id` ni `patrocinante`. |
+| B-17 | La estación no está reservada al propietario: `bt_admin_sesion_mfa` admite ADMIN y TAQUILLA. | M | Contradice la exclusividad de la estación que exige BLINK-DOC-12 §1. |
 
 ## 3. Deuda técnica
 
@@ -76,7 +80,11 @@ La fuente de verdad es `Documentación Técnica del Ecosistema Blink Pasajes`
 | 1 | ~~Aplicar `0006` en producción~~ (hecho el 2026-10-29; ver BLINK-DOC-07 §3.2). | Administrador | Cerrado |
 | 1b | ~~Aplicar `0007` y `0008`; publicar el back-office~~ (hecho el 2026-10-29; ver BLINK-DOC-07 §3.3, §3.4 y §4.2). | Administrador | Cerrado |
 | 1c | Inscribir el segundo factor de la cuenta administradora desde el teléfono del operador. | Operador | Inmediato |
-| 1d | ~~Aplicar `0009` y crear la tarjeta maestra `00-0-000000-0`~~ (hecho el 2026-10-30; ver BLINK-DOC-07 §3.5 y BLINK-DOC-12). | Administrador | Cerrado |
+| 1d | ~~Aplicar `0009` y crear la tarjeta maestra~~ (hecho el 2026-10-30; ver BLINK-DOC-07 §3.5 y BLINK-DOC-12). | Administrador | Cerrado |
+| 1e | ~~Aplicar `0010` y renumerar la maestra a `00-0-0000000-0`~~ (hecho el 2026-10-30; ver BLINK-DOC-07 §3.6). | Administrador | Cerrado |
+| 8 | Grabar el chip desde la estación web (B-14) y añadir cola secuencial con *tap & next* (B-15). | Desarrollo | Corto |
+| 9 | Generar el paquete de producción ZIP VDP / PDF-VT y permitir la carga de artes (B-16). | Desarrollo | Medio |
+| 10 | Restringir la estación al rol del propietario (B-17). | Desarrollo | Corto |
 | 2 | Rotar contraseña de PostgreSQL y tokens expuestos (checklist en BLINK-DOC-11). | Administrador | Inmediato |
 | 3 | Mover firmware a un repositorio con `firmware/`. | Desarrollo | Corto |
 | 4 | Migrar BLINK PASAJES al esquema `bt_*`. | Desarrollo | Medio |
@@ -87,6 +95,6 @@ La fuente de verdad es `Documentación Técnica del Ecosistema Blink Pasajes`
 ## 6. Revisión
 
 Este registro se actualiza al cerrar cada hito. La última revisión corresponde al
-2026-10-30, tras aplicar la migración `0009` (serie de 7 dígitos), crear la
-tarjeta maestra `00-0-000000-0` y documentar el enrolado por lotes en
-BLINK-DOC-12.
+2026-10-30, tras aplicar las migraciones `0009` (serie de 7 dígitos) y `0010`
+(maestra `00-0-0000000-0`), y alinear BLINK-DOC-12 con el estándar de producción
+del propietario (impresión ID-1, paquete VDP y enrolado secuencial).

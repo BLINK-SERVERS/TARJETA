@@ -29,7 +29,7 @@ BLINK_Tarjeta/                     ← portal del pasajero + esquema compartido
   src/lib/local.ts                 espejo local del contrato
   src/components/TarjetaVirtual.tsx tarjeta ID-1 con giro 3D
   src/styles/app.css               tarjeta con container queries (cqw)
-  supabase/migrations/             0001…0009 (0007 back-office + TOTP, 0008 lectura, 0009 serie de 7 dígitos y maestra)
+  supabase/migrations/             0001…0010 (0007 back-office + TOTP, 0008 lectura, 0009 serie de 7 dígitos, 0010 maestra de 11 dígitos)
   scripts/lote.ts                  generación de lotes y hoja de impresión
   docs/                            esta suite
 

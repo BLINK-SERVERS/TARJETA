@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-07 |
-| Versión | 1.3.0 |
+| Versión | 1.3.1 |
 | Fecha | 2026-10-30 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 26513 · ISO/IEC 25010 |
@@ -174,7 +174,7 @@ heredados.
 ### 3.5 Migración 0009 (serie de 7 dígitos y tarjeta maestra)
 
 Suite `supabase/pruebas/0009_serie.sql`. Se ejecuta en PostgreSQL local
-(`0001`→`0009`) y en producción; todo ocurre dentro de una transacción que
+(`0001`→`0010`) y en producción; todo ocurre dentro de una transacción que
 termina en `ROLLBACK` y cierra con `PRUEBAS_0009_OK`.
 
 | # | Caso | Resultado |
@@ -182,7 +182,7 @@ termina en `ROLLBACK` y cierra con `PRUEBAS_0009_OK`.
 | 1 | `23-1-000001-9` (serie heredada) sigue validando; `…-0` se rechaza | OK |
 | 2 | `bt_luhn_digito('2310000001') = '9'` y `23-1-0000001-9` valida | OK |
 | 3 | Ninguna tarjeta almacenada incumple formato ni Luhn | OK |
-| 4 | `bt_crear_tarjeta_maestra` crea `00-0-000000-0` con `fare_type = 0` | OK |
+| 4 | `bt_crear_tarjeta_maestra` crea `00-0-0000000-0` con `fare_type = 0` | OK |
 | 5 | La segunda maestra responde `ya existe` | `bt:duplicada` |
 | 6 | Lote con `p_desde = 9000001` produce `23-1-9000001-…` a `…9000003-…` | OK |
 | 7 | Lote solapado (`p_desde = 9000002`) | `ya tiene tarjetas` |
@@ -196,6 +196,23 @@ arranque es idempotente: la segunda pasada ya no encuentra seriales de 6 dígito
 En el portal, las pruebas de `dominio`, `lote`, `formato` y `codigos` cubren el
 lado cliente del mismo cambio: Luhn de 11 dígitos, máscara `23-1-0000001-9` y
 Code 128 en juego C con símbolo de cambio a B para el dígito final.
+
+### 3.6 Migración 0010 (serial maestro de 11 dígitos)
+
+La misma suite incorpora el serial heredado `00-0-000000-0` como comprobación de
+compatibilidad y usa `00-0-0000000-0` para el alta:
+
+| # | Caso | Resultado |
+| --- | --- | --- |
+| 1 | `bt_luhn_valido('00-0-000000-0')` sigue siendo cierto | OK |
+| 2 | `bt_crear_tarjeta_maestra` crea `00-0-0000000-0` (`state_code = 0`, `fare_type = 0`) | OK |
+| 3 | La segunda maestra responde `ya existe` | `bt:duplicada` |
+| 4 | La renumeración de 10 → 11 dígitos es idempotente y `barcode_data` pasa a `00000000000` | OK |
+| 5 | En producción, la maestra quedó `ACTIVE`, sin `batch_id` y con eventos `ASIGNADA` de canales `taquilla` y `sistema` | OK |
+
+Ejecutada en producción el 2026-10-30 con `PRUEBAS_0009_OK` dentro de una
+transacción con `ROLLBACK`; la suite retira la maestra al inicio para probar el
+alta desde cero y la restaura al deshacer.
 
 ## 4. Prueba de sistema en producción (2026-10-29)
 

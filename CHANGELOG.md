@@ -14,6 +14,42 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 - Notificaciones por correo al acreditar una recarga.
 - Gestión de operadores y reinicio de TOTP desde la interfaz del back-office.
 - Prueba física de enrolado y cobro con el lector (tarea #28).
+- Grabado del chip desde la estación web y cola secuencial con *tap & next*.
+- Carga de artes y paquete de producción ZIP VDP / PDF-VT.
+- Restringir la estación de enrolado al rol del propietario.
+
+## [1.4.0] — 2026-10-30
+
+Serial maestro de once dígitos `00-0-0000000-0` y alineación de la guía de
+enrolado con el estándar de producción del propietario (impresión ID-1/CR80,
+paquete de datos variables y enrolado secuencial).
+
+### Añadido
+
+- **Migración `0010_maestra_once_digitos.sql`**: `bt_crear_tarjeta_maestra` crea
+  `00-0-0000000-0` y el evento `ASIGNADA` queda en canal `sistema`; el bloque
+  final renumera la maestra existente desde el serial heredado de 10 dígitos y
+  registra el cambio en `card_events`.
+- **BLINK-DOC-12 v2.0.0**: exclusividad de la estación, distribución pre-enrolada
+  sin taquilla, medidas de sangrado/corte/zona segura, paquete ZIP VDP y PDF/VT,
+  enrolado en ráfaga con *tap & next* y punto de control, y tabla de estado de
+  implementación.
+- **Suite de aceptación ampliada** con el serial maestro heredado como caso de
+  compatibilidad (BLINK-DOC-07 §3.6).
+
+### Cambiado
+
+- El serial maestro pasa de 10 a 11 dígitos: `barcode_data` queda en
+  `00000000000`. La serie de lote no cambia.
+- BLINK-DOC-03, 04, 07 y 09 reflejan la migración `0010`; el registro de brechas
+  añade B-14 a B-17 (grabado del chip desde el panel, *tap & next*, artes y
+  paquete de imprenta, estación exclusiva del propietario).
+
+### Base de datos
+
+- `0010` aplicada en producción el 2026-10-30: la maestra quedó `ACTIVE`,
+  `state_code = 0`, `fare_type = 0`, sin `batch_id` y sin UID, con los eventos
+  `ASIGNADA` originales más el de la renumeración. Suite `PRUEBAS_0009_OK`.
 
 ## [1.3.0] — 2026-10-30
 
@@ -26,10 +62,10 @@ siendo válida.
 - **Migración `0009_serie_siete_digitos.sql`**: `bt_luhn_digito` y
   `bt_luhn_valido` aceptan 10 y 11 dígitos; `bt_generar_lote` numera a siete
   dígitos con `p_desde` opcional y rechaza rangos que se solapan.
-- **Tarjeta maestra `00-0-000000-0`**: `bt_crear_tarjeta_maestra(cedula, uid,
-  operador, tarifa)` la crea activa, asignada a la cuenta dueña, con
-  `fare_type = 0`, fuera de todo lote y con bitácora `ASIGNADA`/`ENROLADA`.
-  Solo `service_role`.
+- **Tarjeta maestra**: `bt_crear_tarjeta_maestra(cedula, uid, operador, tarifa)`
+  la crea activa, asignada a la cuenta dueña, con `fare_type = 0`, fuera de todo
+  lote y con bitácora `ASIGNADA`/`ENROLADA`. Solo `service_role`. Nació con el
+  serial de 10 dígitos `00-0-000000-0`; `0010` la renumeró a `00-0-0000000-0`.
 - **BLINK-DOC-12**: guía de enrolado de lotes, desde la maestra hasta la entrega,
   con verificación y resolución de problemas.
 - **Hoja imprimible del lote de arranque** (`lotes/lote-001.csv` y `.html`):

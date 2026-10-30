@@ -1,76 +1,95 @@
-# Enrolado de lotes de tarjetas
+# Enrolado y producción de lotes de tarjetas
 
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-12 |
-| Versión | 1.1.0 |
+| Versión | 2.0.0 |
 | Fecha | 2026-10-30 |
 | Estado | Vigente |
-| Normas | ISO/IEC 7812-1 · ISO/IEC 7810 · ISO/IEC/IEEE 26511 · 26514 |
-| Público | Propietario, taquilla, operador de la estación de enrolado |
+| Normas | ISO/IEC 7812-1 · ISO/IEC 7810 (ID-1 / CR80) · ISO/IEC 15417 (Code 128) · ISO/IEC/IEEE 26511 · 26514 · PDF/VT |
+| Público | Propietario y Administrador Principal (Diego Beleño) |
 
-## 1. Objeto
+## 1. Objeto y alcance
 
-Este documento describe cómo se pasa un plástico en blanco a tarjeta BLINK
-operativa, en qué orden, con qué comandos y cómo se comprueba que quedó bien.
-Cubre dos casos:
+Este documento describe cómo se pasa un plástico MIFARE en blanco a tarjeta
+BLINK lista para vender en tiendas, kioscos y comercios aliados: qué se genera
+en la base, qué se manda a la imprenta, cómo se graba el chip y cómo se
+comprueba que quedó bien.
 
-1. **La tarjeta maestra del propietario**, `00-0-000000-0`, que va primero y
-   sirve de patrón de verificación del sistema.
-2. **Los lotes de producción**, que continúan la serie `23-1-0000001-…`
-   (`23-1-0000002-…`, `23-1-0000003-…` y así sucesivamente).
+Rigen tres principios:
 
-El documento presupone la migración `0009_serie_siete_digitos.sql` aplicada:
-es la que habilita la serie de siete dígitos y la tarjeta maestra. Ver §3.4
-para lo que cambia respecto de la serie anterior de seis dígitos.
+1. **Exclusividad de la estación.** El enrolado y la generación de lotes **no se
+   hacen en taquilla ni en comercios**. Solo el propietario (**Diego Beleño,
+   `V-34201580`**) opera la estación desde el back-office.
+2. **Distribución pre-enrolada.** Toda tarjeta física que sale a un punto de
+   venta externo sale de la estación con el chip ya grabado y su `chip_uid`
+   registrado en la base. El comercio solo entrega el plástico; el pasajero lo
+   reclama desde su aplicación web o móvil.
+3. **Cobertura.** Se cubren dos casos:
+   - **La tarjeta maestra del propietario**, `00-0-0000000-0`, exclusiva y
+     permanente de Diego Beleño, que actúa como patrón de verificación del
+     ecosistema.
+   - **Los lotes de producción comercial**, serie de siete dígitos
+     (`23-1-0000001-9`, `23-1-0000002-7`, …) con frente corporativo y reverso
+     variable por patrocinante.
+
+Presupone aplicadas las migraciones `0009_serie_siete_digitos.sql` (serie de
+siete dígitos) y `0010_maestra_once_digitos.sql` (serial maestro de once
+dígitos). §10 dice qué parte de este estándar ya está implementada y qué parte
+sigue pendiente.
 
 ## 2. La serie de identificación
 
-### 2.1 Estructura
+### 2.1 Estructura del serial (11 dígitos)
 
 ```
  23      -  1     -  0000001  -  9
  │          │        │           └── verificador de Luhn (ISO/IEC 7812-1)
- │          │        └────────────── secuencial (7 dígitos; 6 en la serie heredada)
+ │          │        └────────────── secuencial de 7 dígitos (0000000 a 9999999)
  │          └─────────────────────── tipo de tarifa
  └────────────────────────────────── código de entidad federal
 ```
 
-| Bloque | Dígitos | Valores |
+| Bloque | Dígitos | Valores permitidos |
 | --- | --- | --- |
-| Entidad | 2 | `00` serie del emisor (maestra) · `23` Zulia · `01`–`99` otras entidades |
+| Entidad | 2 | `00` serie exclusiva del emisor (maestra) · `23` Zulia · `01`–`99` otras entidades |
 | Tarifa | 1 | `0` maestra del propietario · `1` general · `2` estudiante / tercera edad |
-| Secuencial | 6 o 7 | `000001`–`999999` (heredada) · `0000001`–`9999999` (nueva) |
-| Luhn | 1 | Se calcula sobre todos los dígitos anteriores |
+| Secuencial | 7 | `0000000` (exclusivo de la maestra) · `0000001`–`9999999` (producción) |
+| Luhn | 1 | Verificador calculado sobre los 10 dígitos anteriores |
 
-El verificador se calcula **de derecha a izquierda**: se duplican las posiciones
-pares contando desde la derecha del número completo. Así la misma regla sirve
-para el serial de 10 dígitos y para el de 11.
+El verificador se calcula **de derecha a izquierda**, duplicando el valor de las
+posiciones pares contando desde el extremo derecho del número sin guiones.
+
+La base conserva la serie heredada de seis dígitos (`23-1-000001-9`) como
+válida y legible: el formato aceptado es `^\d{2}-\d-\d{6,7}-\d$` y la migración
+`0009` renumeró el lote de arranque a la serie nueva.
 
 ### 2.2 Ejemplos
 
 | Serial | Dígitos | Significado |
 | --- | --- | --- |
-| `00-0-000000-0` | 10 | Tarjeta maestra del propietario (serie del emisor, tarifa 0) |
-| `23-1-0000001-9` | 11 | Primera tarjeta general de Zulia de la serie nueva |
-| `23-1-0000002-7` | 11 | Segunda |
-| `23-2-0000001-8` | 11 | Primera tarjeta estudiantil de Zulia |
-| `23-1-000001-9` | 10 | Serie heredada: sigue siendo válida y legible |
+| `00-0-0000000-0` | 11 | **Tarjeta maestra exclusiva de Diego Beleño (`V-34201580`)** |
+| `23-1-0000001-9` | 11 | Primera tarjeta general de Zulia |
+| `23-1-0000002-7` | 11 | Segunda tarjeta general de Zulia |
+| `23-2-0000001-8` | 11 | Primera tarjeta estudiantil / tercera edad de Zulia |
+| `23-1-000001-9` | 10 | Serie heredada: sigue validando y sigue siendo legible |
 
-### 2.3 La tarjeta maestra
+### 2.3 Reglas de la tarjeta maestra (`00-0-0000000-0`)
 
-`00-0-000000-0` es la tarjeta del propietario del sistema. Sus reglas son
-distintas a las de un lote:
+La maestra pertenece única y exclusivamente a **Diego Beleño (`V-34201580`)**:
 
-- **No pertenece a ningún lote** (`batch_id` nulo) y `bt_generar_lote` nunca la
-  produce: solo acepta entidades `01`–`99` y tarifas `1` o `2`.
-- **Nace activa y asignada** a la cuenta del propietario, no pasa por el estado
-  `FABRICADA`.
-- **Viaja con la tarifa general**: la tarifa 0 identifica el plástico, no lo
-  exime del pago. Si más adelante se define una tarifa exenta, se implementa en
-  el cobro y se documenta aparte.
-- **Es el patrón de verificación**: si la maestra cobra bien, el validador, la
-  red y la base están sanos.
+- **Fuera de lotes comerciales.** Tiene `batch_id` nulo, y `bt_generar_lote`
+  tiene prohibido producirla: solo acepta entidades `01`–`99` y tarifas `1` o
+  `2`, así que nunca genera la entidad `00`, la tarifa `0` ni el secuencial
+  `0000000`.
+- **Nace activa y vinculada.** Se registra en estado `ACTIVE` bajo la
+  titularidad de `V-34201580`, sin pasar por `FABRICADA`.
+- **Patrón de diagnóstico en campo.** Permite verificar de extremo a extremo la
+  lectura RFID, la derivación de llaves en el ESP32, la firma criptográfica y el
+  descuento de saldo en base de datos.
+- **Viaja con la tarifa general.** La tarifa `0` identifica el plástico, no lo
+  exime del pago. Si se define una tarifa exenta se implementa en el cobro y se
+  documenta aparte.
 
 ### 2.4 Reglas que la base hace cumplir
 
@@ -78,166 +97,191 @@ distintas a las de un lote:
 | --- | --- |
 | Formato `^\d{2}-\d-\d{6,7}-\d$` | Restricción `cards_visible_id_check` |
 | Luhn válido sobre el serial completo | Misma restricción, con `bt_luhn_valido` |
-| Entidad, tarifa y serial coinciden entre columnas y texto | `cards_identificador_coherente` |
+| Entidad, tarifa y secuencial coinciden entre columnas y texto | `cards_identificador_coherente` |
 | Tarifa solo `0`, `1` o `2` | `cards_fare_type_check` |
 | Serial único y código de barras único | Índices `cards_visible_id_key` y `cards_barcode_idx` |
-| Una tarjeta nueva nace `FABRICADA` | `bt_generar_lote` |
+| Código de barras derivado del serial | Columna generada `barcode_data` = `regexp_replace(visible_id, '\D', '', 'g')` |
+| Una tarjeta de lote nace `FABRICADA` | `bt_generar_lote` |
 
-## 3. Estados del plástico
+`barcode_data` es **columna generada**: nunca se escribe a mano, ni en SQL ni en
+los formularios.
+
+## 3. Diseño e impresión de tarjetas PVC (ID-1 / CR80)
+
+Cada lote tiene dos componentes: el **diseño frontal** (fijo para el lote o la
+marca) y el **reverso**, que combina el arte variable del patrocinante con los
+elementos que genera el sistema (Code 128 y serial impreso).
+
+### 3.1 Dimensiones
+
+Para que el troquel no corte textos ni códigos, se trabaja con tres áreas
+concéntricas bajo **ISO/IEC 7810 (ID-1 / CR80)**:
+
+| Parámetro | Milímetros | Centímetros | Pulgadas | Píxeles a 300 DPI | Píxeles a 600 DPI |
+| --- | --- | --- | --- | --- | --- |
+| **Sangrado (*bleed*)** — tamaño del archivo que se sube | 89,60 × 57,98 mm (+2 mm por lado) | 8,96 × 5,80 cm | 3,527″ × 2,282″ | 1058 × 685 px | 2117 × 1370 px |
+| **Corte final (*trim*)** — medida real del PVC | 85,60 × 53,98 mm | 8,56 × 5,40 cm | 3,375″ × 2,125″ | 1011 × 638 px | 2022 × 1275 px |
+| **Área segura (*safe zone*)** — límite para textos, logos y códigos | 79,60 × 47,98 mm (−3 mm por lado) | 7,96 × 4,80 cm | 3,134″ × 1,889″ | 940 × 567 px | 1880 × 1133 px |
+
+- **Grosor del sustrato:** 0,76 mm (760 µm ± 80 µm), equivalente a 30 mil en PVC
+  laminado.
+- **Radio de esquinas:** 3,18 mm (rango ISO entre 2,88 mm y 3,48 mm).
+
+### 3.2 Formatos de arte admitidos
+
+- **Vectorial (recomendado):** `.SVG` o `.PDF` vectorial. Escalado matemático
+  sin pérdida de nitidez.
+- **Mapa de bits:** `.PNG` o `.TIFF` sin compresión con pérdida, a **300 DPI**
+  mínimo en las dimensiones de sangrado (1058 × 685 px).
+
+### 3.3 Composición semiautomática del reverso
+
+Al subir el arte del reverso, el sistema aplica:
+
+1. **Ajuste con sangrado:** encaja el arte en el lienzo de 89,60 × 57,98 mm y
+   muestra la línea de corte (85,60 × 53,98 mm) y la máscara de esquinas
+   redondeadas.
+2. **Reserva de zona blanca (*quiet zone*):** superpone o valida una ventana de
+   blanco puro `#FFFFFF` en la coordenada designada para el **Code 128** y el
+   **serial impreso**. Ningún código se imprime sobre fondos oscuros o tramas
+   publicitarias.
+
+La Code 128 codifica los dígitos del serial sin guiones en juego C; la serie de
+11 dígitos cambia a juego B en el último dígito. La hoja imprimible que ya
+genera `npm run lote` lo hace así y los códigos se verificaron con `zbarimg`.
+
+## 4. Paquete de producción para la imprenta
+
+El generador produce un **Paquete de Producción Industrial (`.ZIP`)** con dos
+modalidades estándar en artes gráficas.
+
+> **Estado (§10):** hoy el repositorio genera CSV y hoja A4 imprimible
+> (`npm run lote`). El ZIP con las dos modalidades y la carga de artes desde el
+> back-office están **pendientes**.
+
+### 4.1 Modalidad 1 — Datos variables VDP
+
+Compatible con *Adobe InDesign Data Merge*, *CardPresso*, *Bartender* y *Zebra
+CardStudio*. La imprenta recibe tres archivos ligeros, sin importar si el lote
+es de 100 o de 10 000 tarjetas:
+
+1. `01_FRENTE_MAESTRO.pdf` (o `.png` / `.svg`): diseño frontal único del lote.
+2. `02_REVERSO_BASE_PUBLICIDAD.pdf`: reverso publicitario con el espacio
+   reservado en blanco para la variable.
+3. `03_SECUENCIA_LOTE_XXX.csv`: tabla ordenada del 1 al N, con las columnas que
+   espera la máquina:
+
+```csv
+orden_impresion,serial_visible,barcode_code128,lote_id,patrocinante
+1,23-1-0000021-7,23100000217,LOTE-002,"Comercial, C.A."
+2,23-1-0000022-5,23100000225,LOTE-002,"Comercial, C.A."
+3,23-1-0000023-3,23100000233,LOTE-002,"Comercial, C.A."
+```
+
+### 4.2 Modalidad 2 — PDF multipágina (PDF/VT)
+
+Para imprentas que reciben el arte final ya fusionado:
+
+- Un solo `LOTE_002_IMPRESION_DIRECTA.pdf`.
+- **Página 1:** frente maestro, común a toda la tirada.
+- **Páginas 2 a N+1:** los N reversos numerados en estricto orden ascendente.
+- **Optimización XObject master:** el arte del reverso se incrusta una sola vez
+  como plantilla maestra y en cada página solo se dibujan los vectores ligeros
+  del serial y las barras. Un PDF de 1000 tarjetas pesa entre 3 MB y 8 MB y la
+  imprenta lo procesa de corrido.
+
+### 4.3 Orden de producción
+
+El orden del CSV y el de las páginas del PDF son la base del enrolado
+secuencial: la imprenta entrega las pilas ordenadas de la primera a la última
+tarjeta del lote.
+
+## 5. Estados del plástico y flujo de vida
 
 ```
-        bt_generar_lote                bt_estacion_enrolar
-  ─────────────────────▶  FABRICADA  ─────────────────────▶  (UID grabado)
-                              │                                   │
-                              │ bt_vincular (portal)              │ bt_estacion_asignar (taquilla)
-                              ▼                                   ▼
-                           ACTIVE  ◀──────────────────────────────┘
-                              │
-                              │ bt_reportar_perdida
-                              ▼
-                            LOST
+   bt_generar_lote (back-office)          estación de enrolado (solo propietario)
+ ─────────────────────────────▶ FABRICADA ─────────────────────────────▶ FABRICADA
+                                 (sin UID)                                (con chip_uid)
+                                                                              │
+                                                        bt_vincular (portal del pasajero)
+                                                                              ▼
+                                                                           ACTIVE
+                                                                              │
+                                                              bt_reportar_perdida
+                                                                              ▼
+                                                                            LOST
 ```
 
-| Estado | Qué significa | Quién lo pone |
+| Estado | Significado en base de datos | ¿Apta para vender en comercios? |
 | --- | --- | --- |
-| `FABRICADA` | Existe en el inventario, sin dueño, sin UID y sin saldo | `bt_generar_lote` |
-| `ACTIVE` | Tiene dueño (cuenta) | `bt_vincular` o `bt_estacion_asignar` |
-| `LOST` | Reportada como perdida; ya no viaja | `bt_reportar_perdida` |
-| `BLOCKED` | Bloqueada por el administrador | Back-office |
+| `FABRICADA` sin UID | Serial reservado e impreso, aún no pasó por el lector RFID de la estación | **No.** No se distribuye. |
+| `FABRICADA` con `chip_uid` | Plástico pasado por la estación: chip grabado y asociado a su serial | **Sí.** Lista para kioscos y comercios. |
+| `ACTIVE` | El pasajero la compró y reclamó el serial en su aplicación (`bt_vincular`) | En uso por el pasajero. |
+| `LOST` / `BLOCKED` | Desactivada por extravío o bloqueo administrativo | Inoperativa en validadores. |
 
-Enrolar (grabar el UID) y asignar (dar dueño) son pasos **independientes**: un
-lote puede quedar completamente enrolado y seguir `FABRICADA` hasta que alguien
-lo reclame.
+Enrolar (grabar el chip) y vincular (dar dueño) son pasos independientes: un
+lote puede quedar completamente enrolado y seguir `FABRICADA` hasta que un
+pasajero lo reclame. **No hay entrega por taquilla en el flujo comercial**: el
+plástico se vende pre-enrolado en el comercio y el pasajero lo activa en su
+app.
 
-### 3.4 Qué cambia con la migración 0009
+## 6. Procedimiento operativo
 
-- El serial acepta 6 o 7 dígitos secuenciales. La serie heredada de 10 dígitos
-  sigue validando y sigue siendo legible por el portal y el validador.
-- El lote de arranque de 20 tarjetas, que estaba sin enrolar y sin dueño, se
-  renumeró a `23-1-0000001-9` … `23-1-0000020-9`. La serie nueva continúa en
-  `23-1-0000021-…`.
-- El **firmware del validador v4** graba el serial en un bloque de identidad
-  nuevo (hasta 11 dígitos). Un validador con firmware v3 solo entiende la serie
-  heredada de 10 dígitos: hay que actualizarlo antes de poner en circulación la
-  serie nueva (ver §7.5).
-- El Code 128 del reverso codifica la serie nueva cambiando del juego C al B en
-  el último dígito; la hoja de impresión ya lo genera así.
+Todo se ejecuta en el back-office (`https://blink-servers.github.io/BACKOFFICE/`
+o `npm run dev` en `~/BLINK_Backoffice`, puerto 5176) con la cuenta ADMIN y el
+segundo factor TOTP activo.
 
-Estado en producción al 2026-10-30, tras aplicar 0009: 21 tarjetas — la maestra
-`00-0-000000-0` (`ACTIVE`, asignada al propietario, sin UID) y las 20 del lote de
-arranque `23-1-0000001-9` … `23-1-0000020-9` (`FABRICADA`, sin UID). El siguiente
-secuencial libre es **21**.
+### Paso 1 — Tarjeta maestra (`00-0-0000000-0`)
 
-## 4. Requisitos previos
-
-| Elemento | Detalle |
-| --- | --- |
-| Cuenta del propietario | Registrada en el portal con cédula y PIN (la maestra se asigna a ella) |
-| Cuenta ADMIN | Para entrar al back-office y crear lotes |
-| Back-office | `https://blink-servers.github.io/BACKOFFICE/` (o `npm run dev` en `~/BLINK_Backoffice`) |
-| Validador | ESP32 con firmware **v4** y el MFRC522 conectado |
-| Navegador de la estación | Chrome o Edge de escritorio: Web Serial no existe en móvil |
-| Plásticos | MIFARE Classic 1K en blanco, uno por serial |
-| Conexión a la base | Solo para tareas de administración (§9); el operador no la necesita |
-
-Los plásticos deben estar **en blanco**: si un chip ya tiene datos de otra
-tarjeta, el enrolado falla con «Ya está enrolada con el UID …» o «El UID ya
-pertenece a otra tarjeta».
-
-## 5. Procedimiento A — la tarjeta maestra del propietario
-
-Se hace **una sola vez**. Dura unos 3 minutos.
-
-> **Hecho el 2026-10-30.** La fila ya existe en producción, asignada a
-> `V-34201580`, sin UID. Falta solo el paso A.2 (apoyar el plástico en el
-> lector) cuando haya un validador a mano. Sirve como referencia si se instala
-> otro entorno.
-
-### A.1 Crear la fila en la base
-
-Con la cédula de la cuenta dueña. El segundo argumento es el UID del plástico;
-se puede omitir y enrolarlo después en la estación.
+Se ejecuta **una sola vez** para crear y blindar el plástico maestro:
 
 ```sql
--- Sin UID: se enrola luego con el lector.
 select public.bt_crear_tarjeta_maestra('34201580', null, 'propietario');
-
--- O con el UID ya conocido, si el plástico está a mano.
-select public.bt_crear_tarjeta_maestra('34201580', '3981BF06', 'propietario');
 ```
 
-La función devuelve la tarjeta y la cuenta:
+La función es de `service_role`: se ejecuta por la conexión de administración,
+nunca desde el navegador. Devuelve la tarjeta y la cuenta; si el serial ya
+existe responde «La tarjeta maestra 00-0-0000000-0 ya existe» y no duplica
+nada.
 
-```json
-{
-  "tarjeta": {
-    "serial": "00-0-000000-0",
-    "uid": "",
-    "titular": { "nombre": "Diego Beleño", "cedula": "V-34201580" },
-    "saldo": 0,
-    "estado": "activa",
-    "tarifa": 15
-  },
-  "cuenta": { "id": "…", "titular": "Diego Beleño", "cedula": "V-34201580" }
-}
-```
+Después, en la pestaña **Estación**:
 
-Si el serial ya existe, responde «La tarjeta maestra 00-0-000000-0 ya existe»:
-no se duplica, se consulta (§9).
+1. Conectar el lector ESP32 por USB y elegir el puerto.
+2. Seleccionar *Cualquier lote* (la maestra no pertenece a ninguno) y escribir
+   el serial `00-0-0000000-0`.
+3. Apoyar el plástico maestro en el lector hasta obtener el `chip_uid`.
+4. Subir la captura al inventario.
 
-### A.2 Enrolar el chip (si se creó sin UID)
+El grabado del bloque de identidad y de las llaves diversificadas en el chip se
+hace hoy por la consola del firmware (§7.3); desde la estación web queda
+pendiente (§10).
 
-En el back-office, **Estación**:
-
-1. Conectar el ESP32 y pulsar **Conectar lector**.
-2. Escribir en *Serial* `00-0-000000-0`.
-3. Apoyar el plástico en el lector hasta que aparezca el UID.
-4. Pulsar **Agregar** y luego **Subir al inventario**.
-
-La estación envía el par a `bt_estacion_enrolar`. Como la maestra no pertenece
-a un lote, la carga se hace sin lote seleccionado.
-
-### A.3 Verificar
+**Verificación:**
 
 ```sql
-select visible_id, state_code, fare_type, status, chip_uid, nombre
-  from public.cards
- where visible_id = '00-0-000000-0';
-```
-
-Debe mostrar `state_code = 0`, `fare_type = 0`, `status = ACTIVE` y el UID si se
-enroló. En la bitácora tienen que estar los eventos `ASIGNADA` y, si hubo UID,
-`ENROLADA`:
-
-```sql
+select visible_id, state_code, fare_type, status, chip_uid
+  from public.cards where visible_id = '00-0-0000000-0';
 select e.evento, e.canal, e.operador, e.at
-  from public.card_events e
-  join public.cards c on c.id = e.card_id
- where c.visible_id = '00-0-000000-0'
- order by e.at;
+  from public.card_events e join public.cards c on c.id = e.card_id
+ where c.visible_id = '00-0-0000000-0' order by e.at;
 ```
 
-### A.4 Primera recarga y prueba
+Esperado: `state_code = 0`, `fare_type = 0`, `status = ACTIVE`, `chip_uid`
+informado y los eventos `ASIGNADA` (canal `taquilla`, operador `propietario`) y
+`ASIGNADA` (canal `sistema`, operador `migracion-0010`, por la renumeración), más
+`ENROLADA` cuando se grabe el chip.
 
-1. Entrar al portal con la cuenta del propietario: la maestra aparece en la
-   billetera con saldo 0.
-2. Reportar una recarga por Pago Móvil y aprobarla desde el back-office
-   (`bt_aprobar_recarga`).
-3. Pasar la maestra por el validador de una unidad: debe descontar la tarifa
-   general y encender el LED verde.
+### Paso 2 — Crear el lote y exportar a imprenta
 
-## 6. Procedimiento B — pre-generar un lote
+1. **Lotes → Nuevo lote**: cantidad (p. ej. 500 o 1000 unidades), entidad `23`,
+   tarifa `1` o `2` y nombre del patrocinante.
+2. Subir el arte del **frente** y del **reverso publicitario** (`.SVG`, `.PDF` o
+   `.PNG` a 300 DPI). La carga de artes está pendiente (§10); hoy el arte se
+   prepara fuera y se entrega junto al CSV.
+3. El sistema reserva los seriales (`bt_generar_lote`) y se descarga el paquete
+   para la imprenta con el PDF y el CSV secuencial.
 
-Un lote se genera **antes** de imprimir: primero existen los seriales, después
-el plástico y después el UID. Cantidad razonable por tanda: 20 a 500 tarjetas.
-
-### B.1 Desde el back-office
-
-**Lotes → Nuevo lote**. Se indica cantidad, patrocinante (opcional), estado
-(`23`) y tarifa (`1` o `2`). La respuesta trae el número de lote y los seriales
-`desde`/`hasta`.
-
-### B.2 Desde SQL (con un inicio explícito)
+Equivalente por SQL, con inicio explícito:
 
 ```sql
 -- 100 tarjetas generales de Zulia, empezando en el secuencial 21.
@@ -251,12 +295,11 @@ select public.bt_generar_lote(
 );
 ```
 
-Sin `p_desde`, la función toma el siguiente secuencial libre de esa entidad y
-tarifa. Si el rango se solapa con tarjetas existentes, responde «La serie 23-1
-ya tiene tarjetas entre … y …» y no crea nada: es una transacción, no deja
-lotes a medias.
+Sin `p_desde` toma el siguiente secuencial libre de esa entidad y tarifa. Si el
+rango se solapa responde «La serie 23-1 ya tiene tarjetas entre … y …» y no crea
+nada.
 
-### B.3 Con el generador de la línea de producción
+Generador actual de la línea de producción:
 
 ```bash
 cd ~/BLINK_Tarjeta
@@ -264,87 +307,112 @@ npm run lote -- --cantidad 100 --desde 21 --lote 2 \
   --patrocinante "Comercial, C.A." --tarifa 1
 ```
 
-Escribe en `lotes/`:
+Escribe en `lotes/` (ignorado por git) el `lote-002.csv` —serial, código de
+barras y columna `uid` vacía— y el `lote-002.html`, hoja A4 con 8 tarjetas por
+página, Code 128 vertical y QR del portal. Para imprimir: abrir el HTML,
+`Ctrl+P`, A4, márgenes mínimos, sin encabezado ni pie; comprobar una hoja con
+el lector (el Code 128 devuelve los dígitos sin guiones).
 
-| Archivo | Para qué |
+El generador es independiente de la base: si se usa junto con
+`bt_generar_lote`, ambos deben partir del mismo `--desde` o los seriales no
+coinciden.
+
+### Paso 3 — Enrolado en ráfaga secuencial
+
+La imprenta imprime en el orden estricto del PDF o del CSV, así que las pilas
+llegan ordenadas de la primera a la última tarjeta del lote (por ejemplo, de la
+`23-1-0000021-7` a la `23-1-0001020-3`).
+
+1. **Seleccionar el lote** en la estación: el sistema carga en cola los seriales
+   pendientes de UID en orden ascendente y apunta al primero.
+2. **Validar el inicio de la pila:** escanear el Code 128 de la primera tarjeta
+   física para confirmar que el mazo empieza exactamente en ese serial.
+3. **Toque y avance automático (*tap & next*):** se apoya la tarjeta en el
+   lector; el sistema lee el `chip_uid`, graba el serial y las llaves
+   diversificadas en el chip, confirma con un pitido y avanza el puntero al
+   siguiente serial.
+4. **Punto de control anti-desfase:** cada 25 o 50 tarjetas (configurable), o a
+   voluntad del operador, la estación pide confirmar que los últimos dígitos del
+   plástico en la mano coinciden con el serial en pantalla. Evita que una
+   tarjeta pegada desfase el resto de la pila.
+5. **Sincronización con el inventario:** al terminar la tanda o en bloques, la
+   estación ejecuta `bt_estacion_enrolar`, deja los `chip_uid` sellados y las
+   tarjetas listas para empaquetar y enviar a los comercios.
+
+Los pasos 2 a 4 (cola secuencial, *tap & next* y punto de control) son parte del
+estándar y están **pendientes de implementación** en la estación web; hoy el
+operador captura serial y UID uno por uno (§7.2) y el grabado del chip se hace
+por consola (§7.3).
+
+### Paso 4 — Distribución y reclamo
+
+El comercio recibe la caja con las tarjetas pre-enroladas y solo entrega el
+plástico. El pasajero entra a `https://blink-servers.github.io/TARJETA/`, inicia
+sesión y en **Vincular tarjeta** escribe el serial del reverso. `bt_vincular`
+comprueba que exista, que no tenga dueño y que no esté vencida, la pasa a
+`ACTIVE` y la suma a su billetera.
+
+Una tarjeta ya asignada **no** se transfiere a otra cuenta: se reporta como
+perdida y se emite otra. `LOST` es irreversible desde el portal.
+
+## 7. Operación con lo que hay hoy
+
+### 7.1 Requisitos previos
+
+| Elemento | Detalle |
 | --- | --- |
-| `lote-002.csv` | Serial, código de barras y columna `uid` vacía para la estación |
-| `lote-002.html` | Hoja A4 con 8 tarjetas por página, Code 128 vertical y QR del portal |
+| Cuenta del propietario | Registrada en el portal con cédula y PIN (la maestra se asigna a ella) |
+| Cuenta ADMIN | Con TOTP confirmado para entrar al back-office |
+| Back-office | `https://blink-servers.github.io/BACKOFFICE/` o `npm run dev` en `~/BLINK_Backoffice` |
+| Validador | ESP32 con firmware **v4** (`VERSION_FW = 4`) y MFRC522 conectado |
+| Navegador | Chrome o Edge de escritorio: Web Serial no existe en móvil |
+| Plásticos | MIFARE Classic 1K en blanco, uno por serial |
+| Conexión a la base | Solo para administración; el operador no la necesita |
 
-La hoja del lote de arranque ya está generada y cuadrada contra la base:
-`lotes/lote-001.csv` y `lotes/lote-001.html` cubren
-`23-1-0000001-9` … `23-1-0000020-9` (3 páginas A4). Para reproducirla:
+Los plásticos deben estar **en blanco**. Si un chip ya tiene datos de otra
+tarjeta, el enrolado falla con «Ya está enrolada con el UID …» o «El UID ya
+pertenece a otra tarjeta».
 
-```bash
-npm run lote -- --cantidad 20 --desde 1 --lote 1 --patrocinante "Arranque corporativo"
-```
+### 7.2 Estación web (captura UID ↔ serial)
 
-El CSV es la lista de contraste: cada línea debe coincidir con
-`select visible_id, barcode_data from public.cards where batch_id is not null`.
-
-Este generador es **independiente de la base**: sirve para mandar la orden al
-fabricante. Si se usa junto con `bt_generar_lote`, los dos tienen que partir del
-mismo `--desde`; si no, los seriales no coinciden.
-
-### B.4 Imprimir
-
-1. Abrir `lotes/lote-002.html` en el navegador.
-2. `Ctrl+P` → tamaño A4, márgenes mínimos, sin encabezado ni pie.
-3. Imprimir sobre el plástico o sobre etiqueta y adherir al reverso.
-4. Comprobar una hoja con el lector de códigos: el Code 128 debe devolver los
-   dígitos sin guiones (`2310000021…`).
-
-## 7. Procedimiento C — enrolar UID y serial
-
-Enrolar es grabar en el chip el serial impreso y las llaves derivadas del UID.
-Se hace en la **estación**, con el back-office abierto en Chrome o Edge.
-
-### C.1 Conectar el lector
-
-1. Enchufar el ESP32 por USB.
-2. **Estación → Conectar lector** y elegir el puerto.
-3. El lector responde `READY,BLINK,1`. Si no aparece, revisar el cable y el
-   permiso del puerto (`dialout`).
-
-### C.2 Capturar la tanda
-
-El ciclo por tarjeta es siempre el mismo:
-
-1. Escanear el Code 128 del reverso en el campo *Serial impreso* (o escribirlo).
-2. Apoyar el plástico en el lector hasta que aparezca el UID.
-3. Pulsar *Añadir a la lista*.
-4. Retirar el plástico y repetir con el siguiente.
-
-Se pueden acumular hasta 5.000 pares antes de subir. El CSV del lote no se
-importa en la estación: sirve para la impresora, para la consola serie y para
-cuadrar la lista contra el inventario. Si se captura en el orden del CSV, el
-serial escaneado siempre coincide con el que toca.
-
-La pantalla muestra la lista de capturas y, al subir, el resultado por tarjeta:
+1. **Estación → Conectar lector** y elegir el puerto. El lector responde
+   `READY,BLINK,<v>`.
+2. Por cada tarjeta: escanear el Code 128 en *Serial impreso*, apoyar el
+   plástico hasta que aparezca el UID y pulsar *Añadir a la lista*.
+3. Al terminar la tanda, *Subir al inventario*: se envían los pares a
+   `bt_estacion_enrolar` con el `p_token` de la sesión.
 
 ```json
 { "ok": true, "enroladas": 98, "rechazadas": 2,
   "errores": [ { "serial": "23-1-0000050-4", "motivo": "El UID ya pertenece a otra tarjeta" } ] }
 ```
 
-### C.3 Enrolado por consola serie (sin back-office)
+Un rechazo no detiene la tanda: se corrige esa fila y se vuelve a subir solo la
+que falló. La estación web **no graba el chip**: solo registra la pareja en la
+base.
 
-El validador también acepta el comando por el puerto serie a 115200 baudios:
+### 7.3 Grabado del chip por consola serie
+
+El validador acepta comandos por el puerto serie a 115200 baudios:
 
 ```
-ENROLAR,23-1-0000021-7,50000,1
+ENROLAR,23-1-0000021-7,0,1
+ENROLAR,23-1-0000021-7,0,1,3981BF06
 ```
 
-- `serial`: el ID impreso.
-- `saldo`: saldo inicial en céntimos (50000 = Bs 500,00). Usar `0` en producción.
+- `serial`: el ID impreso (10 u 11 dígitos).
+- `saldo`: saldo inicial en céntimos; usar `0` en producción.
 - `tarifa`: `1` general, `2` estudiante, `0` maestra.
-- Un quinto campo opcional fuerza el UID esperado:
-  `ENROLAR,23-1-0000021-7,0,1,3981BF06`.
+- Quinto campo opcional: fuerza el UID esperado del plástico.
 
 Respuestas: `ENROLAR_LISTO,serial=…,uid=…` al armarse y `ENROLADA,serial=…,uid=…`
 al grabar. Se desarma solo a los 60 s.
 
-### C.4 Reglas del enrolado
+El firmware escribe el bloque de identidad v2 (dígitos ASCII, longitud, tarifa,
+estado, versión y CRC-8) y deriva las llaves del UID. Lee también el bloque v1
+de firmware anteriores, de modo que un plástico viejo sigue funcionando.
+
+### 7.4 Reglas del enrolado
 
 | Situación | Resultado |
 | --- | --- |
@@ -354,33 +422,15 @@ al grabar. Se desarma solo a los 60 s.
 | UID ya usado por otra tarjeta | `El UID ya pertenece a otra tarjeta` |
 | Serial con Luhn inválido | `Serial inválido` |
 
-Un rechazo no detiene la tanda: se corrige esa fila y se vuelve a subir solo la
-que falló.
+### 7.5 Firmware
 
-## 8. Procedimiento D — entregar la tarjeta
+Un validador con firmware v3 solo entiende la serie heredada de 10 dígitos: hay
+que actualizarlo a v4 antes de poner en circulación la serie nueva. Un plástico
+grabado por v3 se sigue leyendo con v4.
 
-### D.1 Reclamo desde el portal (autoservicio)
+## 8. Verificación y control
 
-El pasajero entra a `https://blink-servers.github.io/TARJETA/`, inicia sesión y
-en **Vincular tarjeta** escribe el serial del reverso. `bt_vincular` comprueba
-que exista, que no tenga dueño y que no esté vencida; entonces la pasa a
-`ACTIVE` y la suma a la billetera.
-
-### D.2 Taquilla
-
-En el back-office, **Taquilla**: serial + cédula del titular. `bt_estacion_asignar`
-hace lo mismo pero con un operador identificado. Sirve cuando el pasajero no
-tiene acceso al portal en ese momento.
-
-### D.3 Qué no se puede deshacer
-
-- Una tarjeta ya asignada **no** se transfiere a otra cuenta: hay que reportarla
-  como perdida y emitir otra.
-- `LOST` es irreversible desde el portal.
-
-## 9. Procedimiento E — verificación y control
-
-### E.1 Consultas de control
+### 8.1 Consultas de control
 
 ```sql
 -- Inventario por lote y estado.
@@ -407,50 +457,66 @@ select e.evento, e.canal, e.operador, e.at
  order by e.at;
 ```
 
-### E.2 Prueba de aceptación de la serie
+### 8.2 Prueba de aceptación
 
-El archivo `supabase/pruebas/0009_serie.sql` recorre en una transacción que
-termina en `ROLLBACK`:
-
-1. Luhn de la serie heredada y de la nueva.
-2. Formato y verificador de todas las tarjetas almacenadas.
-3. Alta de la maestra y rechazo de la duplicada.
-4. Lote con inicio explícito y rechazo del solapado.
-5. Enrolado de un serial de 11 dígitos y su evento en la bitácora.
-6. Rechazo de la tarifa 0 en un lote.
+`supabase/pruebas/0009_serie.sql` recorre en una transacción que termina en
+`ROLLBACK`: Luhn de la serie heredada y de la nueva; formato y verificador de
+todas las tarjetas almacenadas; alta de la maestra `00-0-0000000-0` y rechazo de
+la duplicada; lote con inicio explícito y rechazo del solapado; enrolado de un
+serial de 11 dígitos con su evento; rechazo de la tarifa 0 en un lote.
 
 ```bash
 psql "$CADENA" -v ON_ERROR_STOP=1 -f supabase/pruebas/0009_serie.sql
 # NOTICE:  PRUEBAS_0009_OK
 ```
 
-La suite es idempotente: si la maestra ya existe (producción), la retira dentro
-de la transacción para probar el alta desde cero y el `ROLLBACK` la devuelve
-intacta. Se ejecutó en producción el 2026-10-30 con `PRUEBAS_0009_OK` y sin
-dejar rastro.
+Es idempotente: si la maestra ya existe, la retira dentro de la transacción para
+probar el alta desde cero y el `ROLLBACK` la devuelve intacta. Ejecutada en
+producción el 2026-10-30 con `PRUEBAS_0009_OK` y sin dejar rastro.
 
-### E.3 Semáforo de una tarjeta lista para entregar
+### 8.3 Semáforo de una tarjeta lista para vender
 
 | Comprobación | Cómo |
 | --- | --- |
-| Existe y está `FABRICADA` | Consulta E.1 |
-| Tiene UID | Columna `chip_uid` no nula |
-| Imprime el serial correcto | Code 128 leído = dígitos del serial |
-| El validador la lee | Pasar el plástico: `CARD,<uid>` y sin error |
-| Tiene saldo o se recarga | Portal o taquilla |
+| Existe y está `FABRICADA` | Consulta §8.1 |
+| Tiene `chip_uid` | Columna no nula |
+| El Code 128 coincide con el serial | Lectura con lector de códigos |
+| El validador la lee | Pasar el plástico: `CARD,<uid>` sin error |
+| El chip tiene las llaves | Sin `no-enrolada` ni `corrupta` al pasar |
 
-## 10. Problemas frecuentes
+## 9. Problemas frecuentes
 
 | Síntoma | Causa | Solución |
 | --- | --- | --- |
-| `Serial inválido` | Guion de más, dígito cambiado o serie de 12 dígitos | Revisar contra el CSV del lote |
-| `No encontramos ese serial` | El lote no se generó en la base | Crear el lote (§6) antes de enrolar |
+| `Serial inválido` | Guion de más, dígito cambiado o longitud distinta de 10/11 dígitos | Revisar contra el CSV del lote |
+| `No encontramos ese serial` | El lote no se generó en la base | Crear el lote antes de enrolar |
 | `El serial no pertenece al lote` | Se eligió otro lote en la estación | Seleccionar el lote correcto |
 | `El UID ya pertenece a otra tarjeta` | El plástico se usó antes | Usar un plástico en blanco |
 | El lector no aparece en el navegador | Web Serial no disponible o puerto ocupado | Chrome/Edge de escritorio, HTTPS, cerrar el monitor serie |
-| `no-enrolada` al pasar la tarjeta | El chip no tiene las llaves derivadas | Volver a enrolar |
-| `corrupta` al pasar la tarjeta | Bloque de identidad ilegible | Re-enrolar; si persiste, descartar el plástico |
+| `no-enrolada` al pasar la tarjeta | El chip no tiene las llaves derivadas | Volver a grabar con `ENROLAR` |
+| `corrupta` al pasar la tarjeta | Bloque de identidad ilegible | Re-grabar; si persiste, descartar el plástico |
 | El lote dice «ya tiene tarjetas entre …» | El rango se solapa | Usar `p_desde` con el siguiente libre |
+
+## 10. Estado de implementación (2026-10-30)
+
+| Requisito del estándar | Estado | Dónde |
+| --- | --- | --- |
+| Serial de 11 dígitos y Luhn | Implementado | `0009_serie_siete_digitos.sql` |
+| Tarjeta maestra `00-0-0000000-0` exclusiva | Implementado | `0010_maestra_once_digitos.sql` |
+| Lotes con inicio explícito y sin solape | Implementado | `bt_generar_lote` |
+| Code 128 de 11 dígitos y hoja A4 | Implementado | `npm run lote` |
+| CSV de secuencia para imprenta | Parcial: columnas `serial`, `barcode`, `uid`; falta `orden_impresion`, `lote_id` y `patrocinante` | `scripts/lote.ts` |
+| Carga de artes y composición del reverso | Pendiente | — |
+| ZIP de producción (VDP + PDF/VT con XObject) | Pendiente | — |
+| Registro UID ↔ serial en la base | Implementado (captura manual) | `bt_estacion_enrolar` |
+| Grabado del chip desde la estación web | Pendiente: hoy va por consola `ENROLAR` | firmware v4 |
+| Cola secuencial, *tap & next* y punto de control | Pendiente | — |
+| Estación reservada al propietario | Pendiente: `bt_admin_sesion_mfa` admite ADMIN y TAQUILLA | `0007_backoffice_mfa.sql` |
+| Distribución pre-enrolada sin taquilla | Norma operativa vigente; el módulo Taquilla sigue existiendo para casos puntuales | back-office |
+
+Los pendientes están también en [Riesgos y brechas](09-riesgos-y-brechas.md).
+Ninguna tarjeta debe salir a un comercio hasta que tenga `chip_uid` grabado y
+verificado con el validador.
 
 ## 11. Trazabilidad
 
@@ -459,7 +525,7 @@ Cada paso queda en `public.card_events`:
 | Evento | Cuándo | Canal |
 | --- | --- | --- |
 | `ENROLADA` | Se grabó el UID | `estacion` |
-| `ASIGNADA` | Se vinculó a una cuenta | `portal` o `taquilla` |
+| `ASIGNADA` | Se vinculó a una cuenta | `portal` o `taquilla`; `sistema` para la renumeración de la maestra |
 | `PERDIDA` | Se reportó el extravío | `sistema` |
 
 La tabla tiene RLS activo y no es legible desde el navegador: se consulta con la
@@ -469,14 +535,15 @@ entregó y cuándo.
 ## 12. Resumen operativo
 
 ```
-1. Cuenta del propietario registrada            (una vez)
-2. bt_crear_tarjeta_maestra  → 00-0-000000-0    (una vez)
-3. bt_generar_lote           → 23-1-0000021…    (por lote)
-4. npm run lote              → CSV + hoja A4    (por lote)
-5. Imprimir y adherir el reverso
-6. Estación: UID ↔ serial    → bt_estacion_enrolar
-7. Entregar: portal o taquilla → ACTIVE
-8. Recargar y probar el cobro
+1. Cuenta del propietario registrada              (una vez)
+2. bt_crear_tarjeta_maestra → 00-0-0000000-0      (una vez)
+3. bt_generar_lote          → 23-1-0000021…       (por lote)
+4. Arte + CSV/paquete       → imprenta            (por lote)
+5. Imprimir en orden secuencial
+6. Estación: grabar chip y registrar UID ↔ serial → bt_estacion_enrolar
+7. Empaquetar y distribuir a comercios (solo con chip_uid)
+8. El pasajero reclama en la app → ACTIVE
+9. Recargar y probar el cobro
 ```
 
 ## 13. Referencias
@@ -486,4 +553,5 @@ entregó y cuándo.
   `bt_crear_tarjeta_maestra`.
 - [Operación y despliegue](06-operacion-y-despliegue.md) — back-office y Pages.
 - [Pruebas y calidad](07-pruebas-y-calidad.md) — suite `0009_serie.sql`.
+- [Riesgos y brechas](09-riesgos-y-brechas.md) — brechas frente a este estándar.
 - [Manual de usuario](08-manual-de-usuario.md) — recorrido del pasajero.
