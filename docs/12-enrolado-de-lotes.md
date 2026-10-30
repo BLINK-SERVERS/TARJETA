@@ -505,7 +505,7 @@ producción el 2026-10-30 con `PRUEBAS_0009_OK` y sin dejar rastro.
 | Tarjeta maestra `00-0-0000000-0` exclusiva | Implementado | `0010_maestra_once_digitos.sql` |
 | Lotes con inicio explícito y sin solape | Implementado | `bt_generar_lote` |
 | Code 128 de 11 dígitos y hoja A4 | Implementado | `npm run lote` |
-| CSV de secuencia para imprenta | Parcial: columnas `serial`, `barcode`, `uid`; falta `orden_impresion`, `lote_id` y `patrocinante` | `scripts/lote.ts` |
+| CSV de secuencia para imprenta | Parcial: emite `lote`, `patrocinante`, `serial`, `codigo_barras`, `uid`, `saldo_inicial` y `tarifa`; faltan `orden_impresion` y los nombres exactos del estándar (`serial_visible`, `barcode_code128`, `lote_id`) | `scripts/lote.ts` |
 | Carga de artes y composición del reverso | Pendiente | — |
 | ZIP de producción (VDP + PDF/VT con XObject) | Pendiente | — |
 | Registro UID ↔ serial en la base | Implementado (captura manual) | `bt_estacion_enrolar` |
