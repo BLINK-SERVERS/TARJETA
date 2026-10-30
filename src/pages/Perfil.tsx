@@ -17,7 +17,7 @@ import type { ModoTema } from "../lib/hooks";
 import { BANCOS } from "../lib/tipos";
 import type { Ajustes, Cuenta, DatosPago, Tarjeta } from "../lib/tipos";
 
-const PASAJES = "https://blink-servers.github.io/PASAJES/";
+const PASAJES = "https://pasajes.blink.com.ve/";
 const SITIO = "https://www.blink.com.ve";
 
 const APARIENCIAS: { id: ModoTema; etiqueta: string; icono: "auto" | "sol" | "luna" }[] = [
