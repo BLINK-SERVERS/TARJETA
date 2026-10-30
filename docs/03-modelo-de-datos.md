@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-03 |
-| Versión | 1.0.0 |
+| Versión | 1.1.0 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26514 |
@@ -31,6 +31,7 @@
 | `0003_operacion.sql` | Operación: emisión, cobro, aprobación de recargas, bloqueo, lotes, pérdida, acreditación, sincronización y liquidación. | Aplicada |
 | `0004_validador_token.sql` | Token por validador (`vehicles.sync_token_hash`) y RPC de emisión/revocación. | Aplicada |
 | `0005_cuentas.sql` | Cuenta del pasajero, billetera multi-tarjeta, PIN de 6 dígitos, Pago Móvil de la cuenta y RPC del portal v2. | Aplicada el 2026-10-29 |
+| `0006_lotes_corporativos.sql` | Aprovisionamiento en lote: estado `FABRICADA`, activación por reclamo, estación UID↔serial, bitácora `card_events`, purga archivada y cuenta administradora. | Probada en local el 2026-10-29 · pendiente en producción |
 
 Reglas:
 
@@ -57,6 +58,7 @@ Reglas:
 | `intentos` / `bloqueado_hasta` | int / timestamptz | bloqueo 5 min tras 5 fallos |
 | `pago_propio` | boolean | `true` = usa los datos del registro |
 | `pago_banco`, `pago_telefono`, `pago_cedula` | text | fuente alterna (familiar) |
+| `rol` | text | `PASAJERO` (defecto), `TAQUILLA` o `ADMIN`; base del control de acceso del back-office |
 | `created_at`, `updated_at` | timestamptz | trigger de actualización |
 
 Índices: `accounts_cedula_idx` (único por cédula), `accounts_correo_idx`
@@ -70,12 +72,22 @@ Reglas:
 ### 3.3 `cards` — plásticos emitidos
 
 Columnas relevantes: `visible_id` (ID BLINK único), `chip_uid`, `barcode_data`,
-`state_code`, `fare_type`, `virtual_balance`, `last_chip_balance`, `status`
-(`ACTIVE`/`BLOCKED`/`LOST`), `batch_id`, `nombre`, `tarifa`, `emitida`, `vence`,
-`account_id` (FK a `accounts`, `on delete set null`).
+`state_code`, `fare_type`, `virtual_balance`, `last_chip_balance`, `status`,
+`batch_id`, `nombre`, `tarifa`, `emitida`, `vence`, `account_id` (FK a `accounts`,
+`on delete set null`), `asignada_at`, `asignada_por`, `enrolada_at`, `enrolada_por`.
+
+Estados (aprovisionamiento en lote, ciclo de vida):
+
+| Estado | Significado |
+| --- | --- |
+| `FABRICADA` | Pre-generada en un lote; sin dueño, sin saldo y no usable en el portal. |
+| `ACTIVE` | Reclamada por una cuenta o asignada por taquilla. |
+| `BLOCKED` | Bloqueada por operación o atención al cliente. |
+| `LOST` | Reportada como perdida; irreversibles desde el portal. |
 
 `account_id` es la pertenencia a la billetera. Una tarjeta solo puede estar en una
-cuenta; el RPC `bt_vincular` lo garantiza con `for update`.
+cuenta; los RPC `bt_vincular` (portal) y `bt_estacion_asignar` (taquilla) lo
+garantizan con `for update`.
 
 ### 3.4 `card_movements` — extracto
 
@@ -105,10 +117,27 @@ cuenta; el RPC `bt_vincular` lo garantiza con `for update`.
 
 - `settings` (`clave`, `valor jsonb`, `actualizada`): configuración pública
   (`publico` → atención, Pago Móvil, `topeRecarga`).
-- `card_batches`: lotes de producción.
+- `card_batches`: lotes de producción; numera los seriales y guarda
+  `sponsor_name`, `cards_quantity`, `state_code`, `fare_type`, `origen`
+  (`FABRICANTE`/`ESTACION`), `creado_por` y `cerrado_at`.
 - `transit_routes`: rutas y tarifas general/estudiante.
 - `vehicles`: unidades, chofer, datos bancarios, MAC del validador,
   `commission_pct`, `line_fee`, `sync_token_hash`.
+
+### 3.9 `card_events` — bitácora del plástico
+
+`card_id` (FK con `on delete cascade`), `evento` (`ENROLADA`, `ASIGNADA`,
+`PERDIDA`), `canal` (`portal`, `taquilla`, `estacion`, `sistema`), `operador`,
+`detalle jsonb` y `at`. RLS activo y sin permisos para `anon`/`authenticated`.
+
+Cada enrolamiento, asignación y reporte de pérdida deja una fila: es la traza que
+exige la auditoría del ciclo de vida del inventario.
+
+### 3.10 Esquema `respaldo`
+
+La migración `0006` archiva las tablas operativas en `respaldo.*_0006` antes de
+purgarlas y deja constancia en `respaldo.bitacora`. El esquema no tiene permisos
+para `anon`/`authenticated`; se consulta solo desde la consola SQL.
 
 ## 4. Relaciones
 
@@ -117,6 +146,7 @@ erDiagram
   accounts ||--o{ cards : "billetera"
   accounts ||--o{ account_sessions : "sesión"
   card_batches ||--o{ cards : "lote"
+  cards ||--o{ card_events : "bitácora"
   cards ||--o{ card_movements : "extracto"
   cards ||--o{ recharges : "reportes"
   cards ||--o{ trips_telemetry : "viajes"
@@ -140,6 +170,10 @@ erDiagram
 | Ráfaga de reportes | máximo 6 reportes por tarjeta en 10 minutos |
 | Bloqueo por PIN | 5 fallos → 5 minutos (`intentos`, `bloqueado_hasta`) |
 | Sesión | 12 h por token |
+| Tarjeta reclamable | solo `FABRICADA` o `ACTIVE` sin `account_id`; el resto responde `bloqueada` |
+| Activación | `bt_vincular`/`bt_estacion_asignar` pasan a `ACTIVE`, sellan `asignada_at` y escriben en `card_events` |
+| UID único | índice único en `cards.chip_uid`; la estación rechaza el UID repetido |
+| Pérdida | prohibida sobre `FABRICADA` (aún sin dueño) |
 
 ## 6. Compatibilidad con el esquema del comercio (POS)
 
@@ -155,7 +189,7 @@ propiedad (`businesses.owner_id = auth.uid()`). Al crear una migración nueva:
 
 - Supabase realiza copias automáticas diarias (plan del proyecto). Para una copia
   lógica manual: `pg_dump` contra el pooler (`sslmode=require`).
-- **Restauración:** crear una base nueva, aplicar `0001`→`0005` y cargar el dump.
+- **Restauración:** crear una base nueva, aplicar `0001`→`0006` y cargar el dump.
   Verificar `select count(*)` de `cards`, `card_movements` y `accounts`.
 - La contraseña de la base **no se documenta aquí**; vive en el gestor de secretos
   del equipo (ver BLINK-DOC-05 §6).

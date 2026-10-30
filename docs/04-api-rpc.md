@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-04 |
-| Versión | 1.0.0 |
+| Versión | 1.1.0 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26514 |
@@ -76,9 +76,11 @@ curl -sS -X POST "$VITE_SUPABASE_URL/rest/v1/rpc/bt_entrar" \
 bloqueada responde `credenciales` indicando los minutos restantes. Un PIN correcto
 reinicia `intentos`.
 
-**`bt_vincular`** — valida formato y Luhn del serial, existencia, vigencia, estado
-`ACTIVE`, pertenencia a otra cuenta (`ya-activada`) y duplicado en la propia
-billetera (`duplicada`). Al vincular, el titular visible pasa a ser el de la cuenta.
+**`bt_vincular`** — valida formato y Luhn del serial, existencia, vigencia y
+pertenencia a otra cuenta (`ya-activada`) o duplicado en la propia billetera
+(`duplicada`). Es la Fase 2 del aprovisionamiento: una tarjeta `FABRICADA` o
+`ACTIVE` sin dueño pasa a `ACTIVE`, se sella `asignada_at`/`asignada_por='portal'`
+y se escribe la bitácora `ASIGNADA`. `BLOCKED` y `LOST` responden `bloqueada`.
 
 **`bt_recargar`** — valida monto (1 ≤ monto ≤ tope, dos decimales), teléfono,
 banco y últimos 4 dígitos de la referencia. Limita a 6 reportes por tarjeta cada
@@ -99,8 +101,11 @@ entorno de confianza (script de administración, validador con token o consola S
 | Función | Uso |
 | --- | --- |
 | `bt_emitir_tarjeta(serial, nombre, cedula, telefono, tarifa)` | Emite un plástico. |
-| `bt_enrolar_tarjeta(visible_id, chip_uid)` | Asocia el UID del chip al serial. |
-| `bt_generar_lote(cantidad, patrocinante, estado, tarifa)` | Genera un lote con seriales Luhn. |
+| `bt_enrolar_tarjeta(visible_id, chip_uid)` | Asocia el UID del chip al serial (una tarjeta por vez). |
+| `bt_generar_lote(cantidad, patrocinante, estado, tarifa, origen='FABRICANTE')` | Genera un lote con seriales Luhn en estado `FABRICADA`. |
+| `bt_estacion_enrolar(lote, items, operador='')` | Carga masiva UID↔serial desde el lector; devuelve `enroladas`, `rechazadas` y `errores[]`. |
+| `bt_estacion_catalogo(lote)` | Devuelve el lote con serial, UID y estado de cada tarjeta (hoja de la estación). |
+| `bt_estacion_asignar(serial, cedula, operador='')` | Activa el plástico a nombre de una cuenta ya registrada (taquilla). |
 | `bt_cobrar_viaje(serial, unidad, monto)` | Cobro puntual desde el validador. |
 | `bt_aprobar_recarga(recarga, admin)` | Acredita saldo y marca la recarga. |
 | `bt_rechazar_recarga(recarga, admin, motivo)` | Rechaza el reporte. |
@@ -112,7 +117,15 @@ entorno de confianza (script de administración, validador con token o consola S
 | `bt_validador_emitir_token(mac)` / `bt_validador_revocar_token(mac)` | Provisiona/revoca el token del validador. |
 | `bt_validador_sincronizar_token(token, taps, recargas)` | Sincronización autenticada por token. |
 | `bt_liquidar(vehicle, desde, hasta)` | Cierra el periodo de una unidad. |
-| `bt_resumen_operativo()` | Totales para el panel. |
+| `bt_resumen_operativo()` | Totales para el panel (incluye `fabricadas` y `asignadas`). |
+
+### Estación de asignación
+
+`bt_estacion_enrolar` recibe `[{ "serial": "23-1-000001-9", "uid": "0484CC62" }, …]`
+(hasta 5.000 pares por tanda). Normaliza el UID a hexadecimal mayúsculas, exige
+que el serial pertenezca al lote indicado y registra `ENROLADA` en `card_events`.
+Los pares inválidos no interrumpen la carga: vuelven en `errores[]` con su motivo.
+La operación es idempotente por par (mismo serial y UID no duplica).
 
 ### Funciones legadas
 
@@ -140,7 +153,7 @@ otras funciones `security definer`.
   "cuenta": {
     "nombres": "María Fernanda", "apellidos": "Fernández",
     "cedula": "V-12345678", "telefono": "04141234567",
-    "correo": "maria@correo.com",
+    "correo": "maria@correo.com", "rol": "PASAJERO",
     "datosPago": { "propio": true, "banco": "", "telefono": "04141234567", "cedula": "V-12345678" }
   },
   "tarjetas": [{

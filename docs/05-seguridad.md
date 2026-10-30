@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-05 |
-| Versión | 1.0.0 |
+| Versión | 1.1.0 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Norma | ISO/IEC 27001:2022 (A.5, A.8) · OWASP ASVS L1 |
@@ -29,6 +29,7 @@
 | `authenticated` | Igual que `anon` en el esquema `bt_*`; en POS, sus propias filas por RLS. |
 | `service_role` | RPC de operación y acceso total. **Nunca** se usa en el navegador. |
 | Administrador de línea | Ejecuta RPC de servicio desde entorno confiable (script o consola). |
+| Rol `ADMIN` / `TAQUILLA` | Columna `accounts.rol`; el back-office debe exigir ese rol además de su propio inicio de sesión. |
 | Validador | Token propio (`Authorization: Bearer`), puede sincronizar solo sus taps. |
 
 Controles implementados:
@@ -48,6 +49,8 @@ Controles implementados:
 | Intentos | 5 fallos → bloqueo 5 minutos (persistido en `accounts`). |
 | Sesión de cuenta | UUID v4 en `account_sessions`, 12 h, purga de vencidas. |
 | Sesión de tarjeta (legada) | `card_sessions`, 12 h; se elimina junto con la de cuenta en `bt_salir`. |
+| Cuenta administradora | Se crea en `0006` con el PIN recibido por `set_config('blink.admin_pin', …)` en la sesión del operador; el valor no se versiona. |
+| Derivación de PIN | bcrypt costo 10 vía `extensions.crypt`. Argon2id no está disponible en el `pgcrypto` de Supabase; bcrypt cumple el requisito mientras el PIN siga siendo de 6 dígitos y el intento esté limitado. |
 | POS | Supabase Auth (correo + contraseña + verificación por código). |
 | Validador | Token aleatorio, almacenado como hash en `vehicles.sync_token_hash`. |
 
@@ -60,6 +63,13 @@ El token se guarda en el navegador (almacenamiento local del portal). No se usa
 - Supabase cifra en reposo (gestión del proveedor).
 - Las copias lógicas (`pg_dump`) deben cifrarse antes de salir del equipo.
 - No se registran cédulas, teléfonos ni PIN en consola ni en analítica.
+- TLS 1.3 con *forward secrecy* es el mínimo exigible al proveedor; el navegador
+  habla `https://` y PostgREST rechaza conexiones sin TLS. La verificación de la
+  versión negociada debe hacerse en la revisión trimestral (no es configurable
+  desde el plan actual).
+- Firmas HMAC de peticiones (HMAC-SHA256) **no** se implementan en el portal: la
+  clave pública viajaría al navegador y el HMAC dejaría de aportar seguridad. Se
+  reservan para integraciones servidor-a-servidor (webhook bancario).
 
 ## 5. Riesgos de exposición conocidos
 
@@ -69,6 +79,8 @@ El token se guarda en el navegador (almacenamiento local del portal). No se usa
 | SEC-02 | Tokens de GitHub/Cloudflare/Supabase pegados en chat. | Alto. | Rotar cada token y revocar los anteriores. |
 | SEC-03 | El repositorio es público. | Bajo: solo contiene claves publishable. | Verificar en cada PR que no entre `.env`, dumps ni tokens. |
 | SEC-04 | No hay 2FA obligatorio en las cuentas de la organización. | Medio. | Activar 2FA en GitHub y Cloudflare. |
+| SEC-05 | El back-office no tiene MFA propio; el rol `ADMIN` solo vive en la base. | Medio. | Exigir TOTP en el panel administrativo antes de habilitarlo fuera de la red interna. |
+| SEC-06 | El reclamo se valida solo por serial impreso: quien conozca un serial libre puede reclamarlo. | Medio. | Añadir código de activación por tarjeta o doble confirmación en taquilla para lotes grandes. |
 
 > Regla operativa: **ningún secreto se escribe en archivos del repositorio, en
 > commits, en issues ni en la documentación.** Si un secreto se pega en un chat,

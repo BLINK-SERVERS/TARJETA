@@ -9,9 +9,52 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 
 ### Pendiente
 
+- **Aplicar `0006_lotes_corporativos.sql` en producción** (probada en local; la
+  sesión del panel de Supabase expiró y la contraseña de la base no se versiona).
 - Recuperación de PIN en el portal.
 - Interfaz de aprobación de recargas para el administrador.
 - Notificaciones por correo al acreditar una recarga.
+
+## [1.1.0] — 2026-10-29
+
+Aprovisionamiento en lote y activación por reclamo, con base inicial controlada.
+
+### Añadido
+
+- **Estado `FABRICADA`**: los lotes se pre-generan sin dueño, sin saldo y sin
+  acceso al portal (Fase 1 del modelo corporativo).
+- **Activación por reclamo**: `bt_vincular` convierte una tarjeta `FABRICADA` en
+  `ACTIVE`, sella `asignada_at`/`asignada_por` y escribe la bitácora.
+- **Estación de asignación**: `bt_estacion_enrolar` carga pares UID↔serial en
+  bloque (hasta 5.000 por tanda) con reporte de rechazos; `bt_estacion_catalogo`
+  devuelve la hoja del lote y `bt_estacion_asignar` vincula en taquilla a una
+  cuenta existente.
+- **Bitácora `card_events`** (`ENROLADA`, `ASIGNADA`, `PERDIDA`) con canal y
+  operador.
+- **Rol de cuenta** (`PASAJERO`/`TAQUILLA`/`ADMIN`) como base del RBAC del
+  back-office.
+- **Metadatos de lote**: `origen` (`FABRICANTE`/`ESTACION`), `creado_por` y
+  `cerrado_at`; `bt_generar_lote` acepta `p_origen` y devuelve el estado.
+- **Purga archivada**: las tablas de demostración se copian a `respaldo.*_0006`
+  y la bitácora `respaldo.bitacora` impide repetirla.
+- **Cuenta administradora única**: se crea con el PIN recibido por
+  `set_config('blink.admin_pin', …)`; el valor no se versiona.
+- **Lote de arranque** de 20 tarjetas cuando la base queda vacía.
+
+### Cambiado
+
+- `bt_reportar_perdida` rechaza tarjetas `FABRICADA` (aún sin dueño).
+- `bt_resumen_operativo` informa `fabricadas` y `asignadas`.
+- `bt_cuenta_json` incluye `rol`.
+- La migración 0006 sustituye `bt_generar_lote(int,text,int,int)` por la firma de
+  cinco parámetros (compatible: el quinto tiene valor por defecto).
+
+### Seguridad
+
+- `card_events` con RLS y sin permisos para `anon`/`authenticated`.
+- Las funciones de estación, lote y resumen quedan solo en `service_role`;
+  `anon` conserva únicamente el contrato del portal.
+- La purga es reversible desde el esquema `respaldo` (sin RPC, solo consola SQL).
 
 ## [1.0.0] — 2026-10-29
 

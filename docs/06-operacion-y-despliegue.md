@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-06 |
-| Versión | 1.0.0 |
+| Versión | 1.1.0 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 12207 (operación y mantenimiento) |
@@ -114,7 +114,9 @@ psql "host=aws-0-us-east-2.pooler.supabase.com port=5432 \
 ```
 
 La contraseña se toma del gestor de secretos y se pasa por `PGPASSWORD` en el
-entorno del comando. **No se escribe en archivos ni en el historial.**
+entorno del comando. **No se escribe en archivos ni en el historial.** Si la sesión
+del panel de Supabase expiró, hay que volver a entrar (GitHub o correo) antes de
+aplicar migraciones: el editor SQL es la vía alternativa al pooler.
 
 ### 5.2 Aplicar una migración (procedimiento obligatorio)
 
@@ -136,6 +138,16 @@ entorno del comando. **No se escribe en archivos ni en el historial.**
    psql "$CADENA" -v ON_ERROR_STOP=1 --single-transaction -f supabase/migrations/000N_x.sql
    ```
 
+   `0006` además archiva y purga los datos de demostración y crea la cuenta
+   administradora. El PIN se pasa en la misma sesión, nunca en el archivo:
+
+   ```bash
+   PGOPTIONS="-c blink.admin_pin=<PIN>" psql "$CADENA" -v ON_ERROR_STOP=1 \
+     --single-transaction -f supabase/migrations/0006_lotes_corporativos.sql
+   ```
+
+   Sin `blink.admin_pin` la migración no crea la cuenta y avisa por `NOTICE`.
+
 5. Confirmar: `select proname from pg_proc where proname like 'bt_%' order by 1;`
    y `select count(*) from public.accounts;` (debe ser coherente).
 6. Registrar la migración en BLINK-DOC-03 §2 y en el CHANGELOG.
@@ -154,6 +166,39 @@ select count(*) from public.recharges where status = 'pendiente';
 -- Sesiones vigentes
 select count(*) from public.account_sessions where expira > now();
 ```
+
+### 5.4 Provisión de lotes y estación de asignación
+
+```sql
+-- Fase 1 · pre-generación (todas quedan en FABRICADA)
+select public.bt_generar_lote(1000, 'Patrocinante', 23, 1, 'FABRICANTE');
+
+-- Hoja de trabajo de la estación (serial, UID y estado)
+select public.bt_estacion_catalogo('<uuid-del-lote>');
+
+-- Carga de pares capturados con el lector USB/ESP32
+select public.bt_estacion_enrolar(
+  '<uuid-del-lote>',
+  '[{"serial":"23-1-000001-9","uid":"0484CC62"},
+    {"serial":"23-1-000002-7","uid":"04A1B2C3"}]',
+  'operador-01'
+);
+
+-- Fase 2 alternativa · asignación en taquilla a una cuenta existente
+select public.bt_estacion_asignar('23-1-000001-9', 'V-34201580', 'taquilla-01');
+```
+
+Comprobaciones:
+
+```sql
+select status, count(*) from public.cards group by status order by status;
+select evento, canal, count(*) from public.card_events group by 1, 2 order by 1;
+select clave, ejecutado, detalle from respaldo.bitacora;
+```
+
+La purga de `0006` es reversible: las filas originales quedan en
+`respaldo.*_0006`. Para restaurar una tabla concreta, copiarla de vuelta con la
+consola SQL (no hay RPC para eso, por diseño).
 
 ## 6. Firmware
 

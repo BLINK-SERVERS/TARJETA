@@ -6,7 +6,7 @@ de **BLINK PASAJES**. React 19 + Vite 8 + TypeScript estricto.
 - **Sitio publicado:** https://blink-servers.github.io/TARJETA/
 - **Panel de la línea:** https://pasajes.blink.com.ve/
 - **Comercio:** https://www.blink.com.ve/
-- **Versión:** 1.0.0 · [CHANGELOG](CHANGELOG.md)
+- **Versión:** 1.1.0 · [CHANGELOG](CHANGELOG.md)
 
 ## Qué hace
 
@@ -50,7 +50,7 @@ src/
     local.ts        espejo local del mismo contrato
     dominio.ts      validaciones de cédula, teléfono, serial, montos
   styles/           tokens, base y BEM de la app (tarjeta con cqw)
-supabase/migrations/ 0001…0005 (esquema compartido del ecosistema)
+supabase/migrations/ 0001…0006 (esquema compartido del ecosistema)
 scripts/lote.ts      generador de lotes y hoja imprimible
 docs/                documentación ISO del ecosistema
 ```

@@ -3,11 +3,11 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-00 |
-| Versión | 1.0.0 |
+| Versión | 1.1.0 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Autor | Equipo BLINK (desarrollo asistido) |
-| Revisión | Inicial |
+| Revisión | 2 |
 | Normas de referencia | ISO 9001:2015 §7.5 · ISO/IEC/IEEE 12207:2017 · ISO/IEC/IEEE 26511/26512/26513/26514/26515 · ISO/IEC 25010 · ISO/IEC 27001:2022 |
 
 ## 1. Propósito
@@ -27,7 +27,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | --- | --- | --- | --- |
 | BLINK POS (sitio de la línea y punto de venta) | `BLINK-SERVERS/POS` | https://www.blink.com.ve | 1.19.0 |
 | BLINK PASAJES (lector, fiscal, admin) | `BLINK-SERVERS/PASAJES` | https://pasajes.blink.com.ve | 0.1.0 |
-| BLINK TARJETA (portal del pasajero) | `BLINK-SERVERS/TARJETA` | https://blink-servers.github.io/TARJETA/ | 1.0.0 |
+| BLINK TARJETA (portal del pasajero) | `BLINK-SERVERS/TARJETA` | https://blink-servers.github.io/TARJETA/ | 1.1.0 |
 | Backend (Supabase) | proyecto `gakkfzqcrapxeierfdhk` | — | PostgreSQL 17.11 |
 
 > **Base de datos compartida.** Las tres aplicaciones apuntan al **mismo proyecto
@@ -69,6 +69,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | Versión | Fecha | Cambio | Autor |
 | --- | --- | --- | --- |
 | 1.0.0 | 2026-10-29 | Creación de la suite completa tras el despliegue de la cuenta multi-tarjeta. | Equipo BLINK |
+| 1.1.0 | 2026-10-29 | Aprovisionamiento en lote (FABRICADA), estación de asignación, bitácora y purga archivada. | Equipo BLINK |
 
 Reglas de mantenimiento:
 

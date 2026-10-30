@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-10 |
-| Versión | 1.0.0 |
+| Versión | 1.1.0 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26515 |
@@ -29,7 +29,7 @@ BLINK_Tarjeta/                     ← portal del pasajero + esquema compartido
   src/lib/local.ts                 espejo local del contrato
   src/components/TarjetaVirtual.tsx tarjeta ID-1 con giro 3D
   src/styles/app.css               tarjeta con container queries (cqw)
-  supabase/migrations/             0001…0005 (la 0005 es la vigente)
+  supabase/migrations/             0001…0006 (la 0006 es la vigente: lotes y activación)
   scripts/lote.ts                  generación de lotes y hoja de impresión
   docs/                            esta suite
 
@@ -51,7 +51,7 @@ Firmware (fuera de git): `~/Arduino/BLINK_Lector` y `~/Arduino/BLINK_Validador`.
 
 ## 3. Cómo añadir una función al portal
 
-1. **Base de datos:** nueva migración `0006_*.sql` con la función
+1. **Base de datos:** nueva migración `0007_*.sql` con la función
    `bt_*` (`security definer`, `search_path` fijo) y sus `revoke`/`grant`.
 2. **Contrato:** añade el método en `src/lib/nube.ts` y su gemelo en
    `src/lib/local.ts`.

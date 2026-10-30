@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-07 |
-| Versión | 1.0.0 |
+| Versión | 1.1.0 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 26513 · ISO/IEC 25010 |
@@ -64,6 +64,45 @@ Ejecutadas contra PostgreSQL 16 local y repetidas contra producción con
 Además se probó en local: PIN triviales rechazados, cédula y correo duplicados,
 bloqueo a los 5 fallos, tarjeta vencida, serial con Luhn inválido, tope de recarga,
 referencia duplicada y ráfaga de reportes.
+
+### 3.1 Migración 0006 (aprovisionamiento en lote)
+
+Ejecutada sobre una base nueva (`prueba6`, PostgreSQL 16) con `0001`→`0005` y
+`0006`, dos veces seguidas para comprobar idempotencia:
+
+| # | Caso | Resultado |
+| --- | --- | --- |
+| 1 | Purga con archivo previo en `respaldo` | OK (3 tarjetas, 2 recargas) |
+| 2 | Segunda ejecución no vuelve a purgar | OK (`bitacora`) |
+| 3 | Lote de arranque de 20 tarjetas en `FABRICADA` | OK |
+| 4 | Login administrador (cédula + PIN) y billetera vacía | OK, `rol = ADMIN` |
+| 5 | Reclamo de `23-1-000001-9` | OK: `ACTIVE`, `asignada_por = portal` |
+| 6 | Reclamo repetido | `bt:duplicada` |
+| 7 | Enrolar 2 pares con un UID inválido | 1 enrolada, 1 rechazada |
+| 8 | UID repetido en otra tarjeta | rechazado |
+| 9 | Catálogo del lote | 20 tarjetas |
+| 10 | Asignación en taquilla a otra cuenta | OK |
+| 11 | Reclamo de tarjeta ajena | `bt:ya-activada` |
+| 12 | Resumen operativo | `fabricadas=18`, `asignadas=2` |
+| 13 | Pérdida de tarjeta sin dueño | rechazada |
+| 14 | Bitácora `card_events` | 3 eventos (asignación portal, enrolamiento, taquilla) |
+
+Permisos verificados con `has_function_privilege`: `anon` solo ejecuta
+`bt_entrar`/`bt_vincular`; las funciones de estación, lote y resumen quedan
+únicamente en `service_role`.
+
+El caso queda reproducible en `supabase/pruebas/0006_lotes.sql`:
+
+```bash
+psql "$CADENA" -v ON_ERROR_STOP=1 -f supabase/pruebas/0006_lotes.sql
+```
+
+La prueba corre en una transacción que termina en `ROLLBACK`; el PIN se toma de
+`blink.admin_pin` en la sesión.
+
+La aplicación en producción queda pendiente porque la sesión del panel de
+Supabase expiró y la contraseña de PostgreSQL no está en el repositorio ni en el
+gestor local.
 
 ## 4. Prueba de sistema en producción (2026-10-29)
 
