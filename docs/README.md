@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-00 |
-| Versión | 1.2.0 |
+| Versión | 1.3.0 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Autor | Equipo BLINK (desarrollo asistido) |
@@ -51,6 +51,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | BLINK-DOC-08 | [Manual de usuario](08-manual-de-usuario.md) | 26511 · 26512 |
 | BLINK-DOC-09 | [Riesgos, brechas y deuda técnica](09-riesgos-y-brechas.md) | 12207 · 27001 |
 | BLINK-DOC-10 | [Guía para retomar el desarrollo](10-guia-de-retoma.md) | 26515 |
+| BLINK-DOC-11 | [Rotación de claves y secretos](11-rotacion-de-claves.md) | 27001 |
 | — | [CHANGELOG](../CHANGELOG.md) | Keep a Changelog 1.1.0 + SemVer |
 
 ## 4. Convenciones de esta suite
@@ -73,6 +74,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | 1.1.0 | 2026-10-29 | Aprovisionamiento en lote (FABRICADA), estación de asignación, bitácora y purga archivada. | Equipo BLINK |
 | 1.1.1 | 2026-10-29 | 0006 aplicada en producción; DOC-03/06/07/09 pasan a 1.1.1 con el estado verificado. | Equipo BLINK |
 | 1.2.0 | 2026-10-29 | Back-office separado (repo `BACKOFFICE`) con RBAC y TOTP; migraciones 0007 y 0008 aplicadas; suite pasa a 1.2.0. | Equipo BLINK |
+| 1.3.0 | 2026-10-30 | Nuevo BLINK-DOC-11: checklist de rotación de claves, inventario de secretos y verificación. | Equipo BLINK |
 
 Reglas de mantenimiento:
 

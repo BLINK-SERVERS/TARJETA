@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-05 |
-| Versión | 1.2.0 |
+| Versión | 1.2.1 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Norma | ISO/IEC 27001:2022 (A.5, A.8) · OWASP ASVS L1 |
@@ -131,6 +131,9 @@ Diseño:
 | `CLOUDFLARE_API_TOKEN` | Gestor de secretos del equipo | Administrador de DNS |
 | Credenciales de GitHub | Sesión del navegador / `gh auth` | Cada desarrollador |
 | Publicación (publishable key) | Variable de repositorio (pública) | No requiere rotación periódica |
+
+El procedimiento paso a paso —inventario, orden, verificación y rollback— está en
+**BLINK-DOC-11** (rotación de claves y secretos).
 
 Buenas prácticas:
 
