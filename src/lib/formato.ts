@@ -113,17 +113,20 @@ export function formatearVence(iso: string): string {
 
 // --- Máscaras de entrada ---
 
-const GRUPOS_SERIAL = [2, 1, 6, 1];
-
 export function soloDigitos(texto: string): string {
   return texto.replace(/\D/g, "");
 }
 
-/** 2310000019 → 23-1-000001-9 (estado, tarifa, secuencial y Luhn). */
+/**
+ * 2310000019 → 23-1-000001-9 y 23100000019 → 23-1-0000001-9
+ * (estado, tarifa, secuencial y Luhn). El secuencial puede tener 6 o 7
+ * dígitos, así que el grupo central se calcula por longitud.
+ */
 export function formatearSerial(digitos: string): string {
+  const grupos = [2, 1, Math.max(1, digitos.length - 4), 1];
   let salida = "";
   let desde = 0;
-  for (const tamano of GRUPOS_SERIAL) {
+  for (const tamano of grupos) {
     if (desde >= digitos.length) break;
     salida += (salida ? "-" : "") + digitos.slice(desde, desde + tamano);
     desde += tamano;

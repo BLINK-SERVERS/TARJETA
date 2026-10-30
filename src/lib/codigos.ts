@@ -12,6 +12,7 @@ export const QR_PORTAL = `${import.meta.env.BASE_URL}qr-portal.svg`;
 const QUIETO = 10;
 const ALTO_BARRA = 40;
 const INICIO_C = 105;
+const CAMBIO_B = 100;
 const FIN = 106;
 
 // Anchuras de barra/espacio (en módulos) de los 106 símbolos Code 128.
@@ -33,17 +34,24 @@ const PATRONES = `
 const PATRON_FIN = "2331112";
 
 /**
- * Code 128C del serial (solo dígitos, longitud par): arranca en C, codifica
- * pares 00–99, agrega el dígito verificador módulo 103 y la parada. El SVG
- * sale ya vertical (barras horizontales) para la franja del reverso.
+ * Code 128 del serial. Los pares van en el juego C (compacto) y, si el
+ * número de dígitos es impar —el serial de 11 dígitos de la serie nueva—,
+ * el último dígito se codifica en el juego B tras un cambio. Agrega el
+ * verificador módulo 103 y la parada. El SVG sale ya vertical (barras
+ * horizontales) para la franja del reverso.
  */
 export function svgCode128(serial: string): string | null {
   const digitos = soloDigitos(serial);
-  if (digitos.length === 0 || digitos.length % 2 !== 0) return null;
+  if (digitos.length === 0) return null;
 
   const valores = [INICIO_C];
-  for (let i = 0; i < digitos.length; i += 2) {
+  const pares = digitos.length - (digitos.length % 2);
+  for (let i = 0; i < pares; i += 2) {
     valores.push(Number(digitos.slice(i, i + 2)));
+  }
+  if (digitos.length % 2 === 1) {
+    // Juego B: el valor de un dígito ASCII es su código menos 32.
+    valores.push(CAMBIO_B, digitos.charCodeAt(digitos.length - 1) - 32);
   }
   const suma = valores.reduce((total, valor, indice) => total + valor * Math.max(indice, 1), 0);
   const secuencia = [...valores, suma % 103, FIN];

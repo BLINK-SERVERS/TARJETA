@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-08 |
-| Versión | 1.1.0 |
-| Fecha | 2026-10-29 |
+| Versión | 1.2.0 |
+| Fecha | 2026-10-30 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 26511 · 26512 |
 | Público | Pasajero, chofer, operador de taquilla, administrador de línea |
@@ -33,12 +33,14 @@ Sitio: https://blink-servers.github.io/TARJETA/
 
 1. En el inicio toca **Vincular tarjeta** (o **Vincular mi primera tarjeta**).
 2. Escribe el **serial** impreso al reverso del plástico, debajo del código de
-   barras (formato `23-1-000001-9`).
+   barras (formato `23-1-0000001-9`; las tarjetas antiguas usan
+   `23-1-000001-9`).
 3. Toca **Vincular**. Puedes repetir el proceso con la tarjeta de un hijo o de otro
    familiar: todas quedan en la misma cuenta y se deslizan en el carrusel.
 
-Si el serial aparece como inválido, revisa que hayas copiado los 10 dígitos y los
-guiones. Si dice que la tarjeta pertenece a otra cuenta, acude a taquilla.
+Si el serial aparece como inválido, revisa que hayas copiado los 11 dígitos (10 en
+las tarjetas antiguas) y los guiones. Si dice que la tarjeta pertenece a otra
+cuenta, acude a taquilla.
 
 ### 1.3 Consultar saldo y movimientos
 

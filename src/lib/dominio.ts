@@ -1,5 +1,5 @@
 import type { Ajustes, DatosPago, Movimiento } from "./tipos";
-import { bancoPorNombre } from "./tipos";
+import { bancoPorNombre } from "./tipos.ts";
 import { soloDigitos } from "./formato.ts";
 
 export interface BorradorRecarga {
@@ -99,30 +99,32 @@ export function erroresDatosPago(datos: DatosPago): ErroresPago {
 }
 
 /**
- * Dígito verificador del ID BLINK (ISO/IEC 7812-1): sobre los 9 dígitos
- * base se duplican las posiciones impares y se completa a la decena.
- * 231000001 → 9, es decir 23-1-000001-9.
+ * Dígito verificador del ID BLINK (ISO/IEC 7812-1). Se duplican las
+ * posiciones impares contando desde la derecha del número completo, así
+ * que sirve para bases de 9 dígitos (23-1-000001-9) y de 10 dígitos
+ * (23-1-0000001-9).
  */
 export function digitoLuhn(base: string): string {
   const digitos = soloDigitos(base);
   let suma = 0;
   for (let i = 0; i < digitos.length; i++) {
-    const valor = Number(digitos[i]);
-    if (i % 2 === 0) {
-      const doble = valor * 2;
-      suma += doble > 9 ? doble - 9 : doble;
-    } else {
-      suma += valor;
+    let valor = Number(digitos[i]);
+    if ((digitos.length - i) % 2 === 1) {
+      valor *= 2;
+      if (valor > 9) valor -= 9;
     }
+    suma += valor;
   }
   return String((10 - (suma % 10)) % 10);
 }
 
-/** Serial impreso en el plástico: 10 dígitos con Luhn válido. */
+/** Serial impreso en el plástico: 10 u 11 dígitos con Luhn válido. */
 export function validarSerial(texto: string): string | null {
   const digitos = soloDigitos(texto);
-  if (digitos.length !== 10) return "El serial tiene 10 dígitos: 23-1-000001-9.";
-  if (digitoLuhn(digitos.slice(0, 9)) !== digitos[9]) {
+  if (digitos.length !== 10 && digitos.length !== 11) {
+    return "El serial tiene 10 u 11 dígitos: 23-1-000001-9 o 23-1-0000001-9.";
+  }
+  if (digitoLuhn(digitos.slice(0, -1)) !== digitos.at(-1)) {
     return "El último dígito del serial no coincide. Revísalo en el reverso de la tarjeta.";
   }
   return null;

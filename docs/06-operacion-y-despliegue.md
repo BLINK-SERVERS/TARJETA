@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-06 |
-| Versión | 1.2.0 |
-| Fecha | 2026-10-29 |
+| Versión | 1.3.0 |
+| Fecha | 2026-10-30 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 12207 (operación y mantenimiento) |
 
@@ -149,7 +149,7 @@ aplicar migraciones: el editor SQL es la vía alternativa al pooler.
    ```bash
    docker run --rm -d --name blink-eco -p 55433:5432 -e POSTGRES_PASSWORD=local postgres:16-alpine
    psql "postgresql://postgres:local@127.0.0.1:55433/postgres" -f supabase/migrations/0001_tarjeta.sql
-   # … 0002, 0003, 0004, 0005, 0006, 0007, 0008
+   # … 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009
    ```
 
 2. Ejecutar la migración nueva dentro de una transacción con

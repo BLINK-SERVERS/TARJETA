@@ -27,7 +27,7 @@ const AYUDA = `BLINK PASAJES · generador de lotes
 
 Opciones
   --cantidad N        tarjetas del lote, 1–20000 (por defecto 10)
-  --desde N           secuencial inicial de 6 dígitos (por defecto 1)
+  --desde N           secuencial inicial de la serie (por defecto 1)
   --lote N            número de lote impreso en la hoja (por defecto 1)
   --patrocinante TXT  marca que financia el lote (opcional)
   --tarifa 1|2        1 = general, 2 = estudiante (por defecto 1)

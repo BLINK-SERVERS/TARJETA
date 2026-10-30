@@ -68,7 +68,7 @@ export function HojaVincular({ abierta, alCerrar, alVincular }: Props) {
             inputMode="numeric"
             autoComplete="off"
             autoFocus
-            placeholder="23-1-000001-9"
+            placeholder="23-1-0000001-9"
             value={serial}
             onChange={(evento) => {
               setSerial(formatearSerial(soloDigitos(evento.target.value)));

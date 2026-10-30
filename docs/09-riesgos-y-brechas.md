@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-09 |
-| Versión | 1.2.1 |
-| Fecha | 2026-10-29 |
+| Versión | 1.3.0 |
+| Fecha | 2026-10-30 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 12207 (riesgos) · ISO/IEC 27001 (A.5.7) |
 
@@ -67,6 +67,7 @@ La fuente de verdad es `Documentación Técnica del Ecosistema Blink Pasajes`
 | L-02 | El host directo de Supabase es IPv6. | Hay que usar el pooler desde redes IPv4. |
 | L-03 | GitHub Pages no permite cabeceras personalizadas. | No se pueden añadir CSP/HSTS propios en TARJETA/PASAJES. |
 | L-04 | Pages sirve con base `/TARJETA/`; mover a subdominio exige compilar en la raíz. | Cambio de `base` y de `vite.config.ts` si se decide `tarjeta.blink.com.ve`. |
+| L-05 | La tarjeta maestra se crea por consola (`bt_crear_tarjeta_maestra`), no desde el back-office. | Crear el plástico del propietario exige acceso a SQL. |
 
 ## 5. Plan de mitigación inmediato
 
@@ -75,6 +76,7 @@ La fuente de verdad es `Documentación Técnica del Ecosistema Blink Pasajes`
 | 1 | ~~Aplicar `0006` en producción~~ (hecho el 2026-10-29; ver BLINK-DOC-07 §3.2). | Administrador | Cerrado |
 | 1b | ~~Aplicar `0007` y `0008`; publicar el back-office~~ (hecho el 2026-10-29; ver BLINK-DOC-07 §3.3, §3.4 y §4.2). | Administrador | Cerrado |
 | 1c | Inscribir el segundo factor de la cuenta administradora desde el teléfono del operador. | Operador | Inmediato |
+| 1d | ~~Aplicar `0009` y crear la tarjeta maestra `00-0-000000-0`~~ (hecho el 2026-10-30; ver BLINK-DOC-07 §3.5 y BLINK-DOC-12). | Administrador | Cerrado |
 | 2 | Rotar contraseña de PostgreSQL y tokens expuestos (checklist en BLINK-DOC-11). | Administrador | Inmediato |
 | 3 | Mover firmware a un repositorio con `firmware/`. | Desarrollo | Corto |
 | 4 | Migrar BLINK PASAJES al esquema `bt_*`. | Desarrollo | Medio |
@@ -85,5 +87,6 @@ La fuente de verdad es `Documentación Técnica del Ecosistema Blink Pasajes`
 ## 6. Revisión
 
 Este registro se actualiza al cerrar cada hito. La última revisión corresponde al
-2026-10-29, tras aplicar las migraciones `0007` y `0008`, publicar el back-office
-en https://blink-servers.github.io/BACKOFFICE/ y verificar su flujo completo.
+2026-10-30, tras aplicar la migración `0009` (serie de 7 dígitos), crear la
+tarjeta maestra `00-0-000000-0` y documentar el enrolado por lotes en
+BLINK-DOC-12.

@@ -200,17 +200,22 @@ describe("serial BLINK", () => {
     expect(digitoLuhn("231000001")).toBe("9");
     expect(digitoLuhn("231000002")).toBe("7");
     expect(digitoLuhn("231000003")).toBe("5");
+    expect(digitoLuhn("2310000001")).toBe("9");
+    expect(digitoLuhn("001000000")).toBe("8");
   });
 
   it("acepta seriales con verificador válido", () => {
     expect(validarSerial("23-1-000001-9")).toBeNull();
     expect(validarSerial("23-1-000002-7")).toBeNull();
     expect(validarSerial("2310000019")).toBeNull();
+    expect(validarSerial("23-1-0000001-9")).toBeNull();
+    expect(validarSerial("00-0-000000-0")).toBeNull();
   });
 
   it("rechaza largo incorrecto o verificador que no cuadra", () => {
     expect(validarSerial("23-1-000001-0")).toMatch(/último dígito/);
-    expect(validarSerial("23-1-0000001-0")).toMatch(/10 dígitos/);
-    expect(validarSerial("")).toMatch(/10 dígitos/);
+    expect(validarSerial("23-1-0000001-0")).toMatch(/último dígito/);
+    expect(validarSerial("23-1-00001-9")).toMatch(/10 u 11 dígitos/);
+    expect(validarSerial("")).toMatch(/10 u 11 dígitos/);
   });
 });

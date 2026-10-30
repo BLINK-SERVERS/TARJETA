@@ -30,6 +30,8 @@ describe("formato de bolívares", () => {
 describe("máscaras", () => {
   it("da formato al serial BLINK", () => {
     expect(formatearSerial("2310000019")).toBe("23-1-000001-9");
+    expect(formatearSerial("23100000019")).toBe("23-1-0000001-9");
+    expect(formatearSerial("0010000000")).toBe("00-1-000000-0");
     expect(formatearSerial("231")).toBe("23-1");
   });
 

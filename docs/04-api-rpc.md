@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-04 |
-| Versión | 1.2.0 |
-| Fecha | 2026-10-29 |
+| Versión | 1.3.0 |
+| Fecha | 2026-10-30 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26514 |
 | Transporte | PostgREST (`POST /rest/v1/rpc/<función>`) |
@@ -105,7 +105,8 @@ entorno de confianza (script de administración, validador con token o consola S
 | --- | --- |
 | `bt_emitir_tarjeta(serial, nombre, cedula, telefono, tarifa)` | Emite un plástico. |
 | `bt_enrolar_tarjeta(visible_id, chip_uid)` | Asocia el UID del chip al serial (una tarjeta por vez). |
-| `bt_generar_lote(cantidad, patrocinante, estado, tarifa, origen='FABRICANTE')` | Genera un lote con seriales Luhn en estado `FABRICADA`. |
+| `bt_generar_lote(cantidad, patrocinante, estado, tarifa, origen='FABRICANTE', desde=null)` | Genera un lote con seriales Luhn de 7 dígitos en estado `FABRICADA`; `desde` fija el primer secuencial (ver §3.1). |
+| `bt_crear_tarjeta_maestra(cedula, uid=null, operador='', tarifa=15)` | Crea `00-0-000000-0` (`fare_type = 0`) y la asigna a la cuenta de esa cédula (ver §3.2). |
 | `bt_estacion_enrolar(lote, items, operador='')` | Carga masiva UID↔serial desde el lector; devuelve `enroladas`, `rechazadas` y `errores[]`. |
 | `bt_estacion_catalogo(lote)` | Devuelve el lote con serial, UID y estado de cada tarjeta (hoja de la estación). |
 | `bt_estacion_asignar(serial, cedula, operador='')` | Activa el plástico a nombre de una cuenta ya registrada (taquilla). |
@@ -122,11 +123,53 @@ entorno de confianza (script de administración, validador con token o consola S
 | `bt_liquidar(vehicle, desde, hasta)` | Cierra el periodo de una unidad. |
 | `bt_resumen_operativo()` | Totales para el panel (incluye `fabricadas` y `asignadas`). |
 
+### 3.1 Numeración de lotes (migración 0009)
+
+`bt_generar_lote(p_cantidad int, p_patrocinante text, p_estado int, p_tarifa int,
+p_origen text default 'FABRICANTE', p_desde bigint default null)`:
+
+1. Calcula el estado como prefijo de dos dígitos (`23` para viajes urbanos) y
+   numera con `split_part(visible_id,'-',3)::bigint` del último lote.
+2. `p_desde` fija el primer secuencial; si es nulo continúa donde terminó la serie.
+   Con `p_desde => 1` se abre una serie independiente.
+3. Rellena a **7 dígitos** (`lpad(seq,7,'0')`), arma la base
+   `EE` + `T` + secuencial y calcula el dígito con `bt_luhn_digito`, que ignora los
+   guiones: `23-1-0000001-9`.
+4. Antes de insertar comprueba la colisión con seriales existentes y aborta con
+   `bt:duplicada:La serie EE-T ya tiene tarjetas entre N y M`. El tope es
+   9.999.999 por serie.
+5. `barcode_data` (10-11 dígitos), `nombre`, `telefono` y `vence` salen del lote,
+   igual que en 0006; las tarjetas quedan `FABRICADA`.
+
+Llamada típica desde la consola SQL:
+
+```sql
+select public.bt_generar_lote(100, 'Transporte Ejemplo, C.A.', 23, 1, 'FABRICANTE');
+select public.bt_generar_lote(100, 'Transporte Ejemplo, C.A.', 23, 1, 'FABRICANTE', 101);
+```
+
+### 3.2 Tarjeta maestra `00-0-000000-0`
+
+`bt_crear_tarjeta_maestra(p_cedula, p_uid default null, p_operador default '',
+p_tarifa default 15)` crea el plástico del propietario:
+
+1. Valida la cédula (6–8 dígitos) y busca la cuenta; sin cuenta responde
+   `bt:sin-cuenta`.
+2. Rechaza un segundo registro (`bt:duplicada`) de la maestra o de un UID ya usado.
+3. Inserta `visible_id = '00-0-000000-0'`, `state_code = 0`, `fare_type = 0`,
+   `status = 'ACTIVE'`, `batch_id` nulo, `asignada_at = now()` y
+   `asignada_por = p_operador`, copiando nombre y teléfono de la cuenta.
+4. Deja dos eventos en `card_events`: `ASIGNADA` (canal `taquilla`, detalle
+   `serie: MAESTRA`) y, si se pasó UID, `ENROLADA` (canal `estacion`).
+5. Solo `service_role` puede ejecutarla. Con `p_uid` nulo se crea sin chip y se
+   enrola después en la estación con `bt_estacion_enrolar` o `ENROLAR` por consola.
+
 ### Estación de asignación
 
-`bt_estacion_enrolar` recibe `[{ "serial": "23-1-000001-9", "uid": "0484CC62" }, …]`
+`bt_estacion_enrolar` recibe `[{ "serial": "23-1-0000001-9", "uid": "0484CC62" }, …]`
 (hasta 5.000 pares por tanda). Normaliza el UID a hexadecimal mayúsculas, exige
 que el serial pertenezca al lote indicado y registra `ENROLADA` en `card_events`.
+Acepta seriales de 10 y 11 dígitos (`\d{6,7}` en el bloque medio).
 Los pares inválidos no interrumpen la carga: vuelven en `errores[]` con su motivo.
 La operación es idempotente por par (mismo serial y UID no duplica).
 
@@ -153,7 +196,7 @@ operador nunca lleva una credencial con acceso total a la base.
 | `bt_admin_resumen` | `p_token` | Resumen operativo (igual a `bt_resumen_operativo`) |
 | `bt_admin_lote` | `p_token, p_cantidad, p_patrocinante=null, p_estado=23, p_tarifa=1, p_origen='FABRICANTE'` | Lote creado + `creadoPor` |
 | `bt_admin_catalogo` | `p_token, p_lote` | Hoja del lote (serial, UID, estado) |
-| `bt_admin_enrolar` | `p_token, p_lote, p_items, p_operador=''` | `{enroladas, rechazadas, errores[]}` |
+| `bt_admin_enrolar` | `p_token, p_lote, p_items, p_operador=''` | `{enroladas, rechazadas, errores[]}`; `p_lote = null` enrola sin filtrar lote (tarjeta maestra) |
 | `bt_admin_asignar` | `p_token, p_serial, p_cedula, p_operador=''` | Tarjeta activada a nombre de la cuenta |
 | `bt_admin_lotes` | `p_token, p_limite=20` | Lotes con `enroladas`, `asignadas`, `fabricadas` |
 | `bt_admin_tarjetas` | `p_token, p_lote=null, p_buscar='', p_estado=null, p_limite=200` | `{total, tarjetas[]}` con titular, cédula y saldo |

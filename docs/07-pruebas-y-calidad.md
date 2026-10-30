@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-07 |
-| Versión | 1.2.0 |
-| Fecha | 2026-10-29 |
+| Versión | 1.3.0 |
+| Fecha | 2026-10-30 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 26513 · ISO/IEC 25010 |
 
@@ -23,10 +23,11 @@ es una brecha declarada (BLINK-DOC-09 R-05).
 
 ## 2. Suites automatizadas
 
-| Repo | Comando | Resultado 2026-10-29 |
+| Repo | Comando | Resultado 2026-10-30 |
 | --- | --- | --- |
-| TARJETA | `npm test` | **60 pruebas, 4 archivos, todas en verde** |
+| TARJETA | `npm test` | **63 pruebas, 5 archivos, todas en verde** |
 | TARJETA | `npm run typecheck` | Sin errores |
+| TARJETA | `npm run build` | Sin errores |
 | PASAJES | `npm test` | **56 pruebas, 4 archivos, todas en verde** |
 | BACKOFFICE | `npm run typecheck` / `npm run build` | Sin errores; bundle principal 254 kB con QR cargado bajo demanda |
 | POS | `npm test` / `npm run qa` | Suite propia; requiere Chromium instalado |
@@ -39,6 +40,7 @@ Cobertura funcional de TARJETA por archivo:
 | `src/lib/formato.test.ts` | Máscaras de cédula/teléfono, moneda, fechas. |
 | `src/lib/local.test.ts` | Registro, entrada, vínculo, recarga y extracto en modo local. |
 | `src/lib/lote.test.ts` | Generación de lotes con Luhn y Code 128. |
+| `src/lib/codigos.test.ts` | Code 128 de 10 y 11 dígitos: símbolos, cambio de juego C→B y suma de control. |
 
 ## 3. Pruebas de base de datos (2026-10-29)
 
@@ -168,6 +170,32 @@ comprobar que **no** incluye `totp_secret`.
 mostraban el nombre por defecto `'Titular'` del plástico; se corrigió la función
 para devolver `null` cuando `account_id` es nulo y se limpiaron los nombres
 heredados.
+
+### 3.5 Migración 0009 (serie de 7 dígitos y tarjeta maestra)
+
+Suite `supabase/pruebas/0009_serie.sql`. Se ejecuta en PostgreSQL local
+(`0001`→`0009`) y en producción; todo ocurre dentro de una transacción que
+termina en `ROLLBACK` y cierra con `PRUEBAS_0009_OK`.
+
+| # | Caso | Resultado |
+| --- | --- | --- |
+| 1 | `23-1-000001-9` (serie heredada) sigue validando; `…-0` se rechaza | OK |
+| 2 | `bt_luhn_digito('2310000001') = '9'` y `23-1-0000001-9` valida | OK |
+| 3 | Ninguna tarjeta almacenada incumple formato ni Luhn | OK |
+| 4 | `bt_crear_tarjeta_maestra` crea `00-0-000000-0` con `fare_type = 0` | OK |
+| 5 | La segunda maestra responde `ya existe` | `bt:duplicada` |
+| 6 | Lote con `p_desde = 9000001` produce `23-1-9000001-…` a `…9000003-…` | OK |
+| 7 | Lote solapado (`p_desde = 9000002`) | `ya tiene tarjetas` |
+| 8 | `bt_estacion_enrolar` acepta el serial de 11 dígitos y escribe `ENROLADA` | OK |
+| 9 | `bt_generar_lote` con tarifa 0 | `tipo de tarifa` |
+
+Antes de la suite se verificó que el reemplazo de `bt_generar_lote` elimina la
+firma de cinco parámetros (`drop function`) y que la renumeración del lote de
+arranque es idempotente: la segunda pasada ya no encuentra seriales de 6 dígitos.
+
+En el portal, las pruebas de `dominio`, `lote`, `formato` y `codigos` cubren el
+lado cliente del mismo cambio: Luhn de 11 dígitos, máscara `23-1-0000001-9` y
+Code 128 en juego C con símbolo de cambio a B para el dígito final.
 
 ## 4. Prueba de sistema en producción (2026-10-29)
 

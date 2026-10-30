@@ -3,7 +3,7 @@ import { digitoLuhn } from "./dominio.ts";
 export interface OpcionesLote {
   /** Cuántas tarjetas produce el lote (1–20000). */
   cantidad: number;
-  /** Secuencial inicial de 6 dígitos; si se omite, empieza en 1. */
+  /** Secuencial inicial dentro de la serie; si se omite, empieza en 1. */
   desde?: number;
   /** Código de entidad federal (23 = Zulia). */
   estado?: number;
@@ -16,7 +16,7 @@ export interface OpcionesLote {
 
 export interface TarjetaLote {
   serial: string;
-  /** Cadena numérica de 10 dígitos que va en el Code 128. */
+  /** Cadena numérica de 10 u 11 dígitos que va en el Code 128. */
   barcode: string;
 }
 
@@ -40,11 +40,17 @@ function entero(valor: unknown, nombre: string): number {
   return valor;
 }
 
-/** 23-1-000001-9 a partir de los 9 dígitos base. */
+/**
+ * 23-1-0000001-9 a partir de los 10 dígitos base (estado, tarifa y 7
+ * secuenciales). También acepta bases de 9 dígitos de la serie heredada.
+ */
 export function serialDesdeBase(base: string): string {
   const digitos = base.replace(/\D/g, "");
-  if (digitos.length !== 9) throw new Error("La base del ID BLINK debe tener 9 dígitos.");
-  return `${digitos.slice(0, 2)}-${digitos.slice(2, 3)}-${digitos.slice(3, 9)}-${digitoLuhn(digitos)}`;
+  if (digitos.length !== 9 && digitos.length !== 10) {
+    throw new Error("La base del ID BLINK debe tener 9 o 10 dígitos.");
+  }
+  const secuencial = digitos.slice(3);
+  return `${digitos.slice(0, 2)}-${digitos.slice(2, 3)}-${secuencial}-${digitoLuhn(digitos)}`;
 }
 
 export function generarLote(opciones: OpcionesLote): LoteGenerado {
@@ -66,15 +72,15 @@ export function generarLote(opciones: OpcionesLote): LoteGenerado {
   if (lote < 1) {
     throw new Error("El número de lote debe ser mayor que 0.");
   }
-  if (desde < 1 || desde + cantidad - 1 > 999999) {
-    throw new Error("El secuencial del lote se sale del rango 000001–999999.");
+  if (desde < 1 || desde + cantidad - 1 > 9999999) {
+    throw new Error("El secuencial del lote se sale del rango 0000001–9999999.");
   }
 
   const prefijo = String(estado).padStart(2, "0") + String(tarifa);
   const tarjetas: TarjetaLote[] = [];
 
   for (let i = 0; i < cantidad; i++) {
-    const secuencial = String(desde + i).padStart(6, "0");
+    const secuencial = String(desde + i).padStart(7, "0");
     const serial = serialDesdeBase(prefijo + secuencial);
     tarjetas.push({ serial, barcode: serial.replace(/\D/g, "") });
   }

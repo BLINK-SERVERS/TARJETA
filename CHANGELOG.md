@@ -15,6 +15,55 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 - Gestión de operadores y reinicio de TOTP desde la interfaz del back-office.
 - Prueba física de enrolado y cobro con el lector (tarea #28).
 
+## [1.3.0] — 2026-10-30
+
+Serie de identificación de siete dígitos (`23-1-0000001-9`), tarjeta maestra del
+propietario y guía de enrolado por lotes. La serie heredada de seis dígitos sigue
+siendo válida.
+
+### Añadido
+
+- **Migración `0009_serie_siete_digitos.sql`**: `bt_luhn_digito` y
+  `bt_luhn_valido` aceptan 10 y 11 dígitos; `bt_generar_lote` numera a siete
+  dígitos con `p_desde` opcional y rechaza rangos que se solapan.
+- **Tarjeta maestra `00-0-000000-0`**: `bt_crear_tarjeta_maestra(cedula, uid,
+  operador, tarifa)` la crea activa, asignada a la cuenta dueña, con
+  `fare_type = 0`, fuera de todo lote y con bitácora `ASIGNADA`/`ENROLADA`.
+  Solo `service_role`.
+- **BLINK-DOC-12**: guía de enrolado de lotes, desde la maestra hasta la entrega,
+  con verificación y resolución de problemas.
+- **Hoja imprimible del lote de arranque** (`lotes/lote-001.csv` y `.html`):
+  20 tarjetas `23-1-0000001-9` … `23-1-0000020-9`, cuadradas contra la base.
+- **Suite `supabase/pruebas/0009_serie.sql`** con nueve comprobaciones dentro de
+  una transacción que termina en `ROLLBACK`.
+
+### Cambiado
+
+- El portal formatea y valida seriales de 10 y 11 dígitos; el Code 128 usa juego
+  C con símbolo de cambio a B para el dígito final.
+- `cards_visible_id_check` admite `\d{6,7}` en el bloque secuencial;
+  `cards_fare_type_check` admite `0` para la maestra.
+- La renumeración del lote de arranque es idempotente: se aplica solo a tarjetas
+  `FABRICADA` sin UID, sin cuenta y sin movimientos.
+
+### Corregido
+
+- `npm run lote` volvía a fallar con Node 22 por un import sin extensión en
+  `src/lib/dominio.ts`; el generador de hojas ya corre con el Node del sistema.
+
+### Firmware (fuera de git: `~/Arduino/BLINK_Validador`)
+
+- Bloque de identidad v2 con el serial en ASCII y longitud explícita (hasta 11
+  dígitos); las tarjetas v1 se siguen leyendo. `VERSION_FW = 4`.
+- `ENROLAR` acepta seriales de 13 o 14 caracteres y tarifas `0`, `1` y `2`.
+
+### Base de datos
+
+- `0009` aplicada en producción el 2026-10-30: 20 tarjetas renumeradas a
+  `23-1-0000001-9` … `23-1-0000020-9`, maestra creada para `V-34201580` (sin
+  UID) y suite de aceptación en verde (`PRUEBAS_0009_OK`). El siguiente
+  secuencial libre es `21`.
+
 ## [1.2.0] — 2026-10-29
 
 Back-office separado del portal, con control de acceso por rol y verificación en
