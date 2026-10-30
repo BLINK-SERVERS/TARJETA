@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-03 |
-| Versión | 1.1.0 |
+| Versión | 1.1.1 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26514 |
@@ -31,7 +31,7 @@
 | `0003_operacion.sql` | Operación: emisión, cobro, aprobación de recargas, bloqueo, lotes, pérdida, acreditación, sincronización y liquidación. | Aplicada |
 | `0004_validador_token.sql` | Token por validador (`vehicles.sync_token_hash`) y RPC de emisión/revocación. | Aplicada |
 | `0005_cuentas.sql` | Cuenta del pasajero, billetera multi-tarjeta, PIN de 6 dígitos, Pago Móvil de la cuenta y RPC del portal v2. | Aplicada el 2026-10-29 |
-| `0006_lotes_corporativos.sql` | Aprovisionamiento en lote: estado `FABRICADA`, activación por reclamo, estación UID↔serial, bitácora `card_events`, purga archivada y cuenta administradora. | Probada en local el 2026-10-29 · pendiente en producción |
+| `0006_lotes_corporativos.sql` | Aprovisionamiento en lote: estado `FABRICADA`, activación por reclamo, estación UID↔serial, bitácora `card_events`, purga archivada y cuenta administradora. | Aplicada el 2026-10-29 · prueba de aceptación en verde |
 
 Reglas:
 

@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-07 |
-| Versión | 1.1.0 |
+| Versión | 1.1.1 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 26513 · ISO/IEC 25010 |
@@ -100,9 +100,31 @@ psql "$CADENA" -v ON_ERROR_STOP=1 -f supabase/pruebas/0006_lotes.sql
 La prueba corre en una transacción que termina en `ROLLBACK`; el PIN se toma de
 `blink.admin_pin` en la sesión.
 
-La aplicación en producción queda pendiente porque la sesión del panel de
-Supabase expiró y la contraseña de PostgreSQL no está en el repositorio ni en el
-gestor local.
+### 3.2 Migración 0006 aplicada en producción (2026-10-29)
+
+Aplicada desde el editor SQL del panel de Supabase con el PIN administrador
+únicamente en la sesión (`select set_config('blink.admin_pin', …, false);`
+antepuesto al script; nunca se versiona). El editor pidió confirmación por
+operaciones destructivas y por la tabla nueva sin RLS: se eligió **Run and enable
+RLS**, por lo que `respaldo.bitacora` queda con RLS activo.
+
+Estado verificado después de aplicar:
+
+| Comprobación | Resultado |
+| --- | --- |
+| Tarjetas | 20, todas `FABRICADA` y sin dueño |
+| Cuentas | 1 (`Diego Beleño`, `V-34201580`, `04246603660`, `belenodiego0702@gmail.com`, `rol = ADMIN`) |
+| Lote de arranque | 1, `origen = FABRICANTE` |
+| `respaldo.bitacora` | 1 fila (purga ejecutada una sola vez) |
+| `card_events` | 0 |
+| `bt_estacion_enrolar` / `bt_generar_lote(5 args)` | Presentes |
+| RLS en `respaldo.bitacora` | Activo |
+
+La prueba de aceptación de §3.1 se repitió contra producción dentro de la misma
+transacción con `ROLLBACK`, con un marcador en tabla temporal para confirmar el
+final del bloque: devolvió `PRUEBAS_0006_OK`. Tras la prueba, los conteos
+siguieron en 20 tarjetas `FABRICADA`, 1 cuenta y 0 eventos, y
+`23-1-000001-9` continuó `FABRICADA` sin dueño.
 
 ## 4. Prueba de sistema en producción (2026-10-29)
 

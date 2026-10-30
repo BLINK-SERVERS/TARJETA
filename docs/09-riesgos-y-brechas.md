@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-09 |
-| Versión | 1.1.0 |
+| Versión | 1.1.1 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 12207 (riesgos) · ISO/IEC 27001 (A.5.7) |
@@ -69,7 +69,7 @@ La fuente de verdad es `Documentación Técnica del Ecosistema Blink Pasajes`
 
 | # | Acción | Responsable | Plazo |
 | --- | --- | --- | --- |
-| 1 | Aplicar `0006` en producción (purga archivada + cuenta administradora). | Administrador | Inmediato |
+| 1 | ~~Aplicar `0006` en producción~~ (hecho el 2026-10-29; ver BLINK-DOC-07 §3.2). | Administrador | Cerrado |
 | 2 | Rotar contraseña de PostgreSQL y tokens expuestos. | Administrador | Inmediato |
 | 3 | Mover firmware a un repositorio con `firmware/`. | Desarrollo | Corto |
 | 4 | Migrar BLINK PASAJES al esquema `bt_*`. | Desarrollo | Medio |
@@ -80,4 +80,5 @@ La fuente de verdad es `Documentación Técnica del Ecosistema Blink Pasajes`
 ## 6. Revisión
 
 Este registro se actualiza al cerrar cada hito. La última revisión corresponde al
-2026-10-29, tras escribir y probar la migración 0006 de aprovisionamiento en lote.
+2026-10-29, tras aplicar la migración 0006 en producción y ejecutar su prueba de
+aceptación con `ROLLBACK`.

@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-06 |
-| Versión | 1.1.0 |
+| Versión | 1.1.1 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 12207 (operación y mantenimiento) |
@@ -147,6 +147,11 @@ aplicar migraciones: el editor SQL es la vía alternativa al pooler.
    ```
 
    Sin `blink.admin_pin` la migración no crea la cuenta y avisa por `NOTICE`.
+
+   Si no hay `psql` (p. ej. el panel de Supabase), se pega el archivo en el
+   editor SQL con `select set_config('blink.admin_pin', '<PIN>', false);`
+   antepuesto y se elige **Run and enable RLS** cuando el editor advierta de
+   operaciones destructivas o de tablas sin RLS. El PIN no se guarda.
 
 5. Confirmar: `select proname from pg_proc where proname like 'bt_%' order by 1;`
    y `select count(*) from public.accounts;` (debe ser coherente).

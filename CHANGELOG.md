@@ -9,8 +9,6 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 
 ### Pendiente
 
-- **Aplicar `0006_lotes_corporativos.sql` en producción** (probada en local; la
-  sesión del panel de Supabase expiró y la contraseña de la base no se versiona).
 - Recuperación de PIN en el portal.
 - Interfaz de aprobación de recargas para el administrador.
 - Notificaciones por correo al acreditar una recarga.

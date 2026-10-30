@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-00 |
-| Versión | 1.1.0 |
+| Versión | 1.1.1 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Autor | Equipo BLINK (desarrollo asistido) |
@@ -70,6 +70,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | --- | --- | --- | --- |
 | 1.0.0 | 2026-10-29 | Creación de la suite completa tras el despliegue de la cuenta multi-tarjeta. | Equipo BLINK |
 | 1.1.0 | 2026-10-29 | Aprovisionamiento en lote (FABRICADA), estación de asignación, bitácora y purga archivada. | Equipo BLINK |
+| 1.1.1 | 2026-10-29 | 0006 aplicada en producción; DOC-03/06/07/09 pasan a 1.1.1 con el estado verificado. | Equipo BLINK |
 
 Reglas de mantenimiento:
 
