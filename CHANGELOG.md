@@ -25,6 +25,11 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 - **Migración `0016_corrige_alfabeto_verificador.sql`**: la clase de
   caracteres de 0014 excluía la `U` del alfabeto verificador; ahora el CHECK y
   las funciones aceptan seriales como `G-00007-005-U`.
+- **Firmware v6 del validador**: bloque de identidad v3 con los 10 caracteres
+  del serial compacto (`G00001001N`) en el sector 1, tarifa por defecto de
+  Bs 500 y montos enteros en el protocolo serie, la pantalla y las colas NVS.
+  Las colas heredadas en céntimos se convierten solas al arrancar. El comando
+  `ENROLAR` admite `FORZAR` y re-enrolla la maestra en su sitio.
 - Documentos BLINK-DOC-12 v2.0.0, BLINK-DOC-13 y BLINK-DOC-14 en `docs/`.
 
 ### Cambiado
@@ -59,7 +64,6 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 - Prueba física de enrolado y cobro con el lector (tarea #28).
 - Grabado del chip desde la estación web y cola secuencial con *tap & next*.
 - Carga de artes y paquete de producción ZIP VDP / PDF-VT.
-- Firmware v6: bloque de identidad alfanumérico y unidades enteras.
 
 ## [1.4.0] — 2026-10-30
 
