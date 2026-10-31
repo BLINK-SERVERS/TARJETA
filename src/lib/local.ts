@@ -72,7 +72,7 @@ interface TarjetaLocal extends Tarjeta {
 }
 
 interface BaseLocal {
-  version: 3;
+  version: 4;
   cuentas: CuentaLocal[];
   tarjetas: TarjetaLocal[];
   movimientos: Movimiento[];
@@ -80,7 +80,7 @@ interface BaseLocal {
   intentos: Record<string, { fallos: number; hasta: number }>;
 }
 
-const TARIFA = 15;
+const TARIFA = 500;
 
 function isoDiasAtras(dias: number, hora: number, minuto: number): string {
   const fecha = new Date();
@@ -141,10 +141,10 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
 
   const tarjetas: TarjetaLocal[] = [
     {
-      serial: "23-1-000001-9",
+      serial: "G-00001-001-N",
       uid: "3981BF06",
       titular: { nombre: "María Fernanda Fernández", cedula: "V-12345678", telefono: "0414-1234567" },
-      saldo: 485,
+      saldo: 1500,
       estado: "activa",
       emitida: "2025-03-14T12:00:00.000Z",
       vence: "2030-03-14T12:00:00.000Z",
@@ -152,10 +152,10 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
       cuenta: "12345678",
     },
     {
-      serial: "23-1-000004-3",
+      serial: "G-00001-004-V",
       uid: "6A21C40D",
       titular: { nombre: "Diego Andrés Fernández", cedula: "V-30445566", telefono: "0414-1234567" },
-      saldo: 60,
+      saldo: 1000,
       estado: "activa",
       emitida: "2025-08-09T12:00:00.000Z",
       vence: "2030-08-09T12:00:00.000Z",
@@ -163,7 +163,7 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
       cuenta: "12345678",
     },
     {
-      serial: "23-1-000002-7",
+      serial: "G-00001-002-R",
       uid: "058151954F3400",
       titular: { nombre: "Carlos Andrés Rondón", cedula: "V-87654321", telefono: "0424-8765432" },
       saldo: 0,
@@ -174,10 +174,10 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
       cuenta: "87654321",
     },
     {
-      serial: "23-1-000003-5",
+      serial: "G-00001-003-T",
       uid: "A1B2C3D4",
       titular: { nombre: "Luis Enrique Pérez", cedula: "V-11223344", telefono: "0412-5556677" },
-      saldo: 30,
+      saldo: 500,
       estado: "bloqueada",
       emitida: "2024-11-20T12:00:00.000Z",
       vence: "2029-11-20T12:00:00.000Z",
@@ -189,10 +189,10 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
   const serie1: Movimiento[] = [
     {
       id: "mv-0001",
-      serial: "23-1-000001-9",
+      serial: "G-00001-001-N",
       tipo: "viaje",
       monto: -TARIFA,
-      saldoDespues: 485,
+      saldoDespues: 1500,
       at: isoDiasAtras(0, 7, 42),
       detalle: "Pasaje en la línea",
       estado: "aprobado",
@@ -200,10 +200,10 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
     },
     {
       id: "mv-0002",
-      serial: "23-1-000001-9",
+      serial: "G-00001-001-N",
       tipo: "viaje",
       monto: -TARIFA,
-      saldoDespues: 500,
+      saldoDespues: 2000,
       at: isoDiasAtras(0, 6, 58),
       detalle: "Pasaje en la línea",
       estado: "aprobado",
@@ -211,10 +211,10 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
     },
     {
       id: "mv-0003",
-      serial: "23-1-000001-9",
+      serial: "G-00001-001-N",
       tipo: "recarga",
-      monto: 500,
-      saldoDespues: 515,
+      monto: 1000,
+      saldoDespues: 2500,
       at: isoDiasAtras(1, 18, 20),
       detalle: "Pago Móvil aprobado",
       estado: "aprobado",
@@ -223,10 +223,10 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
     },
     {
       id: "mv-0004",
-      serial: "23-1-000001-9",
+      serial: "G-00001-001-N",
       tipo: "viaje",
       monto: -TARIFA,
-      saldoDespues: 15,
+      saldoDespues: 1500,
       at: isoDiasAtras(2, 17, 5),
       detalle: "Pasaje en la línea",
       estado: "aprobado",
@@ -234,10 +234,10 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
     },
     {
       id: "mv-0005",
-      serial: "23-1-000001-9",
+      serial: "G-00001-001-N",
       tipo: "viaje",
       monto: -TARIFA,
-      saldoDespues: 30,
+      saldoDespues: 2000,
       at: isoDiasAtras(2, 16, 48),
       detalle: "Pasaje en la línea",
       estado: "aprobado",
@@ -245,10 +245,10 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
     },
     {
       id: "mv-0006",
-      serial: "23-1-000001-9",
+      serial: "G-00001-001-N",
       tipo: "recarga",
-      monto: 200,
-      saldoDespues: 45,
+      monto: 1500,
+      saldoDespues: 2500,
       at: isoDiasAtras(6, 9, 12),
       detalle: "Pago Móvil aprobado",
       estado: "aprobado",
@@ -260,10 +260,10 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
   const serie4: Movimiento[] = [
     {
       id: "mv-0011",
-      serial: "23-1-000004-3",
+      serial: "G-00001-004-V",
       tipo: "viaje",
       monto: -TARIFA,
-      saldoDespues: 60,
+      saldoDespues: 1000,
       at: isoDiasAtras(0, 7, 15),
       detalle: "Pasaje en la línea",
       estado: "aprobado",
@@ -271,10 +271,10 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
     },
     {
       id: "mv-0012",
-      serial: "23-1-000004-3",
+      serial: "G-00001-004-V",
       tipo: "viaje",
       monto: -TARIFA,
-      saldoDespues: 75,
+      saldoDespues: 1500,
       at: isoDiasAtras(1, 17, 40),
       detalle: "Pasaje en la línea",
       estado: "aprobado",
@@ -282,10 +282,10 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
     },
     {
       id: "mv-0013",
-      serial: "23-1-000004-3",
+      serial: "G-00001-004-V",
       tipo: "recarga",
-      monto: 90,
-      saldoDespues: 90,
+      monto: 2000,
+      saldoDespues: 2000,
       at: isoDiasAtras(2, 8, 5),
       detalle: "Pago Móvil aprobado",
       estado: "aprobado",
@@ -296,9 +296,9 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
 
   const pendiente: Movimiento = {
     id: "mv-0007",
-    serial: "23-1-000002-7",
+    serial: "G-00001-002-R",
     tipo: "recarga",
-    monto: 100,
+    monto: 1000,
     saldoDespues: 0,
     at: isoDiasAtras(0, 8, 3),
     detalle: "Pago Móvil en revisión",
@@ -309,10 +309,10 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
 
   const viaje2: Movimiento = {
     id: "mv-0008",
-    serial: "23-1-000003-5",
+    serial: "G-00001-003-T",
     tipo: "viaje",
     monto: -TARIFA,
-    saldoDespues: 30,
+    saldoDespues: 500,
     at: isoDiasAtras(3, 12, 30),
     detalle: "Pasaje en la línea",
     estado: "aprobado",
@@ -320,7 +320,7 @@ function semilla(pin1: string, pin2: string, pin3: string): BaseLocal {
   };
 
   return {
-    version: 3,
+    version: 4,
     cuentas,
     tarjetas,
     movimientos: [pendiente, ...serie1, ...serie4, viaje2].sort(
@@ -336,7 +336,7 @@ function leer(): BaseLocal | null {
     const crudo = localStorage.getItem(CLAVE);
     if (!crudo) return null;
     const datos = JSON.parse(crudo) as BaseLocal;
-    if (datos.version !== 3) return null;
+    if (datos.version !== 4) return null;
     return datos;
   } catch {
     return null;
@@ -400,7 +400,7 @@ function porToken(datos: BaseLocal, token: string): CuentaLocal {
 }
 
 function tarjetaDe(datos: BaseLocal, cuenta: CuentaLocal, serial: string): TarjetaLocal {
-  const normalizado = formatearSerial(soloDigitos(serial));
+  const normalizado = formatearSerial(serial);
   const tarjeta = datos.tarjetas.find(
     (t) => t.cuenta === soloDigitos(cuenta.cedula) && t.serial === normalizado
   );
@@ -501,7 +501,7 @@ export const repositorioLocal: Repositorio = {
   async vincular(token, serial) {
     const datos = await base();
     const cuenta = porToken(datos, token);
-    const normalizado = formatearSerial(soloDigitos(serial));
+    const normalizado = formatearSerial(serial);
 
     const errorSerial = validarSerial(normalizado);
     if (errorSerial) throw new ErrorBlink("sin-tarjeta", errorSerial);
@@ -568,7 +568,7 @@ export const repositorioLocal: Repositorio = {
       id: `rc-${crypto.randomUUID()}`,
       serial: tarjeta.serial,
       tipo: "recarga",
-      monto: Math.round(recarga.monto * 100) / 100,
+      monto: Math.round(recarga.monto),
       saldoDespues: tarjeta.saldo,
       at: new Date().toISOString(),
       detalle: "Pago Móvil en revisión",

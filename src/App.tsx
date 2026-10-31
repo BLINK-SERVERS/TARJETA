@@ -11,7 +11,7 @@ import { Recargar } from "./pages/Recargar";
 import { ajustesPorDefecto } from "./lib/ajustes";
 import { repositorio } from "./lib/repo";
 import { aplicarTema, leerTema, useCopiar, type ModoTema } from "./lib/hooks";
-import { formatearBs, formatearSerial, soloDigitos } from "./lib/formato";
+import { formatearBs, formatearSerial } from "./lib/formato";
 import type { Ajustes, Cuenta, DatosPago, Movimiento, RecargaNueva, Sesion, Tarjeta } from "./lib/tipos";
 
 const CLAVE_SESION = "blink.tarjeta.sesion";
@@ -163,7 +163,7 @@ export function App() {
 
   async function vincular(serial: string) {
     if (!token) throw new Error("Sin sesión activa.");
-    const normalizado = formatearSerial(soloDigitos(serial));
+    const normalizado = formatearSerial(serial);
     const actual = await repositorio.vincular(token, normalizado);
     setSesion(actual);
     setSerialActiva(

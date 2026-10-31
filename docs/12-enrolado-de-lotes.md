@@ -75,7 +75,7 @@ Para proteger tanto la letra de tarifa inicial como los 8 dígitos centrales sin
 
 | Regla | Restricción / Función en PostgreSQL |
 | --- | --- |
-| Formato `^[AGE]-\d{5}-\d{3}-[A-HJ-NP-TV-Z]$` | `cards_visible_id_check` |
+| Formato `^[AGE]-\d{5}-\d{3}-[A-HJ-NPR-Z]$` | `cards_visible_id_check` |
 | Letra verificadora válida (`Luhn Mod 23`) | `bt_luhn_valido(visible_id)` |
 | Reserva exclusiva de `A-00000-000-H` | Solo permitido cuando `fare_type = 0` y titular es `V-34201580` |
 | Coherencia entre texto y columnas | `cards_identificador_coherente` (`fare_type`, `batch_number`, `serial_number`) |

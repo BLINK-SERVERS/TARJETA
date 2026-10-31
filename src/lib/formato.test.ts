@@ -12,27 +12,28 @@ import {
 } from "./formato";
 
 describe("formato de bolívares", () => {
-  it("usa coma decimal y dos decimales", () => {
-    expect(formatearBs(1234.5)).toMatch(/^Bs 1\.234,50$/);
-    expect(formatearBs(0)).toMatch(/^Bs 0,00$/);
+  it("usa bolívares enteros, sin céntimos", () => {
+    expect(formatearBs(1234)).toBe("Bs 1.234");
+    expect(formatearBs(0)).toBe("Bs 0");
   });
 
-  it("parte el monto para animarlo", () => {
+  it("parte el monto para animarlo y omite la coma si no hay decimales", () => {
+    expect(partesBs(1500)).toEqual({ entero: "1.500", decimal: "" });
     expect(partesBs(1234.56)).toEqual({ entero: "1.234", decimal: "56" });
-    expect(partesBs(0.5)).toEqual({ entero: "0", decimal: "50" });
   });
 
   it("no propaga valores inválidos", () => {
-    expect(formatearBs(Number.NaN)).toMatch(/^Bs 0,00$/);
+    expect(formatearBs(Number.NaN)).toBe("Bs 0");
   });
 });
 
 describe("máscaras", () => {
-  it("da formato al serial BLINK", () => {
-    expect(formatearSerial("2310000019")).toBe("23-1-000001-9");
-    expect(formatearSerial("23100000019")).toBe("23-1-0000001-9");
-    expect(formatearSerial("0010000000")).toBe("00-1-000000-0");
-    expect(formatearSerial("231")).toBe("23-1");
+  it("da formato al serial BLINK T-LLLLL-UUU-V", () => {
+    expect(formatearSerial("G00001001N")).toBe("G-00001-001-N");
+    expect(formatearSerial("g-00001-001-n")).toBe("G-00001-001-N");
+    expect(formatearSerial("E00001001")).toBe("E-00001-001");
+    expect(formatearSerial("G000")).toBe("G-000");
+    expect(formatearSerial("")).toBe("");
   });
 
   it("da formato a la cédula y respeta la letra", () => {

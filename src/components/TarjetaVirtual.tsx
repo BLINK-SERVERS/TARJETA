@@ -5,7 +5,7 @@ import {
   formatearVence,
   nombreTarjeta,
   partesBs,
-  soloDigitos,
+  serialCompacto,
 } from "../lib/formato";
 import { pasajesEquivalentes, perfilTarifa } from "../lib/dominio";
 import { useCopiar, useNumeroAnimado, vibrar } from "../lib/hooks";
@@ -133,7 +133,7 @@ export function TarjetaVirtual({ tarjeta, saldoOculto, alAlternarSaldo }: Props)
                   ) : (
                     <strong aria-live="polite">
                       {entero}
-                      <span className="tarjeta__decimalos">,{decimal}</span>
+                      {decimal ? <span className="tarjeta__decimalos">,{decimal}</span> : null}
                     </strong>
                   )}
                   <span className="tarjeta__moneda">Bs</span>
@@ -164,7 +164,7 @@ export function TarjetaVirtual({ tarjeta, saldoOculto, alAlternarSaldo }: Props)
                     <button
                       type="button"
                       className={`tarjeta__copiar${copiado === "serial" ? " tarjeta__copiar--hecho" : ""}`}
-                      onClick={() => void copiar(soloDigitos(tarjeta.serial), "serial")}
+                      onClick={() => void copiar(serialCompacto(tarjeta.serial), "serial")}
                       aria-label={copiado === "serial" ? "Número copiado" : "Copiar número de tarjeta"}
                       title="Copiar número de tarjeta"
                     >

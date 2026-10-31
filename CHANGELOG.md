@@ -22,6 +22,9 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 - **Migración `0015_lotes_con_mermas.sql`**: `bt_admin_lotes` entrega
   `desechadas` y `sinEnrolar` exactos para que la estación no cuente las
   mermas como trabajo pendiente.
+- **Migración `0016_corrige_alfabeto_verificador.sql`**: la clase de
+  caracteres de 0014 excluía la `U` del alfabeto verificador; ahora el CHECK y
+  las funciones aceptan seriales como `G-00007-005-U`.
 - Documentos BLINK-DOC-12 v2.0.0, BLINK-DOC-13 y BLINK-DOC-14 en `docs/`.
 
 ### Cambiado
@@ -29,6 +32,13 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 - El back-office deja de ofrecer la asignación en taquilla: el flujo es
   estación del propietario → venta en comercios → reclamo en el portal.
 - `bs()` del back-office muestra bolívares enteros, sin céntimos.
+- El portal del pasajero también muestra bolívares enteros y valida montos sin
+  céntimos; la tarjeta virtual oculta la coma cuando no hay decimales.
+- El portal vincula con la máscara `G-00001-001-N`, exige la letra
+  verificadora mod 23 y el Code 128 del reverso codifica el serial compacto
+  alfanumérico con los juegos B y C.
+- La semilla de demostración del portal usa la serie nueva y la tarifa de
+  500 bolívares.
 
 ### Corregido
 

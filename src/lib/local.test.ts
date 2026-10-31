@@ -39,8 +39,8 @@ describe("repositorio local", () => {
     expect(sesion.cuenta.nombres).toBe("María Fernanda");
     expect(sesion.cuenta.correo).toContain("@");
     expect(sesion.tarjetas).toHaveLength(2);
-    expect(sesion.tarjetas[0].serial).toBe("23-1-000001-9");
-    expect(sesion.tarjetas[0].saldo).toBe(485);
+    expect(sesion.tarjetas[0].serial).toBe("G-00001-001-N");
+    expect(sesion.tarjetas[0].saldo).toBe(1500);
   });
 
   it("no entrega la cuenta con un PIN equivocado", async () => {
@@ -57,7 +57,7 @@ describe("repositorio local", () => {
 
   it("lista los movimientos de una tarjeta, del más nuevo al más viejo", async () => {
     const { token } = await repositorioLocal.entrar(DEMO.cedula, DEMO.pin);
-    const movimientos = await repositorioLocal.movimientos(token, "23-1-000001-9");
+    const movimientos = await repositorioLocal.movimientos(token, "G-00001-001-N");
     expect(movimientos.length).toBe(6);
     const fechas = movimientos.map((m) => new Date(m.at).getTime());
     expect([...fechas].sort((a, b) => b - a)).toEqual(fechas);
@@ -65,23 +65,23 @@ describe("repositorio local", () => {
 
   it("cada plástico conserva su propio saldo y extracto", async () => {
     const { token } = await repositorioLocal.entrar(DEMO.cedula, DEMO.pin);
-    const movimientos = await repositorioLocal.movimientos(token, "23-1-000004-3");
+    const movimientos = await repositorioLocal.movimientos(token, "G-00001-004-V");
     expect(movimientos.length).toBe(3);
-    expect(movimientos.every((m) => m.serial === "23-1-000004-3")).toBe(true);
+    expect(movimientos.every((m) => m.serial === "G-00001-004-V")).toBe(true);
     const sesion = await repositorioLocal.sesion(token);
-    expect(sesion.tarjetas.find((t) => t.serial === "23-1-000004-3")?.saldo).toBe(60);
+    expect(sesion.tarjetas.find((t) => t.serial === "G-00001-004-V")?.saldo).toBe(1000);
   });
 
   it("no deja ver una tarjeta de otra cuenta", async () => {
     const { token } = await repositorioLocal.entrar(DEMO.cedula, DEMO.pin);
-    await expect(repositorioLocal.movimientos(token, "23-1-000002-7")).rejects.toMatchObject({
+    await expect(repositorioLocal.movimientos(token, "G-00001-002-R")).rejects.toMatchObject({
       codigo: "sin-tarjeta",
     });
   });
 
   it("reporta una recarga pendiente sin tocar el saldo", async () => {
     const { token } = await repositorioLocal.entrar(DEMO.cedula, DEMO.pin);
-    const movimiento = await repositorioLocal.reportarRecarga(token, "23-1-000001-9", {
+    const movimiento = await repositorioLocal.reportarRecarga(token, "G-00001-001-N", {
       monto: 150,
       telefono: "04141234567",
       banco: "Banco Mercantil",
@@ -89,19 +89,19 @@ describe("repositorio local", () => {
     });
     expect(movimiento.estado).toBe("pendiente");
     const sesion = await repositorioLocal.sesion(token);
-    expect(sesion.tarjetas.find((t) => t.serial === "23-1-000001-9")?.saldo).toBe(485);
+    expect(sesion.tarjetas.find((t) => t.serial === "G-00001-001-N")?.saldo).toBe(1500);
   });
 
   it("no acepta dos veces la misma referencia vigente", async () => {
     const { token } = await repositorioLocal.entrar(DEMO.cedula, DEMO.pin);
-    await repositorioLocal.reportarRecarga(token, "23-1-000001-9", {
+    await repositorioLocal.reportarRecarga(token, "G-00001-001-N", {
       monto: 100,
       telefono: "04141234567",
       banco: "Banco Mercantil",
       referencia: "7788",
     });
     await expect(
-      repositorioLocal.reportarRecarga(token, "23-1-000001-9", {
+      repositorioLocal.reportarRecarga(token, "G-00001-001-N", {
         monto: 100,
         telefono: "04141234567",
         banco: "Banco Mercantil",
@@ -117,7 +117,7 @@ describe("repositorio local", () => {
       codigo: "credenciales",
     });
     const nueva = await repositorioLocal.entrar(DEMO.cedula, "840517");
-    expect(nueva.tarjetas[0].serial).toBe("23-1-000001-9");
+    expect(nueva.tarjetas[0].serial).toBe("G-00001-001-N");
   });
 
   it("registra una cuenta nueva con la fuente de pago propia", async () => {
@@ -157,18 +157,18 @@ describe("repositorio local", () => {
 
   it("vincula un plástico nuevo y lo deja en cero", async () => {
     const { token } = await repositorioLocal.entrar("V-87654321", DEMO.pin);
-    const actualizada = await repositorioLocal.vincular(token, "23-1-000005-0");
-    const nueva = actualizada.tarjetas.find((t) => t.serial === "23-1-000005-0");
+    const actualizada = await repositorioLocal.vincular(token, "G-00001-005-M");
+    const nueva = actualizada.tarjetas.find((t) => t.serial === "G-00001-005-M");
     expect(nueva?.saldo).toBe(0);
     expect(nueva?.titular.nombre).toBe("Carlos Andrés Rondón");
-    await expect(repositorioLocal.vincular(token, "23-1-000005-0")).rejects.toMatchObject({
+    await expect(repositorioLocal.vincular(token, "G-00001-005-M")).rejects.toMatchObject({
       codigo: "duplicada",
     });
   });
 
   it("no deja apropiarse de la tarjeta de otra cuenta", async () => {
     const { token } = await repositorioLocal.entrar("V-87654321", DEMO.pin);
-    await expect(repositorioLocal.vincular(token, "23-1-000001-9")).rejects.toMatchObject({
+    await expect(repositorioLocal.vincular(token, "G-00001-001-N")).rejects.toMatchObject({
       codigo: "ya-activada",
     });
   });

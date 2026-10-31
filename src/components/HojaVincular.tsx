@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Hoja } from "./Hoja";
 import { Icon } from "./Icon";
 import { ErrorBlink } from "../lib/repo";
-import { formatearSerial, soloDigitos } from "../lib/formato";
+import { formatearSerial } from "../lib/formato";
 import { validarSerial } from "../lib/dominio";
 
 interface Props {
@@ -28,7 +28,7 @@ export function HojaVincular({ abierta, alCerrar, alVincular }: Props) {
   async function enviar(evento: FormEvent) {
     evento.preventDefault();
     if (enviando) return;
-    const normalizado = formatearSerial(soloDigitos(serial));
+    const normalizado = formatearSerial(serial);
     const problema = validarSerial(normalizado);
     if (problema) {
       setError(problema);
@@ -65,20 +65,22 @@ export function HojaVincular({ abierta, alCerrar, alVincular }: Props) {
           <input
             id="vinculo-serial"
             className="entrada mono"
-            inputMode="numeric"
+            inputMode="text"
             autoComplete="off"
+            autoCapitalize="characters"
             autoFocus
-            placeholder="23-1-0000001-9"
+            placeholder="G-00001-001-N"
             value={serial}
             onChange={(evento) => {
-              setSerial(formatearSerial(soloDigitos(evento.target.value)));
+              setSerial(formatearSerial(evento.target.value));
               setError(null);
             }}
             aria-invalid={error ? true : undefined}
             aria-describedby="vinculo-serial-ayuda"
           />
           <span className="campo__ayuda" id="vinculo-serial-ayuda">
-            Está impreso al reverso del plástico, debajo del código de barras.
+            Está impreso al reverso del plástico, debajo del código de barras: una letra, ocho
+            dígitos y la letra verificadora.
           </span>
         </div>
 

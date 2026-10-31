@@ -5,14 +5,14 @@
 // arma aquí con su tabla de patrones: así el teléfono no descarga los 900 KB
 // de bwip-js solo para pintar las barras.
 
-import { soloDigitos } from "./formato";
-
 export const QR_PORTAL = `${import.meta.env.BASE_URL}qr-portal.svg`;
 
 const QUIETO = 10;
 const ALTO_BARRA = 40;
+const INICIO_B = 104;
 const INICIO_C = 105;
 const CAMBIO_B = 100;
+const CAMBIO_C = 99;
 const FIN = 106;
 
 // Anchuras de barra/espacio (en módulos) de los 106 símbolos Code 128.
@@ -33,26 +33,63 @@ const PATRONES = `
 
 const PATRON_FIN = "2331112";
 
+const esDigito = (caracter: string | undefined) =>
+  caracter !== undefined && caracter >= "0" && caracter <= "9";
+
 /**
- * Code 128 del serial. Los pares van en el juego C (compacto) y, si el
- * número de dígitos es impar —el serial de 11 dígitos de la serie nueva—,
- * el último dígito se codifica en el juego B tras un cambio. Agrega el
+ * Símbolos del serial compacto (G00001001N): arranca en el juego B con la
+ * letra de la serie, pasa al juego C para los ocho dígitos en cuatro pares
+ * y vuelve a B para la letra verificadora. Una serie heredada de puros
+ * dígitos entra directo al juego C.
+ */
+function simbolos(compacto: string): number[] {
+  let modo: "B" | "C" = esDigito(compacto[0]) ? "C" : "B";
+  const valores: number[] = [modo === "C" ? INICIO_C : INICIO_B];
+  let i = 0;
+
+  while (i < compacto.length) {
+    if (modo === "C") {
+      if (esDigito(compacto[i]) && esDigito(compacto[i + 1])) {
+        valores.push(Number(compacto.slice(i, i + 2)));
+        i += 2;
+        continue;
+      }
+      valores.push(CAMBIO_B);
+      modo = "B";
+      continue;
+    }
+
+    // En B conviene saltar a C cuando quedan al menos cuatro dígitos
+    // seguidos: cada par ahorra un símbolo.
+    if (
+      esDigito(compacto[i]) &&
+      esDigito(compacto[i + 1]) &&
+      esDigito(compacto[i + 2]) &&
+      esDigito(compacto[i + 3])
+    ) {
+      valores.push(CAMBIO_C);
+      modo = "C";
+      continue;
+    }
+
+    // Juego B: el valor de un carácter ASCII es su código menos 32.
+    valores.push(compacto.charCodeAt(i) - 32);
+    i += 1;
+  }
+
+  return valores;
+}
+
+/**
+ * Code 128 del serial. Usa los juegos B y C según el contenido, agrega el
  * verificador módulo 103 y la parada. El SVG sale ya vertical (barras
  * horizontales) para la franja del reverso.
  */
 export function svgCode128(serial: string): string | null {
-  const digitos = soloDigitos(serial);
-  if (digitos.length === 0) return null;
+  const compacto = serial.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (compacto.length === 0) return null;
 
-  const valores = [INICIO_C];
-  const pares = digitos.length - (digitos.length % 2);
-  for (let i = 0; i < pares; i += 2) {
-    valores.push(Number(digitos.slice(i, i + 2)));
-  }
-  if (digitos.length % 2 === 1) {
-    // Juego B: el valor de un dígito ASCII es su código menos 32.
-    valores.push(CAMBIO_B, digitos.charCodeAt(digitos.length - 1) - 32);
-  }
+  const valores = simbolos(compacto);
   const suma = valores.reduce((total, valor, indice) => total + valor * Math.max(indice, 1), 0);
   const secuencia = [...valores, suma % 103, FIN];
 

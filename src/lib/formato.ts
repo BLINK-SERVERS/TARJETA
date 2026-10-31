@@ -1,16 +1,13 @@
-// Formato venezolano: Bs con coma decimal, fechas cortas y máscaras.
+// Formato venezolano: bolívares enteros, fechas cortas y máscaras.
 
 const bs = new Intl.NumberFormat("es-VE", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-const bsSinDecimales = new Intl.NumberFormat("es-VE", {
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
 
-/** 12.5 → "Bs 12,50" */
+const bsSinDecimales = bs;
+
+/** 1250 → "Bs 1.250" (el sistema no maneja céntimos) */
 export function formatearBs(monto: number): string {
   return `Bs ${bs.format(Number.isFinite(monto) ? monto : 0)}`;
 }
@@ -20,14 +17,14 @@ export function formatearEntero(monto: number): string {
   return bsSinDecimales.format(Number.isFinite(monto) ? monto : 0);
 }
 
-/** Separa el monto para animarlo por partes: "1.234" y ",50". */
+/** Separa el monto para animarlo: entero y, si existe, la parte decimal. */
 export function partesBs(monto: number): { entero: string; decimal: string } {
   const valor = Number.isFinite(monto) ? Math.abs(monto) : 0;
   const entero = Math.floor(valor);
   const decimal = Math.round((valor - entero) * 100);
   return {
     entero: bsSinDecimales.format(entero),
-    decimal: String(decimal).padStart(2, "0"),
+    decimal: decimal === 0 ? "" : String(decimal).padStart(2, "0"),
   };
 }
 
@@ -118,20 +115,28 @@ export function soloDigitos(texto: string): string {
 }
 
 /**
- * 2310000019 → 23-1-000001-9 y 23100000019 → 23-1-0000001-9
- * (estado, tarifa, secuencial y Luhn). El secuencial puede tener 6 o 7
- * dígitos, así que el grupo central se calcula por longitud.
+ * Máscara de la serie T-LLLLL-UUU-V mientras se escribe.
+ * G00001001N → G-00001-001-N; tolera guiones y minúsculas.
  */
-export function formatearSerial(digitos: string): string {
-  const grupos = [2, 1, Math.max(1, digitos.length - 4), 1];
-  let salida = "";
-  let desde = 0;
-  for (const tamano of grupos) {
-    if (desde >= digitos.length) break;
-    salida += (salida ? "-" : "") + digitos.slice(desde, desde + tamano);
-    desde += tamano;
-  }
+export function formatearSerial(texto: string): string {
+  const limpio = texto.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!limpio) return "";
+
+  const letra = limpio.slice(0, 1).replace(/[^AGE]/, "");
+  const cuerpo = letra ? limpio.slice(1) : limpio;
+  const digitos = cuerpo.replace(/\D/g, "").slice(0, 8);
+  const verificadora = cuerpo.replace(/\d/g, "").slice(0, 1);
+
+  let salida = letra;
+  if (digitos) salida += (salida ? "-" : "") + digitos.slice(0, 5);
+  if (digitos.length > 5) salida += "-" + digitos.slice(5, 8);
+  if (verificadora) salida += (salida ? "-" : "") + verificadora;
   return salida;
+}
+
+/** G-00001-001-N → G00001001N (lo que llevan el chip y el Code 128). */
+export function serialCompacto(serial: string): string {
+  return serial.toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
 /** Máscara de cédula mientras se escribe: V-12345678. */

@@ -98,34 +98,42 @@ export function erroresDatosPago(datos: DatosPago): ErroresPago {
   return errores;
 }
 
+/** Alfabeto seguro de 23 letras (sin I, O, Q) para el verificador. */
+const ALFABETO_VERIFICADOR = "ABCDEFGHJKLMNPRSTUVWXYZ";
+
 /**
- * Dígito verificador del ID BLINK (ISO/IEC 7812-1). Se duplican las
- * posiciones impares contando desde la derecha del número completo, así
- * que sirve para bases de 9 dígitos (23-1-000001-9) y de 10 dígitos
- * (23-1-0000001-9).
+ * Letra verificadora del ID BLINK (Luhn mod 23, ISO/IEC 7064).
+ * Toma el ASCII de la letra de tarifa (A=65, E=69, G=71) seguido de los
+ * 8 dígitos, duplica las posiciones pares contadas desde la derecha y
+ * busca el residuo módulo 23. G00001001 → N.
  */
-export function digitoLuhn(base: string): string {
-  const digitos = soloDigitos(base);
+export function letraLuhn(base: string): string {
+  const limpio = base.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!/^[AGE][0-9]{8}$/.test(limpio)) {
+    throw new Error("La base del ID BLINK debe ser A/G/E + 8 dígitos.");
+  }
+
+  const numeros = String(limpio.charCodeAt(0)).padStart(2, "0") + limpio.slice(1);
   let suma = 0;
-  for (let i = 0; i < digitos.length; i++) {
-    let valor = Number(digitos[i]);
-    if ((digitos.length - i) % 2 === 1) {
+  for (let i = 0; i < numeros.length; i++) {
+    let valor = Number(numeros[i]);
+    if ((numeros.length - i) % 2 === 1) {
       valor *= 2;
       if (valor > 9) valor -= 9;
     }
     suma += valor;
   }
-  return String((10 - (suma % 10)) % 10);
+  return ALFABETO_VERIFICADOR[suma % 23];
 }
 
-/** Serial impreso en el plástico: 10 u 11 dígitos con Luhn válido. */
+/** Serial impreso en el plástico: T-LLLLL-UUU-V con letra verificadora. */
 export function validarSerial(texto: string): string | null {
-  const digitos = soloDigitos(texto);
-  if (digitos.length !== 10 && digitos.length !== 11) {
-    return "El serial tiene 10 u 11 dígitos: 23-1-000001-9 o 23-1-0000001-9.";
+  const limpio = texto.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!/^[AGE][0-9]{8}[A-HJ-NPR-Z]$/.test(limpio)) {
+    return "El serial tiene el formato G-00001-001-N. Revísalo en el reverso de la tarjeta.";
   }
-  if (digitoLuhn(digitos.slice(0, -1)) !== digitos.at(-1)) {
-    return "El último dígito del serial no coincide. Revísalo en el reverso de la tarjeta.";
+  if (letraLuhn(limpio.slice(0, 9)) !== limpio.slice(9)) {
+    return "La letra final del serial no coincide. Revísala en el reverso de la tarjeta.";
   }
   return null;
 }
@@ -139,12 +147,12 @@ export function pasajesEquivalentes(saldo: number, tarifa: number): number {
 export type PerfilTarifa = "GENERAL" | "ESTUDIANTE";
 
 /**
- * El segundo grupo del serial identifica el perfil tarifario: 1 general,
- * 2 estudiante. 23-2-000001-8 sería la misma tarjeta con tarifa estudiantil.
+ * La letra inicial del serial identifica el perfil tarifario:
+ * G general, E estudiante / tercera edad, A Alfa del propietario.
  */
 export function perfilTarifa(serial: string): PerfilTarifa {
-  const grupo = soloDigitos(serial.split("-")[1] ?? "");
-  return grupo === "2" ? "ESTUDIANTE" : "GENERAL";
+  const letra = serial.trim().toUpperCase().slice(0, 1);
+  return letra === "E" ? "ESTUDIANTE" : "GENERAL";
 }
 
 /** Bs que aún alcanzan para N pasajes (para el bloque "te alcanza para"). */
@@ -163,13 +171,13 @@ export function erroresRecarga(
   if (borrador.monto.trim() === "" || !Number.isFinite(monto) || monto <= 0) {
     errores.monto = "Escribe el monto que transferiste (mayor que 0).";
   } else if (monto < 1) {
-    errores.monto = "El monto mínimo por recarga es Bs 1,00.";
+    errores.monto = "El monto mínimo por recarga es Bs 1.";
   } else if (monto > ajustes.topeRecarga) {
     errores.monto = `El tope por recarga es ${new Intl.NumberFormat("es-VE").format(
       ajustes.topeRecarga
     )} Bs. Divide el pago en varias operaciones.`;
-  } else if (Math.abs(monto * 100 - Math.round(monto * 100)) > 1e-6) {
-    errores.monto = "Usa como máximo dos decimales.";
+  } else if (!Number.isInteger(monto)) {
+    errores.monto = "Usa bolívares enteros: la red no maneja céntimos.";
   }
 
   if (!/^0\d{10}$/.test(soloDigitos(borrador.telefono))) {

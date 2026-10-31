@@ -3,10 +3,10 @@ import {
   buscarRecargaDuplicada,
   erroresDatosPago,
   erroresRecarga,
+  letraLuhn,
   pasajesEquivalentes,
   perfilTarifa,
   saldoParaPasajes,
-  digitoLuhn,
   validarCedula,
   validarCorreo,
   validarNombre,
@@ -29,7 +29,7 @@ const BUENO: BorradorRecarga = {
 function recarga(estado: Movimiento["estado"], referencia = "4821"): Movimiento {
   return {
     id: `r-${estado}`,
-    serial: "23-1-000001-9",
+    serial: "G-00001-001-N",
     tipo: "recarga",
     monto: 200,
     saldoDespues: 100,
@@ -133,8 +133,8 @@ describe("erroresRecarga", () => {
     expect(erroresRecarga({ ...BUENO, monto: "6000" }, AJUSTES).monto).toMatch(/tope/);
   });
 
-  it("no admite más de dos decimales", () => {
-    expect(erroresRecarga({ ...BUENO, monto: "10.999" }, AJUSTES).monto).toMatch(/decimales/);
+  it("solo admite bolívares enteros", () => {
+    expect(erroresRecarga({ ...BUENO, monto: "10.5" }, AJUSTES).monto).toMatch(/enteros/);
   });
 
   it("exige teléfono venezolano de 11 dígitos", () => {
@@ -168,25 +168,26 @@ describe("buscarRecargaDuplicada", () => {
 
 describe("pasajesEquivalentes", () => {
   it("calcula pasajes completos a la tarifa", () => {
-    expect(pasajesEquivalentes(100, 15)).toBe(6);
-    expect(pasajesEquivalentes(14.99, 15)).toBe(0);
+    expect(pasajesEquivalentes(1500, 500)).toBe(3);
+    expect(pasajesEquivalentes(499, 500)).toBe(0);
   });
 
   it("no divide entre cero y no da negativos", () => {
-    expect(pasajesEquivalentes(100, 0)).toBe(0);
-    expect(pasajesEquivalentes(-10, 15)).toBe(0);
+    expect(pasajesEquivalentes(1000, 0)).toBe(0);
+    expect(pasajesEquivalentes(-10, 500)).toBe(0);
   });
 
   it("sabe si el saldo alcanza para N pasajes", () => {
-    expect(saldoParaPasajes(45, 15, 3)).toBe(true);
-    expect(saldoParaPasajes(44.99, 15, 3)).toBe(false);
+    expect(saldoParaPasajes(1500, 500, 3)).toBe(true);
+    expect(saldoParaPasajes(1499, 500, 3)).toBe(false);
   });
 });
 
 describe("perfilTarifa", () => {
-  it("lee el perfil del segundo grupo del serial", () => {
-    expect(perfilTarifa("23-1-000001-9")).toBe("GENERAL");
-    expect(perfilTarifa("23-2-000001-8")).toBe("ESTUDIANTE");
+  it("lee el perfil de la letra del serial", () => {
+    expect(perfilTarifa("G-00001-001-N")).toBe("GENERAL");
+    expect(perfilTarifa("E-00001-001-V")).toBe("ESTUDIANTE");
+    expect(perfilTarifa("A-00000-000-H")).toBe("GENERAL");
   });
 
   it("cae en general con seriales incompletos", () => {
@@ -196,26 +197,30 @@ describe("perfilTarifa", () => {
 });
 
 describe("serial BLINK", () => {
-  it("calcula el dígito de Luhn de los 9 dígitos base", () => {
-    expect(digitoLuhn("231000001")).toBe("9");
-    expect(digitoLuhn("231000002")).toBe("7");
-    expect(digitoLuhn("231000003")).toBe("5");
-    expect(digitoLuhn("2310000001")).toBe("9");
-    expect(digitoLuhn("001000000")).toBe("8");
+  it("calcula la letra verificadora mod 23 de los 9 caracteres base", () => {
+    expect(letraLuhn("G00001001")).toBe("N");
+    expect(letraLuhn("G00001002")).toBe("R");
+    expect(letraLuhn("G00001004")).toBe("V");
+    expect(letraLuhn("E00001001")).toBe("V");
+    expect(letraLuhn("A00000000")).toBe("H");
+  });
+
+  it("rechaza bases que no son A/G/E + 8 dígitos", () => {
+    expect(() => letraLuhn("231000001")).toThrow();
+    expect(() => letraLuhn("G0000100")).toThrow();
   });
 
   it("acepta seriales con verificador válido", () => {
-    expect(validarSerial("23-1-000001-9")).toBeNull();
-    expect(validarSerial("23-1-000002-7")).toBeNull();
-    expect(validarSerial("2310000019")).toBeNull();
-    expect(validarSerial("23-1-0000001-9")).toBeNull();
-    expect(validarSerial("00-0-000000-0")).toBeNull();
+    expect(validarSerial("G-00001-001-N")).toBeNull();
+    expect(validarSerial("G00001001N")).toBeNull();
+    expect(validarSerial("E-00001-001-V")).toBeNull();
+    expect(validarSerial("A-00000-000-H")).toBeNull();
   });
 
   it("rechaza largo incorrecto o verificador que no cuadra", () => {
-    expect(validarSerial("23-1-000001-0")).toMatch(/último dígito/);
-    expect(validarSerial("23-1-0000001-0")).toMatch(/último dígito/);
-    expect(validarSerial("23-1-00001-9")).toMatch(/10 u 11 dígitos/);
-    expect(validarSerial("")).toMatch(/10 u 11 dígitos/);
+    expect(validarSerial("G-00001-001-A")).toMatch(/letra final/);
+    expect(validarSerial("G-00001-001")).toMatch(/formato/);
+    expect(validarSerial("23-1-000001-9")).toMatch(/formato/);
+    expect(validarSerial("")).toMatch(/formato/);
   });
 });
