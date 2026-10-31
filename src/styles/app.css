@@ -404,6 +404,10 @@ body {
 
 /* --- 3. Tarjeta virtual ------------------------------------ */
 
+/* Cada medida del naipe lleva su equivalente en `--np` antes del valor en cqw:
+   los navegadores sin container queries (iOS 15 y anteriores, Android viejo)
+   se quedan con `--np` y la tarjeta conserva la maqueta. */
+
 .tarjeta-caja {
   display: flex;
   flex-direction: column;
@@ -426,6 +430,20 @@ body {
   animation: subir 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Sin aspect-ratio (iOS 14) la tarjeta mediría 0 px: alto por padding. */
+@supports not (aspect-ratio: 1 / 1) {
+  .tarjeta {
+    height: 0;
+    padding-top: 63.05%;
+  }
+
+  .tarjeta__inclinacion {
+    position: absolute;
+    inset: 0;
+    height: auto;
+  }
+}
+
 .tarjeta__inclinacion {
   height: 100%;
   transform: rotateX(var(--rx)) rotateY(var(--ry));
@@ -446,6 +464,8 @@ body {
 }
 
 .tarjeta__cara {
+  /* 1 % del ancho de la tarjeta ≈ ancho de ventana menos los márgenes. */
+  --np: clamp(2.5px, calc(0.98vw - 0.35px), 3.95px);
   position: absolute;
   inset: 0;
   display: flex;
@@ -472,7 +492,9 @@ body {
 
 .tarjeta__cara--anverso {
   justify-content: space-between;
+  gap: calc(var(--np) * 1.7);
   gap: 1.7cqw;
+  padding: calc(var(--np) * 4.1) calc(var(--np) * 4.7) calc(var(--np) * 3.9);
   padding: 4.1cqw 4.7cqw 3.9cqw;
 }
 
@@ -529,16 +551,24 @@ body {
 }
 
 .tarjeta__orbes span:first-child {
+  width: calc(var(--np) * 62);
   width: 62cqw;
+  height: calc(var(--np) * 62);
   height: 62cqw;
+  top: calc(var(--np) * -25.9);
   top: -25.9cqw;
+  right: calc(var(--np) * -18.9);
   right: -18.9cqw;
 }
 
 .tarjeta__orbes span:last-child {
+  width: calc(var(--np) * 40.4);
   width: 40.4cqw;
+  height: calc(var(--np) * 40.4);
   height: 40.4cqw;
+  bottom: calc(var(--np) * -23.2);
   bottom: -23.2cqw;
+  left: calc(var(--np) * -11.9);
   left: -11.9cqw;
   background: rgb(255 255 255 / 0.04);
 }
@@ -548,6 +578,7 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  gap: calc(var(--np) * 2.6);
   gap: 2.6cqw;
 }
 
@@ -559,12 +590,15 @@ body {
     "lema lema";
   align-items: center;
   justify-content: start;
+  column-gap: calc(var(--np) * 1.4);
   column-gap: 1.4cqw;
+  row-gap: calc(var(--np) * 0.4);
   row-gap: 0.4cqw;
 }
 
 .tarjeta__logo {
   grid-area: logo;
+  font-size: calc(var(--np) * 5.6);
   font-size: 5.6cqw;
   font-weight: 900;
   font-style: italic;
@@ -574,16 +608,19 @@ body {
 
 .tarjeta__guiño {
   grid-area: guino;
+  width: calc(var(--np) * 5);
   width: 5cqw;
   height: auto;
   fill: currentColor;
   align-self: start;
+  margin-top: calc(var(--np) * 0.5);
   margin-top: 0.5cqw;
 }
 
 .tarjeta__marca em {
   grid-area: lema;
   font-style: normal;
+  font-size: calc(var(--np) * 2.2);
   font-size: 2.2cqw;
   font-weight: 700;
   letter-spacing: 0.4em;
@@ -593,12 +630,15 @@ body {
 .tarjeta__pastilla {
   display: inline-flex;
   align-items: center;
+  gap: calc(var(--np) * 1.5);
   gap: 1.5cqw;
   max-width: 55%;
+  padding: calc(var(--np) * 1.1) calc(var(--np) * 2.6);
   padding: 1.1cqw 2.6cqw;
   border: 1px solid rgb(255 255 255 / 0.22);
   border-radius: var(--radius-pill);
   background: rgb(0 0 0 / 0.22);
+  font-size: max(8px, calc(var(--np) * 2.4));
   font-size: max(8px, 2.4cqw);
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -609,7 +649,9 @@ body {
 }
 
 .tarjeta__punto {
+  width: calc(var(--np) * 1.6);
   width: 1.6cqw;
+  height: calc(var(--np) * 1.6);
   height: 1.6cqw;
   flex: none;
   border-radius: 50%;
@@ -623,7 +665,9 @@ body {
 }
 
 .tarjeta__contacto {
+  width: calc(var(--np) * 5.9);
   width: 5.9cqw;
+  height: calc(var(--np) * 4.9);
   height: 4.9cqw;
   flex: none;
   fill: none;
@@ -637,12 +681,14 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
+  gap: calc(var(--np) * 0.5);
   gap: 0.5cqw;
   min-height: 0;
 }
 
 .tarjeta__etiqueta {
   display: block;
+  font-size: max(8px, calc(var(--np) * 2.7));
   font-size: max(8px, 2.7cqw);
   font-weight: 500;
   letter-spacing: 0.08em;
@@ -653,11 +699,14 @@ body {
 .tarjeta__monto {
   display: flex;
   align-items: baseline;
+  gap: calc(var(--np) * 1.3);
   gap: 1.3cqw;
+  margin-top: calc(var(--np) * 0.2);
   margin-top: 0.2cqw;
 }
 
 .tarjeta__monto strong {
+  font-size: clamp(1.4rem, calc(var(--np) * 8.6), 2.6rem);
   font-size: clamp(1.4rem, 8.6cqw, 2.6rem);
   font-weight: 800;
   letter-spacing: -0.035em;
@@ -666,6 +715,7 @@ body {
 }
 
 .tarjeta__moneda {
+  font-size: max(11px, calc(var(--np) * 4.3));
   font-size: max(11px, 4.3cqw);
   font-weight: 600;
   color: rgb(255 255 255 / 0.86);
@@ -680,9 +730,12 @@ body {
 .tarjeta__ojo {
   display: inline-grid;
   place-items: center;
+  width: calc(var(--np) * 7.5);
   width: 7.5cqw;
+  height: calc(var(--np) * 7.5);
   height: 7.5cqw;
   align-self: center;
+  margin-left: calc(var(--np) * 0.6);
   margin-left: 0.6cqw;
   padding: 0;
   border: 0;
@@ -698,20 +751,26 @@ body {
 }
 
 .tarjeta__ojo .icon {
+  width: calc(var(--np) * 4.3);
   width: 4.3cqw;
+  height: calc(var(--np) * 4.3);
   height: 4.3cqw;
 }
 
 .tarjeta__capsula {
   display: inline-flex;
   align-items: center;
+  gap: calc(var(--np) * 1.5);
   gap: 1.5cqw;
   align-self: flex-start;
+  margin-top: calc(var(--np) * 1.3);
   margin-top: 1.3cqw;
+  padding: calc(var(--np) * 0.9) calc(var(--np) * 2.4);
   padding: 0.9cqw 2.4cqw;
   border: 1px solid rgb(255 255 255 / 0.25);
   border-radius: var(--radius-pill);
   background: rgb(255 255 255 / 0.15);
+  font-size: max(8px, calc(var(--np) * 2.7));
   font-size: max(8px, 2.7cqw);
   font-weight: 600;
   line-height: 1.3;
@@ -721,7 +780,9 @@ body {
 }
 
 .tarjeta__capsula .icon {
+  width: calc(var(--np) * 3.7);
   width: 3.7cqw;
+  height: calc(var(--np) * 3.7);
   height: 3.7cqw;
 }
 
@@ -742,7 +803,9 @@ body {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
+  gap: calc(var(--np) * 2.6);
   gap: 2.6cqw;
+  padding-top: calc(var(--np) * 2.2);
   padding-top: 2.2cqw;
   border-top: 1px solid rgb(255 255 255 / 0.16);
 }
@@ -750,11 +813,13 @@ body {
 .tarjeta__identidad {
   display: flex;
   flex-direction: column;
+  gap: calc(var(--np) * 0.6);
   gap: 0.6cqw;
   min-width: 0;
 }
 
 .tarjeta__titular {
+  font-size: max(8px, calc(var(--np) * 2.7));
   font-size: max(8px, 2.7cqw);
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -768,7 +833,9 @@ body {
 .tarjeta__serial {
   display: inline-flex;
   align-items: center;
+  gap: calc(var(--np) * 0.5);
   gap: 0.5cqw;
+  font-size: max(9px, calc(var(--np) * 3.2));
   font-size: max(9px, 3.2cqw);
   letter-spacing: 0.02em;
   color: rgb(255 255 255 / 0.92);
@@ -782,11 +849,15 @@ body {
 .tarjeta__copiar {
   display: inline-grid;
   place-items: center;
+  width: calc(var(--np) * 6.5);
   width: 6.5cqw;
+  height: calc(var(--np) * 6.5);
   height: 6.5cqw;
+  margin-left: calc(var(--np) * 0.4);
   margin-left: 0.4cqw;
   padding: 0;
   border: 0;
+  border-radius: calc(var(--np) * 2.2);
   border-radius: 2.2cqw;
   background: transparent;
   color: rgb(255 255 255 / 0.78);
@@ -804,13 +875,16 @@ body {
 }
 
 .tarjeta__copiar .icon {
+  width: calc(var(--np) * 3.7);
   width: 3.7cqw;
+  height: calc(var(--np) * 3.7);
   height: 3.7cqw;
 }
 
 .tarjeta__acciones {
   display: inline-flex;
   align-items: center;
+  gap: calc(var(--np) * 1.9);
   gap: 1.9cqw;
   flex: none;
 }
@@ -818,13 +892,17 @@ body {
 .tarjeta__voltear {
   display: inline-flex;
   align-items: center;
+  gap: calc(var(--np) * 1.3);
   gap: 1.3cqw;
+  padding: calc(var(--np) * 1.3) calc(var(--np) * 2.4);
   padding: 1.3cqw 2.4cqw;
   border: 0;
+  border-radius: calc(var(--np) * 2.7);
   border-radius: 2.7cqw;
   background: rgb(255 255 255 / 0.16);
   color: #fff;
   font-family: inherit;
+  font-size: max(8px, calc(var(--np) * 2.7));
   font-size: max(8px, 2.7cqw);
   font-weight: 600;
   cursor: pointer;
@@ -842,12 +920,16 @@ body {
 }
 
 .tarjeta__voltear .icon {
+  width: calc(var(--np) * 3.5);
   width: 3.5cqw;
+  height: calc(var(--np) * 3.5);
   height: 3.5cqw;
 }
 
 .tarjeta__voltear--claro {
+  padding: calc(var(--np) * 0.8) calc(var(--np) * 1.9);
   padding: 0.8cqw 1.9cqw;
+  font-size: max(8px, calc(var(--np) * 2.4));
   font-size: max(8px, 2.4cqw);
   background: rgb(255 255 255 / 0.24);
 }
@@ -862,14 +944,17 @@ body {
 .tarjeta__reverso-texto {
   display: flex;
   flex-direction: column;
+  gap: calc(var(--np) * 1.7);
   gap: 1.7cqw;
   width: 74%;
   min-width: 0;
+  padding: calc(var(--np) * 3.7) calc(var(--np) * 3.5) calc(var(--np) * 3.2) calc(var(--np) * 4.3);
   padding: 3.7cqw 3.5cqw 3.2cqw 4.3cqw;
 }
 
 .tarjeta__lema {
   margin: 0;
+  font-size: max(8px, calc(var(--np) * 2.7));
   font-size: max(8px, 2.7cqw);
   font-weight: 800;
   font-style: italic;
@@ -881,6 +966,7 @@ body {
 .tarjeta__recarga {
   display: flex;
   align-items: center;
+  gap: calc(var(--np) * 2.6);
   gap: 2.6cqw;
   margin-block: auto;
 }
@@ -888,10 +974,14 @@ body {
 .tarjeta__qr {
   display: grid;
   place-items: center;
+  width: calc(var(--np) * 16.2);
   width: 16.2cqw;
+  height: calc(var(--np) * 16.2);
   height: 16.2cqw;
   flex: none;
+  padding: calc(var(--np) * 1.1);
   padding: 1.1cqw;
+  border-radius: calc(var(--np) * 2.7);
   border-radius: 2.7cqw;
   background: #fff;
   color: #1d1d1f;
@@ -905,18 +995,23 @@ body {
 }
 
 .tarjeta__qr .icon {
+  width: calc(var(--np) * 4.6);
   width: 4.6cqw;
+  height: calc(var(--np) * 4.6);
   height: 4.6cqw;
 }
 
 .tarjeta__recarga-titulo {
   margin: 0;
+  font-size: max(8px, calc(var(--np) * 3));
   font-size: max(8px, 3cqw);
   font-weight: 700;
 }
 
 .tarjeta__recarga-texto {
+  margin: calc(var(--np) * 0.4) 0 0;
   margin: 0.4cqw 0 0;
+  font-size: max(7.5px, calc(var(--np) * 2.4));
   font-size: max(7.5px, 2.4cqw);
   line-height: 1.4;
   color: rgb(255 255 255 / 0.85);
@@ -926,9 +1021,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: calc(var(--np) * 1.7);
   gap: 1.7cqw;
+  padding-top: calc(var(--np) * 1.7);
   padding-top: 1.7cqw;
   border-top: 1px solid rgb(255 255 255 / 0.16);
+  font-size: max(7px, calc(var(--np) * 2.2));
   font-size: max(7px, 2.2cqw);
   line-height: 1.3;
   color: rgb(255 255 255 / 0.82);
@@ -937,14 +1035,17 @@ body {
 .tarjeta__reverso-pie > span {
   min-width: 0;
   font-style: italic;
+  text-wrap: balance;
 }
 
 .tarjeta__franja {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: calc(var(--np) * 0.5);
   gap: 0.5cqw;
   width: 26%;
+  padding: calc(var(--np) * 2.4) calc(var(--np) * 0.9) calc(var(--np) * 2.2);
   padding: 2.4cqw 0.9cqw 2.2cqw;
   background: #fff;
   color: #0b1b33;
@@ -958,12 +1059,14 @@ body {
 }
 
 .tarjeta__franja-serial {
+  font-size: max(7px, calc(var(--np) * 2.2));
   font-size: max(7px, 2.2cqw);
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 
 .tarjeta__franja-etiqueta {
+  font-size: max(6.5px, calc(var(--np) * 1.9));
   font-size: max(6.5px, 1.9cqw);
   color: #5b6b80;
 }
@@ -971,24 +1074,25 @@ body {
 .tarjeta__barras {
   height: 76%;
   width: auto;
+  max-width: calc(var(--np) * 10.3);
   max-width: 10.3cqw;
   object-fit: contain;
 }
 
 .tarjeta__barras-espera {
   height: 76%;
+  width: calc(var(--np) * 6.9);
   width: 6.9cqw;
+  border-radius: calc(var(--np) * 1.1);
   border-radius: 1.1cqw;
   background: repeating-linear-gradient(90deg, #0b1b33 0 2px, transparent 2px 4px);
   opacity: 0.25;
 }
 
 .tarjeta__sincro {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
+  display: block;
   font-size: var(--fs-xs);
+  line-height: 1.35;
   text-align: center;
   color: var(--color-text-tertiary);
 }
@@ -996,6 +1100,8 @@ body {
 .tarjeta__sincro .icon {
   width: 0.9rem;
   height: 0.9rem;
+  margin-right: 0.3rem;
+  vertical-align: -0.18em;
   color: var(--blink-success);
 }
 
@@ -3025,17 +3131,6 @@ select.entrada--tipo {
 }
 
 /* --- Adaptaciones ------------------------------------------ */
-
-@media (min-width: 460px) {
-  .tarjeta__reverso-texto {
-    padding: 1rem 0.95rem 0.85rem 1.15rem;
-  }
-
-  .tarjeta__qr {
-    width: 68px;
-    height: 68px;
-  }
-}
 
 @media (min-width: 720px) {
   .app__main {

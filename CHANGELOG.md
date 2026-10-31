@@ -47,6 +47,12 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 
 ### Corregido
 
+- **Tarjeta virtual en navegadores sin *container queries*** (iOS 15 y
+  anteriores, Android viejo): cada medida del naipe lleva una unidad de
+  respaldo proporcional al ancho (`--np`) antes del valor en `cqw`, de modo que
+  la maqueta se mantiene aunque el navegador no entienda contenedores. La
+  leyenda del reverso se reparte equilibrada y el sello de sincronización queda
+  pegado al texto cuando ocupa dos líneas.
 - **Migración `0012_asignar_exige_enrolada.sql`**: `bt_estacion_asignar` ya no
   activa plásticos sin `chip_uid`. Antes la taquilla podía asignar una tarjeta
   que el validador no podía leer; ahora responde `bt:sin-enrolar` y remite a la
