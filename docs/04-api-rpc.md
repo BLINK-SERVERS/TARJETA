@@ -79,7 +79,8 @@ curl -sS -X POST "$VITE_SUPABASE_URL/rest/v1/rpc/bt_entrar" \
 bloqueada responde `credenciales` indicando los minutos restantes. Un PIN correcto
 reinicia `intentos`.
 
-**`bt_vincular`** — valida formato y Luhn del serial, existencia, vigencia y
+**`bt_vincular`** — valida formato y Luhn del serial, existencia, enrolado
+(`sin-enrolar`: la estación todavía no grabó el chip), vigencia y
 pertenencia a otra cuenta (`ya-activada`) o duplicado en la propia billetera
 (`duplicada`). Es la Fase 2 del aprovisionamiento: una tarjeta `FABRICADA` o
 `ACTIVE` sin dueño pasa a `ACTIVE`, se sella `asignada_at`/`asignada_por='portal'`

@@ -24,6 +24,9 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
   activa plásticos sin `chip_uid`. Antes la taquilla podía asignar una tarjeta
   que el validador no podía leer; ahora responde `bt:sin-enrolar` y remite a la
   estación de enrolado.
+- **Migración `0013_portal_exige_enrolada.sql`**: misma guarda en `bt_vincular`
+  y en la heredada `bt_activar`; el portal y el back-office reconocen el código
+  `sin-enrolar` y muestran el mensaje de la base.
 
 ## [1.4.0] — 2026-10-30
 

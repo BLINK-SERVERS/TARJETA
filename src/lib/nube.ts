@@ -19,6 +19,7 @@ const CODIGOS: CodigoError[] = [
   "credenciales",
   "bloqueada",
   "sin-tarjeta",
+  "sin-enrolar",
   "ya-activada",
   "pin-invalido",
   "duplicada",
