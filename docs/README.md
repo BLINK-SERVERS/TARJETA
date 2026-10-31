@@ -53,6 +53,8 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | BLINK-DOC-10 | [Guía para retomar el desarrollo](10-guia-de-retoma.md) | 26515 |
 | BLINK-DOC-11 | [Rotación de claves y secretos](11-rotacion-de-claves.md) | 27001 |
 | BLINK-DOC-12 | [Enrolado y producción de lotes de tarjetas](12-enrolado-de-lotes.md) | 7810 · 7812-1 · 15417 · PDF/VT |
+| BLINK-DOC-13 | [Seguridad bancaria y operación offline](13-seguridad-bancaria-offline.md) | 7812-1 · 7064 · 14443 · GlobalPlatform |
+| BLINK-DOC-14 | [Estándares industriales y control de calidad](14-estandares-industriales.md) | 14443 · 7810 · 10373 |
 | — | [CHANGELOG](../CHANGELOG.md) | Keep a Changelog 1.1.0 + SemVer |
 
 ## 4. Convenciones de esta suite

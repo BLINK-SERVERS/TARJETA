@@ -7,16 +7,28 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 
 ## [No publicado]
 
-### Pendiente
+### Añadido
 
-- Recuperación de PIN en el portal.
-- Interfaz de aprobación de recargas para el administrador.
-- Notificaciones por correo al acreditar una recarga.
-- Gestión de operadores y reinicio de TOTP desde la interfaz del back-office.
-- Prueba física de enrolado y cobro con el lector (tarea #28).
-- Grabado del chip desde la estación web y cola secuencial con *tap & next*.
-- Carga de artes y paquete de producción ZIP VDP / PDF-VT.
-- Restringir la estación de enrolado al rol del propietario.
+- **Migración `0014_serie_cinco_mas_tres.sql`**: adopta BLINK-DOC-12 v2.0.0,
+  BLINK-DOC-13 v2.0.0 y BLINK-DOC-SEC-01 v1.0.0.
+  - Serie `T-LLLLL-UUU-V` con letra verificadora Luhn mod 23; el código de
+    barras pasa a ser el serial compacto de 10 caracteres (`G00001001N`).
+  - La tarjeta maestra `00-0-0000000-0` se renombra a `A-00000-000-H` y
+    `bt_crear_tarjeta_alfa` reemplaza a `bt_crear_tarjeta_maestra`.
+  - Lotes de 1 a 999 unidades y números de lote de 5 dígitos.
+  - Estado `SCRAP` y eventos `RFPGC` / `CHIP_ERR`; nuevo `bt_admin_merma`.
+  - Importes enteros en bolívares (pasaje 500, estudiante 250) en tarjetas,
+    movimientos, recargas, rutas, viajes y liquidaciones.
+- **Migración `0015_lotes_con_mermas.sql`**: `bt_admin_lotes` entrega
+  `desechadas` y `sinEnrolar` exactos para que la estación no cuente las
+  mermas como trabajo pendiente.
+- Documentos BLINK-DOC-12 v2.0.0, BLINK-DOC-13 y BLINK-DOC-14 en `docs/`.
+
+### Cambiado
+
+- El back-office deja de ofrecer la asignación en taquilla: el flujo es
+  estación del propietario → venta en comercios → reclamo en el portal.
+- `bs()` del back-office muestra bolívares enteros, sin céntimos.
 
 ### Corregido
 
@@ -27,6 +39,17 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 - **Migración `0013_portal_exige_enrolada.sql`**: misma guarda en `bt_vincular`
   y en la heredada `bt_activar`; el portal y el back-office reconocen el código
   `sin-enrolar` y muestran el mensaje de la base.
+
+### Pendiente
+
+- Recuperación de PIN en el portal.
+- Interfaz de aprobación de recargas para el administrador.
+- Notificaciones por correo al acreditar una recarga.
+- Gestión de operadores y reinicio de TOTP desde la interfaz del back-office.
+- Prueba física de enrolado y cobro con el lector (tarea #28).
+- Grabado del chip desde la estación web y cola secuencial con *tap & next*.
+- Carga de artes y paquete de producción ZIP VDP / PDF-VT.
+- Firmware v6: bloque de identidad alfanumérico y unidades enteras.
 
 ## [1.4.0] — 2026-10-30
 
