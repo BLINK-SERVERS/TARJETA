@@ -83,6 +83,15 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
   y en la heredada `bt_activar`; el portal y el back-office reconocen el código
   `sin-enrolar` y muestran el mensaje de la base.
 
+### Documentación
+
+- **BLINK-DOC-06 1.4.0 §5.6**: ciclo completo de una recarga (reporte del
+  pasajero, bandeja `bt_recargas_pendientes`, revisión contra el banco,
+  aprobación/rechazo, entrega al chip por el validador y consultas de
+  verificación), con los efectos exactos de cada RPC y los errores típicos.
+- **BLINK-DOC-08 1.3.0 §5.1**: resumen operativo de la aprobación para el
+  administrador de línea. Suite documental 1.5.2.
+
 ### Pendiente
 
 - Recuperación de PIN en el portal.

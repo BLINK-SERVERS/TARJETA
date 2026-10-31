@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-06 |
-| Versión | 1.3.0 |
-| Fecha | 2026-10-30 |
+| Versión | 1.4.0 |
+| Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 12207 (operación y mantenimiento) |
 
@@ -260,6 +260,91 @@ captura, se reinicia la inscripción.
 La purga de `0006` es reversible: las filas originales quedan en
 `respaldo.*_0006`. Para restaurar una tabla concreta, copiarla de vuelta con la
 consola SQL (no hay RPC para eso, por diseño).
+
+### 5.6 Ciclo completo de una recarga
+
+El pasajero reporta un Pago Móvil, el operador lo verifica contra el banco y el
+validador entrega el dinero al chip en la siguiente sincronización. Cada paso
+deja rastro en la base y ninguno se puede saltar.
+
+**Paso 1 — reporte del pasajero.** El portal llama a `bt_recargar` (única RPC de
+escritura abierta a `anon`). Crea un movimiento `pendiente` con detalle «Pago
+Móvil en revisión» y una fila en `recharges` con estado `pendiente`. El saldo
+**no** cambia. El portal solo guarda los **últimos 4 dígitos** de la referencia
+(`right(digitos,4)`), porque es lo que el banco muestra en el comprobante.
+Rechaza montos con decimales o ≤ 0, montos sobre el tope, teléfonos que no
+cumplen `^0\d{10}$`, referencias de menos de 4 dígitos, más de 6 reportes en
+10 minutos por tarjeta y una referencia repetida en la misma tarjeta y banco
+(`bt:duplicada`).
+
+**Paso 2 — revisión de la bandeja.** En el SQL Editor del panel de Supabase
+(rol propietario; la función está cerrada a `anon`):
+
+```sql
+select jsonb_pretty(public.bt_recargas_pendientes(50));
+```
+
+Devuelve, por reporte: `recarga` (UUID), `movimiento`, `serial`, `titular`,
+`cedula`, `monto`, `telefono`, `banco`, `referencia`, `estado` y `reportada`,
+del más antiguo al más reciente. Se aprueba **solo** si coinciden monto, banco,
+teléfono emisor y los últimos 4 dígitos de la referencia con el estado de
+cuenta real.
+
+**Paso 3 — resolución.** Nunca se actualiza `recharges` a mano: la RPC mantiene
+consistentes el saldo virtual y el movimiento.
+
+```sql
+-- Aprobar: devuelve {"ok": true, "saldo": <nuevo saldo>}
+select public.bt_aprobar_recarga('<uuid>', 'Nombre del operador');
+
+-- Rechazar: deja el movimiento rechazado y no toca el saldo
+select public.bt_rechazar_recarga('<uuid>', 'Nombre del operador', 'Motivo');
+```
+
+`bt_aprobar_recarga` suma `amount` a `cards.virtual_balance`, marca el movimiento
+como `aprobado` con `saldo_despues`, y deja `recharges.status = 'aprobado'`,
+`resolved_at` y `resolved_by`. Falla si la recarga no existe o ya fue resuelta.
+**Aprobar es irreversible**: no hay «desaprobar»; una equivocación se corrige
+con un ajuste manual supervisado. `bt_rechazar_recarga` marca el movimiento como
+`rechazado` y conserva la fila para auditoría.
+
+**Paso 4 — entrega al chip.** La sincronización del validador
+(`bt_validador_sincronizar_token`) devuelve en `pendientes` las recargas con
+`status = 'aprobado'`, `synced_to_chip = false`, tarjeta `ACTIVE` y `chip_uid`
+presente, con `id`, `serial`, `uid` y `monto`. El ESP32 las guarda en NVS y, al
+apoyar esa tarjeta, incrementa el bloque de valor del chip e imprime
+`RECARGA_APLICADA,serial=…,monto=…,id=…`; la pantalla muestra la tarjeta con el
+saldo nuevo. En el siguiente envío el equipo reporta el `id` en `p_recargas` y la
+base marca `synced_to_chip = true` y `synced_at`.
+
+Ritmo: el validador sincroniza al arrancar, cada minuto si tiene cola y cada
+5 minutos sin ella. En la consola serie, `SYNC,…,pendientes=N` cuenta las
+recargas **recién descargadas**; `INFO,…,pendientes=N` cuenta los toques
+**pendientes de subir**; `LIMPIAR_RECARGAS` solo se usa si la cola de recargas
+quedó corrupta (no borra recargas aprobadas en la nube).
+
+**Paso 5 — verificación.** Tres consultas cubren el ciclo:
+
+```sql
+-- Estado de la recarga y entrega al chip
+select r.id, r.status, r.amount, r.synced_to_chip, r.synced_at
+  from public.recharges r
+ order by r.created_at desc
+ limit 10;
+
+-- Saldo virtual acreditado
+select visible_id, virtual_balance
+  from public.cards
+ where visible_id = '<serial>';
+
+-- Contadores de operación: pendientes por aprobar y aprobadas sin bajar al chip
+select public.bt_resumen_operativo();
+```
+
+En el portal, el pasajero ve el movimiento pasar de «Pago Móvil en revisión» a
+«Pago Móvil aprobado» y el saldo actualizado al refrescar. El ciclo está cerrado
+cuando `synced_to_chip = true`; mientras siga en `false`, el dinero está en la
+nube pero todavía no en el plástico.
 
 ## 6. Firmware
 

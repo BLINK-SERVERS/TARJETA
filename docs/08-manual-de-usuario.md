@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-08 |
-| Versión | 1.2.0 |
-| Fecha | 2026-10-30 |
+| Versión | 1.3.0 |
+| Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 26511 · 26512 |
 | Público | Pasajero, chofer, operador de taquilla, administrador de línea |
@@ -149,6 +149,29 @@ Tareas que hoy se hacen por RPC de servicio o consola:
 | Reportar pérdida | `bt_reportar_perdida(serial, motivo)` |
 | Liquidar unidad | `bt_liquidar(<vehicle>, desde, hasta)` |
 | Provisionar validador | `bt_validador_emitir_token(<mac>)` |
+
+### 5.1 Verificar y aprobar una recarga
+
+El procedimiento completo, con el detalle de cada efecto en la base, está en
+BLINK-DOC-06 §5.6. En corto:
+
+1. **Bandeja:** en el SQL Editor del panel de Supabase,
+   `select jsonb_pretty(public.bt_recargas_pendientes(50));` lista los reportes
+   pendientes del más antiguo al más reciente.
+2. **Revisión:** compara con el estado de cuenta del banco el monto, el banco,
+   el teléfono emisor y los **últimos 4 dígitos** de la referencia (es lo único
+   que guarda el portal).
+3. **Resolución:** `select public.bt_aprobar_recarga('<uuid>', 'Operador');` o
+   `select public.bt_rechazar_recarga('<uuid>', 'Operador', 'Motivo');`. Nunca
+   se actualiza la tabla a mano: la función acredita el saldo y deja el
+   movimiento consistente. **Aprobar es irreversible.**
+4. **Entrega al chip:** en la siguiente sincronización el validador descarga la
+   recarga aprobada y, al apoyar la tarjeta, incrementa el saldo del plástico
+   (`RECARGA_APLICADA` por serie). El ciclo cierra cuando la base marca
+   `synced_to_chip = true`.
+5. **Comprobación:** el pasajero ve el movimiento «Pago Móvil aprobado» y el
+   saldo nuevo en el portal; el operador lo confirma con
+   `select public.bt_resumen_operativo();` y las consultas de BLINK-DOC-06 §5.6.
 
 ## 6. Soporte
 
