@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-09 |
-| Versión | 1.4.0 |
-| Fecha | 2026-10-30 |
+| Versión | 1.5.0 |
+| Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 12207 (riesgos) · ISO/IEC 27001 (A.5.7) |
 
@@ -24,6 +24,8 @@ Escalas: probabilidad e impacto **A**lta / **M**edia / **B**aja. Estado:
 | R-07 | PIN de 6 dígitos de baja entropía protege la cuenta `ADMIN`. | M | A | Segunda capa implementada: TOTP RFC 6238 obligatorio en las RPC de inventario (0007). Falta que el operador inscriba su dispositivo. No reutilizar el PIN de arranque. | **Mitigado** (inscripción pendiente) |
 | R-08 | Pérdida del teléfono del operador: el segundo factor solo se reinicia desde SQL. | B | M | Procedimiento documentado (BLINK-DOC-06 §5.5); añadir una RPC de reinicio asistido con doble aprobación. | **Aceptado** |
 | R-09 | Si un secreto TOTP se muestra en una captura o chat, el factor queda expuesto. | B | M | Se reinicia la inscripción (invalida el secreto) y se considera expuesto. | **Mitigado** |
+| R-10 | El modo sin conexión guarda en el teléfono datos personales (nombre, cédula, teléfono, correo, datos de pago) y el token de sesión en `localStorage`; un XSS o un equipo desbloqueado los expone. | M | A | Copia de solo lectura, sin capacidad de escritura ni claves de servicio; caduca a las 12 h de la última sincronización, rechaza fechas futuras y se borra al salir, al expirar la sesión o si el servidor la rechaza. Falta cifrado con WebCrypto atado al PIN y CSP (L-03). | **Mitigado** (residual aceptado) |
+| R-11 | El service worker comparte origen con las demás publicaciones de GitHub Pages; una limpieza o un ámbito amplios podrían tocar o leer cachés ajenas. | B | M | Borra solo cachés con prefijo `blink-tarjeta-`, valida origen y ámbito de los mensajes, solo cachea recursos estáticos dentro de `/TARJETA/` y las respuestas de API quedan fuera. | **Mitigado** |
 
 ## 2. Brechas funcionales frente al diseño técnico
 
@@ -62,6 +64,7 @@ La fuente de verdad es `Documentación Técnica del Ecosistema Blink Pasajes`
 | D-06 | Pruebas de integración se hacen contra producción con rollback. | Riesgo de dejar datos si falla a mitad. | Media |
 | D-07 | Prettier no corre en CI (el CSS actual no está formateado). | Ruido en diffs. | Baja |
 | D-08 | `VITE_SUPABASE_ANON_KEY` guarda una clave publishable (nombre heredado). | Confusión al rotar. | Baja |
+| D-09 | La copia sin conexión no se cifra con WebCrypto ni se ata al PIN. | Un XSS o un teléfono desbloqueado puede leer los datos mientras la copia viva (12 h). | Media |
 
 ## 4. Limitaciones conocidas de la plataforma
 
@@ -85,6 +88,7 @@ La fuente de verdad es `Documentación Técnica del Ecosistema Blink Pasajes`
 | 8 | Grabar el chip desde la estación web (B-14) y añadir cola secuencial con *tap & next* (B-15). | Desarrollo | Corto |
 | 9 | Generar el paquete de producción ZIP VDP / PDF-VT y permitir la carga de artes (B-16). | Desarrollo | Medio |
 | 10 | Restringir la estación al rol del propietario (B-17). | Desarrollo | Corto |
+| 11 | Cifrar la copia sin conexión con WebCrypto y el PIN del pasajero (R-10, D-09). | Desarrollo | Medio |
 | 2 | Rotar contraseña de PostgreSQL y tokens expuestos (checklist en BLINK-DOC-11). | Administrador | Inmediato |
 | 3 | Mover firmware a un repositorio con `firmware/`. | Desarrollo | Corto |
 | 4 | Migrar BLINK PASAJES al esquema `bt_*`. | Desarrollo | Medio |
@@ -95,6 +99,9 @@ La fuente de verdad es `Documentación Técnica del Ecosistema Blink Pasajes`
 ## 6. Revisión
 
 Este registro se actualiza al cerrar cada hito. La última revisión corresponde al
-2026-10-30, tras aplicar las migraciones `0009` (serie de 7 dígitos) y `0010`
-(maestra `00-0-0000000-0`), y alinear BLINK-DOC-12 con el estándar de producción
+2026-10-31, al revisar la seguridad del portal sin conexión: se añadieron R-10,
+R-11 y D-09, y se endurecieron la caducidad de la copia local y el alcance del
+service worker. La revisión anterior, del 2026-10-30, acompañó la aplicación de
+las migraciones `0009` (serie de 7 dígitos) y `0010` (maestra
+`00-0-0000000-0`) y la alineación de BLINK-DOC-12 con el estándar de producción
 del propietario (impresión ID-1, paquete VDP y enrolado secuencial).

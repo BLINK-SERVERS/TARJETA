@@ -1,8 +1,14 @@
 /* BLINK TARJETA — capa offline.
    El primer arranque en línea cachea el armazón y, tras tomar el control,
    los recursos con hash. Las llamadas a Supabase son de otro origen y no
-   pasan por aquí. Al cambiar la lógica, subir CACHE para borrar la vieja. */
-const CACHE = "blink-tarjeta-v1";
+   pasan por aquí. Al cambiar la lógica, subir CACHE para borrar la vieja.
+
+   Este origen es compartido con el resto de publicaciones de BLINK
+   (`blink-servers.github.io`), así que: se borran solo las cachés propias,
+   se guardan solo recursos estáticos del alcance del worker y nunca se
+   cachean respuestas de API ni de otros orígenes. */
+const PREFIJO = "blink-tarjeta-";
+const CACHE = PREFIJO + "v2";
 const RAIZ = new URL("./", self.location).href;
 const ARMAZON = [
   RAIZ,
@@ -12,6 +18,21 @@ const ARMAZON = [
   RAIZ + "favicon.svg",
   RAIZ + "qr-portal.svg",
 ];
+
+const ESTATICAS = /\.(?:js|mjs|css|woff2?|ttf|otf|png|jpe?g|svg|webp|ico|webmanifest)$/i;
+
+function enAlcance(url) {
+  return url.origin === self.location.origin && url.href.startsWith(self.registration.scope);
+}
+
+// El armazón y los archivos estáticos se guardan; una respuesta de API
+// (JSON, RPC, cualquier otra extensión) queda fuera de la caché.
+function cacheable(url) {
+  return (
+    enAlcance(url) &&
+    (url.href === RAIZ || url.href === RAIZ + "index.html" || ESTATICAS.test(url.pathname))
+  );
+}
 
 self.addEventListener("install", (evento) => {
   evento.waitUntil(
@@ -28,7 +49,9 @@ self.addEventListener("activate", (evento) => {
       .keys()
       .then((claves) =>
         Promise.all(
-          claves.filter((clave) => clave !== CACHE).map((clave) => caches.delete(clave))
+          claves
+            .filter((clave) => clave.startsWith(PREFIJO) && clave !== CACHE)
+            .map((clave) => caches.delete(clave))
         )
       )
       .then(() => self.clients.claim())
@@ -38,11 +61,21 @@ self.addEventListener("activate", (evento) => {
 // La primera visita carga los recursos antes de que el worker controle la
 // página; desde `main.tsx` se envían las URLs vistas para guardarlas aquí.
 self.addEventListener("message", (evento) => {
+  if (evento.origin !== self.location.origin) return;
   const datos = evento.data;
   if (!datos || datos.tipo !== "cachear" || !Array.isArray(datos.urls)) return;
+  const urls = datos.urls.filter((valor) => {
+    if (typeof valor !== "string") return false;
+    try {
+      return cacheable(new URL(valor));
+    } catch {
+      return false;
+    }
+  });
+  if (urls.length === 0) return;
   evento.waitUntil(
     caches.open(CACHE).then((cache) =>
-      Promise.all(datos.urls.map((url) => cache.add(url).catch(() => {})))
+      Promise.all(urls.map((url) => cache.add(url).catch(() => {})))
     )
   );
 });
@@ -65,14 +98,16 @@ async function redPrimero(peticion) {
 self.addEventListener("fetch", (evento) => {
   const peticion = evento.request;
   if (peticion.method !== "GET") return;
-
-  const url = new URL(peticion.url);
-  if (url.origin !== self.location.origin) return;
+  if (!enAlcance(new URL(peticion.url))) return;
 
   if (peticion.mode === "navigate") {
     evento.respondWith(redPrimero(peticion));
     return;
   }
+
+  // Solo se interceptan recursos estáticos; el resto de peticiones del
+  // mismo origen (API, datos) sigue su curso normal y no se guarda.
+  if (!cacheable(new URL(peticion.url))) return;
 
   evento.respondWith(
     caches.open(CACHE).then(async (cache) => {

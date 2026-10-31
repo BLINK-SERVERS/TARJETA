@@ -11,6 +11,7 @@ import { Recargar } from "./pages/Recargar";
 import { ajustesPorDefecto } from "./lib/ajustes";
 import { repositorio } from "./lib/repo";
 import { aplicarTema, leerTema, useCopiar, type ModoTema } from "./lib/hooks";
+import { olvidarCopia } from "./lib/offline";
 import { formatearBs, formatearSerial } from "./lib/formato";
 import type { Ajustes, Cuenta, DatosPago, Movimiento, RecargaNueva, Sesion, Tarjeta } from "./lib/tipos";
 
@@ -69,13 +70,17 @@ export function App() {
         const config = await repositorio.ajustes();
         if (vivo) setAjustes(config);
         const guardada = leerSesionGuardada();
-        if (!guardada) return;
+        if (!guardada) {
+          olvidarCopia();
+          return;
+        }
         const actual = await repositorio.sesion(guardada.token);
         if (!vivo) return;
         setSesion(actual);
         setSerialActiva(actual.tarjetas[0]?.serial ?? null);
       } catch {
         localStorage.removeItem(CLAVE_SESION);
+        olvidarCopia();
       } finally {
         if (vivo) setRestaurando(false);
       }

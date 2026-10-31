@@ -1,6 +1,13 @@
 import type { Ajustes, Cuenta, DatosPago, Movimiento, RecargaNueva, Sesion, Tarjeta } from "./tipos";
 import { AJUSTES_POR_DEFECTO } from "./tipos";
 import { ErrorBlink, type CodigoError, type Repositorio } from "./local";
+import {
+  copiaDe,
+  guardarCopia,
+  guardarMovimientos,
+  movimientosDe,
+  olvidarCopia,
+} from "./offline";
 
 // Cliente mínimo de Supabase por REST. No se usa `supabase-js` porque la app
 // solo necesita las llamadas RPC del portal: así el bundle no carga la
@@ -14,59 +21,6 @@ const URL_BASE = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.repl
 const LLAVE = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 export const nubeConfigurada = Boolean(URL_BASE && LLAVE);
-
-// Copia local de la última billetera vista. Permite abrir la tarjeta y ver
-// el saldo sin red; las operaciones que escriben siguen necesitando internet.
-const CLAVE_OFFLINE = "blink.tarjeta.offline.v1";
-
-interface CopiaOffline {
-  token: string;
-  cuenta: Cuenta;
-  tarjetas: Tarjeta[];
-  movimientos: Record<string, Movimiento[]>;
-}
-
-function leerCopia(): CopiaOffline | null {
-  try {
-    const crudo = localStorage.getItem(CLAVE_OFFLINE);
-    if (!crudo) return null;
-    const datos = JSON.parse(crudo) as Partial<CopiaOffline>;
-    if (!datos.token || !datos.cuenta || !Array.isArray(datos.tarjetas)) return null;
-    return {
-      token: datos.token,
-      cuenta: datos.cuenta,
-      tarjetas: datos.tarjetas,
-      movimientos: datos.movimientos ?? {},
-    };
-  } catch {
-    return null;
-  }
-}
-
-function guardarCopia(sesion: Sesion): void {
-  try {
-    const previa = leerCopia();
-    const movimientos =
-      previa && previa.token === sesion.token ? previa.movimientos : {};
-    localStorage.setItem(
-      CLAVE_OFFLINE,
-      JSON.stringify({
-        token: sesion.token,
-        cuenta: sesion.cuenta,
-        tarjetas: sesion.tarjetas,
-        movimientos,
-      })
-    );
-  } catch {
-    // Sin espacio o almacenamiento bloqueado: la app sigue en línea.
-  }
-}
-
-function copiaDe(token: string): Sesion | null {
-  const copia = leerCopia();
-  if (!copia || copia.token !== token) return null;
-  return { token, cuenta: copia.cuenta, tarjetas: copia.tarjetas };
-}
 
 function sinRed(): boolean {
   return typeof navigator !== "undefined" && navigator.onLine === false;
@@ -212,8 +166,7 @@ export const repositorioNube: Repositorio = {
         if (copia) return copia;
       }
       if (error instanceof ErrorBlink && error.codigo === "sesion") {
-        const copia = leerCopia();
-        if (copia?.token === token) localStorage.removeItem(CLAVE_OFFLINE);
+        olvidarCopia(token);
       }
       throw error;
     }
@@ -235,22 +188,12 @@ export const repositorioNube: Repositorio = {
         p_token: token,
         p_serial: serial,
       }).then((r) => r.movimientos);
-      const copia = leerCopia();
-      if (copia && copia.token === token) {
-        copia.movimientos[serial] = lista;
-        try {
-          localStorage.setItem(CLAVE_OFFLINE, JSON.stringify(copia));
-        } catch {
-          // La copia anterior sigue sirviendo para el saldo.
-        }
-      }
+      guardarMovimientos(token, serial, lista);
       return lista;
     } catch (error) {
       if (error instanceof ErrorBlink && error.codigo === "red") {
-        const copia = leerCopia();
-        if (copia && copia.token === token && copia.movimientos[serial]) {
-          return copia.movimientos[serial];
-        }
+        const guardados = movimientosDe(token, serial);
+        if (guardados) return guardados;
       }
       throw error;
     }
@@ -285,8 +228,7 @@ export const repositorioNube: Repositorio = {
     try {
       await rpc<null>("bt_salir", { p_token: token });
     } finally {
-      const copia = leerCopia();
-      if (copia?.token === token) localStorage.removeItem(CLAVE_OFFLINE);
+      olvidarCopia(token);
     }
   },
 

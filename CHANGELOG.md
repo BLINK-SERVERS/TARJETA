@@ -7,6 +7,23 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 
 ## [No publicado]
 
+### Seguridad
+
+- **Copia sin conexión con caducidad**: el respaldo local de la billetera
+  (datos personales y token de sesión) vence a las 12 horas de la última
+  sincronización, se descarta si la fecha está en el futuro y se borra al
+  cerrar sesión, al expirar la sesión o al rechazarla el servidor. Una copia
+  vencida o corrupta se elimina en vez de mostrarse.
+- **Service worker acotado**: al actualizarse borra solo las cachés con
+  prefijo `blink-tarjeta-` (el origen de GitHub Pages es compartido con las
+  demás publicaciones), valida el origen y el ámbito de los mensajes, ignora
+  URLs fuera de `/TARJETA/` y solo guarda recursos estáticos de su armazón;
+  las respuestas de API nunca entran en la caché.
+- Nuevas pruebas de la copia local: caducidad, desfase de reloj, formato
+  anterior, JSON corrupto, aislamiento por token y almacenamiento lleno.
+- Registro de riesgos actualizado con R-10 (datos en el teléfono) y R-11
+  (cachés compartidas del origen) en BLINK-DOC-09.
+
 ### Añadido
 
 - **Portal instalable y sin conexión**: service worker que guarda el armazón y

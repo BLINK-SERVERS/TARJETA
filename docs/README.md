@@ -3,11 +3,11 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-00 |
-| Versión | 1.5.0 |
-| Fecha | 2026-10-30 |
+| Versión | 1.5.1 |
+| Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Autor | Equipo BLINK (desarrollo asistido) |
-| Revisión | 3 |
+| Revisión | 4 |
 | Normas de referencia | ISO 9001:2015 §7.5 · ISO/IEC/IEEE 12207:2017 · ISO/IEC/IEEE 26511/26512/26513/26514/26515 · ISO/IEC 25010 · ISO/IEC 27001:2022 |
 
 ## 1. Propósito
@@ -80,6 +80,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | 1.3.0 | 2026-10-30 | Nuevo BLINK-DOC-11: checklist de rotación de claves, inventario de secretos y verificación. | Equipo BLINK |
 | 1.4.0 | 2026-10-30 | Nuevo BLINK-DOC-12: enrolado de lotes y tarjeta maestra; serie de 7 dígitos (`23-1-0000001-9`) con migración 0009. | Equipo BLINK |
 | 1.5.0 | 2026-10-30 | BLINK-DOC-12 pasa a 2.0.0 con el estándar de producción del propietario; migración 0010 y serial maestro `00-0-0000000-0`. | Equipo BLINK |
+| 1.5.1 | 2026-10-31 | Revisión de seguridad del portal sin conexión: caducidad de la copia local, service worker acotado a su caché y ámbito; DOC-09 pasa a 1.5.0 con R-10, R-11 y D-09. | Equipo BLINK |
 
 Reglas de mantenimiento:
 

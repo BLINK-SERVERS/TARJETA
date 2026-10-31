@@ -35,8 +35,9 @@ datos:
    muestra la tarjeta y el último saldo sincronizado.
 4. Sin red no se puede recargar, vincular otra tarjeta ni cambiar PIN o datos
    de pago; la sesión guardada dura 12 horas y el saldo es el de la última
-   sincronización. Abre el portal una vez con internet para recibir
-   actualizaciones.
+   sincronización. La copia local caduca a las 12 horas de la última vez que
+   hubo red y se borra al cerrar sesión. Abre el portal una vez con internet
+   para recibir actualizaciones.
 
 No borres los datos del sitio: se lleva el armazón offline y la copia de la
 tarjeta.
