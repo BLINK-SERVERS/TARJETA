@@ -373,23 +373,32 @@ Los plásticos deben estar **en blanco**. Si un chip ya tiene datos de otra
 tarjeta, el enrolado falla con «Ya está enrolada con el UID …» o «El UID ya
 pertenece a otra tarjeta».
 
-### 7.2 Estación web (captura UID ↔ serial)
+### 7.2 Estación web (enrolado automático)
 
 1. **Estación → Conectar lector** y elegir el puerto. El lector responde
-   `READY,BLINK,<v>`.
-2. Por cada tarjeta: escanear el Code 128 en *Serial impreso*, apoyar el
-   plástico hasta que aparezca el UID y pulsar *Añadir a la lista*.
-3. Al terminar la tanda, *Subir al inventario*: se envían los pares a
-   `bt_estacion_enrolar` con el `p_token` de la sesión.
+   `READY,BLINK,5,…`.
+2. Elegir el lote y pulsar **Iniciar secuencia**.
+3. La consola pide a `bt_admin_siguiente` el siguiente serial sin grabar, lo
+   envía al validador como `ENROLAR,<serial>,0,<tarifa>` y la pantalla muestra
+   **MODO ENROLADO**, el serial y la cuenta atrás de 60 s.
+4. Al acercar un plástico en blanco el equipo graba el chip y responde
+   `ENROLADA,serial=…,uid=…`; la consola registra la pareja con
+   `bt_estacion_enrolar` y arma sola el serial siguiente. **No se teclea nada.**
+5. **Detener** desarma el equipo con `ENROLAR_OFF`. Si la ventana vence, el
+   equipo responde `ENROLAR_TIMEUP` y la secuencia queda en pausa.
+
+Un rechazo detiene la secuencia con su motivo (`ya-grabada`, `llave`,
+`escritura`…) para no desalinear la numeración:
 
 ```json
-{ "ok": true, "enroladas": 98, "rechazadas": 2,
-  "errores": [ { "serial": "23-1-0000050-4", "motivo": "El UID ya pertenece a otra tarjeta" } ] }
+{ "ok": true, "enroladas": 0, "rechazadas": 1,
+  "errores": [ { "serial": "23-1-0000050-4", "uid": "3981BF06",
+                 "motivo": "El UID ya pertenece a otra tarjeta" } ] }
 ```
 
-Un rechazo no detiene la tanda: se corrige esa fila y se vuelve a subir solo la
-que falló. La estación web **no graba el chip**: solo registra la pareja en la
-base.
+El firmware **no sobrescribe** un plástico ya grabado: solo permite reescribir
+el mismo serial. La estación no graba el chip por su cuenta; ordena al ESP32
+hacerlo y espera su confirmación.
 
 ### 7.3 Grabado del chip por consola serie
 
@@ -405,8 +414,12 @@ ENROLAR,23-1-0000021-7,0,1,3981BF06
 - `tarifa`: `1` general, `2` estudiante, `0` maestra.
 - Quinto campo opcional: fuerza el UID esperado del plástico.
 
-Respuestas: `ENROLAR_LISTO,serial=…,uid=…` al armarse y `ENROLADA,serial=…,uid=…`
-al grabar. Se desarma solo a los 60 s.
+Respuestas: `ENROLAR_LISTO,serial=…,uid=…` al armarse, `ENROLADA,serial=…,uid=…`
+al grabar y `ERROR,enrolado,<motivo>` si falla. Se desarma solo a los 60 s o
+al recibir `ENROLAR_OFF`.
+
+La pantalla del validador muestra el modo, el serial, la cuenta atrás, el
+resultado del toque, el enlace Wi-Fi, la sincronización, la cola local y el GPS.
 
 El firmware escribe el bloque de identidad v2 (dígitos ASCII, longitud, tarifa,
 estado, versión y CRC-8) y deriva las llaves del UID. Lee también el bloque v1
