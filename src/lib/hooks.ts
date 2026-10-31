@@ -52,6 +52,24 @@ export function leerTema(): ModoTema {
   return guardado === "claro" || guardado === "oscuro" ? guardado : "auto";
 }
 
+/** Estado de red del navegador; se actualiza con los eventos online/offline. */
+export function useEnLinea(): boolean {
+  const [enLinea, setEnLinea] = useState(() => navigator.onLine);
+
+  useEffect(() => {
+    const arriba = () => setEnLinea(true);
+    const abajo = () => setEnLinea(false);
+    window.addEventListener("online", arriba);
+    window.addEventListener("offline", abajo);
+    return () => {
+      window.removeEventListener("online", arriba);
+      window.removeEventListener("offline", abajo);
+    };
+  }, []);
+
+  return enLinea;
+}
+
 export function vibrar(patron: number | number[] = 8) {
   if ("vibrate" in navigator) navigator.vibrate(patron);
 }

@@ -20,6 +20,27 @@ de **BLINK PASAJES**. React 19 + Vite 8 + TypeScript estricto.
 Sin variables de entorno la app funciona en **modo demostración** con datos
 locales (`V-12345678` / PIN `194628`). Con variables, usa la base real.
 
+## Usar en el celular y sin conexión
+
+El portal es instalable y guarda la última tarjeta vista para abrirla sin
+datos:
+
+1. Abre <https://blink-servers.github.io/TARJETA/> con internet e inicia
+   sesión una vez. Eso guarda en ese teléfono la tarjeta, el saldo y los
+   movimientos.
+2. Instálalo: en Android/Chrome, menú **⋮ → Instalar aplicación** (o
+   **Añadir a pantalla de inicio**); en iPhone/Safari, **Compartir →
+   Añadir a pantalla de inicio**.
+3. Ábrelo desde el icono **BLINK**. A partir de ahí funciona en modo avión:
+   muestra la tarjeta y el último saldo sincronizado.
+4. Sin red no se puede recargar, vincular otra tarjeta ni cambiar PIN o datos
+   de pago; la sesión guardada dura 12 horas y el saldo es el de la última
+   sincronización. Abre el portal una vez con internet para recibir
+   actualizaciones.
+
+No borres los datos del sitio: se lleva el armazón offline y la copia de la
+tarjeta.
+
 ## Puesta en marcha
 
 ```bash

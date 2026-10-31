@@ -1105,6 +1105,10 @@ body {
   color: var(--blink-success);
 }
 
+.tarjeta__sincro--offline .icon {
+  color: var(--blink-warning);
+}
+
 /* --- 3b. Billetera multi-tarjeta --------------------------- */
 
 .billetera {

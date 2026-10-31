@@ -15,6 +15,63 @@ const LLAVE = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 export const nubeConfigurada = Boolean(URL_BASE && LLAVE);
 
+// Copia local de la última billetera vista. Permite abrir la tarjeta y ver
+// el saldo sin red; las operaciones que escriben siguen necesitando internet.
+const CLAVE_OFFLINE = "blink.tarjeta.offline.v1";
+
+interface CopiaOffline {
+  token: string;
+  cuenta: Cuenta;
+  tarjetas: Tarjeta[];
+  movimientos: Record<string, Movimiento[]>;
+}
+
+function leerCopia(): CopiaOffline | null {
+  try {
+    const crudo = localStorage.getItem(CLAVE_OFFLINE);
+    if (!crudo) return null;
+    const datos = JSON.parse(crudo) as Partial<CopiaOffline>;
+    if (!datos.token || !datos.cuenta || !Array.isArray(datos.tarjetas)) return null;
+    return {
+      token: datos.token,
+      cuenta: datos.cuenta,
+      tarjetas: datos.tarjetas,
+      movimientos: datos.movimientos ?? {},
+    };
+  } catch {
+    return null;
+  }
+}
+
+function guardarCopia(sesion: Sesion): void {
+  try {
+    const previa = leerCopia();
+    const movimientos =
+      previa && previa.token === sesion.token ? previa.movimientos : {};
+    localStorage.setItem(
+      CLAVE_OFFLINE,
+      JSON.stringify({
+        token: sesion.token,
+        cuenta: sesion.cuenta,
+        tarjetas: sesion.tarjetas,
+        movimientos,
+      })
+    );
+  } catch {
+    // Sin espacio o almacenamiento bloqueado: la app sigue en línea.
+  }
+}
+
+function copiaDe(token: string): Sesion | null {
+  const copia = leerCopia();
+  if (!copia || copia.token !== token) return null;
+  return { token, cuenta: copia.cuenta, tarjetas: copia.tarjetas };
+}
+
+function sinRed(): boolean {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
 const CODIGOS: CodigoError[] = [
   "credenciales",
   "bloqueada",
@@ -109,11 +166,19 @@ function aSesion(datos: BilleteraRpc): Sesion {
   return { token: datos.token, cuenta: datos.cuenta as Cuenta, tarjetas: datos.tarjetas };
 }
 
+function aSesionGuardada(datos: BilleteraRpc): Sesion {
+  const sesion = aSesion(datos);
+  guardarCopia(sesion);
+  return sesion;
+}
+
 export const repositorioNube: Repositorio = {
   modo: "nube",
 
   entrar(cedula, pin) {
-    return rpc<BilleteraRpc>("bt_entrar", { p_cedula: cedula, p_pin: pin }).then(aSesion);
+    return rpc<BilleteraRpc>("bt_entrar", { p_cedula: cedula, p_pin: pin }).then(
+      aSesionGuardada
+    );
   },
 
   registrar(cuenta) {
@@ -128,12 +193,30 @@ export const repositorioNube: Repositorio = {
       p_pago_banco: cuenta.datosPago.banco,
       p_pago_telefono: cuenta.datosPago.telefono,
       p_pago_cedula: cuenta.datosPago.cedula,
-    }).then(aSesion);
+    }).then(aSesionGuardada);
   },
 
   async sesion(token) {
-    const datos = await rpc<Omit<BilleteraRpc, "token">>("bt_sesion", { p_token: token });
-    return { token, cuenta: datos.cuenta as Cuenta, tarjetas: datos.tarjetas };
+    if (sinRed()) {
+      const copia = copiaDe(token);
+      if (copia) return copia;
+    }
+    try {
+      const datos = await rpc<Omit<BilleteraRpc, "token">>("bt_sesion", { p_token: token });
+      const sesion = { token, cuenta: datos.cuenta as Cuenta, tarjetas: datos.tarjetas };
+      guardarCopia(sesion);
+      return sesion;
+    } catch (error) {
+      if (error instanceof ErrorBlink && error.codigo === "red") {
+        const copia = copiaDe(token);
+        if (copia) return copia;
+      }
+      if (error instanceof ErrorBlink && error.codigo === "sesion") {
+        const copia = leerCopia();
+        if (copia?.token === token) localStorage.removeItem(CLAVE_OFFLINE);
+      }
+      throw error;
+    }
   },
 
   async vincular(token, serial) {
@@ -141,14 +224,36 @@ export const repositorioNube: Repositorio = {
       p_token: token,
       p_serial: serial,
     });
-    return { token, cuenta: datos.cuenta as Cuenta, tarjetas: datos.tarjetas };
+    const sesion = { token, cuenta: datos.cuenta as Cuenta, tarjetas: datos.tarjetas };
+    guardarCopia(sesion);
+    return sesion;
   },
 
-  movimientos(token, serial) {
-    return rpc<{ movimientos: Movimiento[] }>("bt_movimientos", {
-      p_token: token,
-      p_serial: serial,
-    }).then((r) => r.movimientos);
+  async movimientos(token, serial) {
+    try {
+      const lista = await rpc<{ movimientos: Movimiento[] }>("bt_movimientos", {
+        p_token: token,
+        p_serial: serial,
+      }).then((r) => r.movimientos);
+      const copia = leerCopia();
+      if (copia && copia.token === token) {
+        copia.movimientos[serial] = lista;
+        try {
+          localStorage.setItem(CLAVE_OFFLINE, JSON.stringify(copia));
+        } catch {
+          // La copia anterior sigue sirviendo para el saldo.
+        }
+      }
+      return lista;
+    } catch (error) {
+      if (error instanceof ErrorBlink && error.codigo === "red") {
+        const copia = leerCopia();
+        if (copia && copia.token === token && copia.movimientos[serial]) {
+          return copia.movimientos[serial];
+        }
+      }
+      throw error;
+    }
   },
 
   reportarRecarga(token, serial, recarga: RecargaNueva) {
@@ -177,7 +282,12 @@ export const repositorioNube: Repositorio = {
   },
 
   async salir(token) {
-    await rpc<null>("bt_salir", { p_token: token });
+    try {
+      await rpc<null>("bt_salir", { p_token: token });
+    } finally {
+      const copia = leerCopia();
+      if (copia?.token === token) localStorage.removeItem(CLAVE_OFFLINE);
+    }
   },
 
   async ajustes() {

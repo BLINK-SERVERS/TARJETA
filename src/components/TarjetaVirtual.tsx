@@ -8,7 +8,7 @@ import {
   serialCompacto,
 } from "../lib/formato";
 import { pasajesEquivalentes, perfilTarifa } from "../lib/dominio";
-import { useCopiar, useNumeroAnimado, vibrar } from "../lib/hooks";
+import { useCopiar, useEnLinea, useNumeroAnimado, vibrar } from "../lib/hooks";
 import { QR_PORTAL, svgCode128 } from "../lib/codigos";
 import type { Tarjeta } from "../lib/tipos";
 
@@ -37,6 +37,7 @@ export function TarjetaVirtual({ tarjeta, saldoOculto, alAlternarSaldo }: Props)
   const botonInstrumento = useRef<HTMLButtonElement>(null);
   const botonFrente = useRef<HTMLButtonElement>(null);
   const [copiado, copiar] = useCopiar();
+  const enLinea = useEnLinea();
 
   const saldo = useNumeroAnimado(tarjeta.saldo);
   const { entero, decimal } = partesBs(saldo);
@@ -252,9 +253,11 @@ export function TarjetaVirtual({ tarjeta, saldoOculto, alAlternarSaldo }: Props)
         </div>
       </div>
 
-      <p className="tarjeta__sincro">
-        <Icon name="escudo" />
-        Sincronizado con la red BLINK · Tarifa actual {formatearBs(tarjeta.tarifa)}
+      <p className={`tarjeta__sincro${enLinea ? "" : " tarjeta__sincro--offline"}`}>
+        <Icon name={enLinea ? "escudo" : "alerta"} />
+        {enLinea
+          ? `Sincronizado con la red BLINK · Tarifa actual ${formatearBs(tarjeta.tarifa)}`
+          : "Saldo guardado en este teléfono · sin conexión"}
       </p>
       <span className="visualmente-oculto" role="status">
         {girado ? "Mostrando el reverso de la tarjeta" : "Mostrando el frente de la tarjeta"}

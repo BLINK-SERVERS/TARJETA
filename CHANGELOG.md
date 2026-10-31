@@ -9,6 +9,11 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 
 ### Añadido
 
+- **Portal instalable y sin conexión**: service worker que guarda el armazón y
+  los recursos, y copia local de la última billetera con sus movimientos. Sin
+  red se abre la tarjeta y el saldo guardados, con el aviso «Saldo guardado en
+  este teléfono · sin conexión». Recargar, vincular, cambiar PIN o datos de
+  pago siguen necesitando internet.
 - **Migración `0014_serie_cinco_mas_tres.sql`**: adopta BLINK-DOC-12 v2.0.0,
   BLINK-DOC-13 v2.0.0 y BLINK-DOC-SEC-01 v1.0.0.
   - Serie `T-LLLLL-UUU-V` con letra verificadora Luhn mod 23; el código de
