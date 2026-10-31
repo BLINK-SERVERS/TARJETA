@@ -109,7 +109,7 @@ entorno de confianza (script de administración, validador con token o consola S
 | `bt_crear_tarjeta_maestra(cedula, uid=null, operador='', tarifa=15)` | Crea `00-0-0000000-0` (`fare_type = 0`) y la asigna a la cuenta de esa cédula (ver §3.2). |
 | `bt_estacion_enrolar(lote, items, operador='')` | Carga masiva UID↔serial desde el lector; devuelve `enroladas`, `rechazadas` y `errores[]`. |
 | `bt_estacion_catalogo(lote)` | Devuelve el lote con serial, UID y estado de cada tarjeta (hoja de la estación). |
-| `bt_estacion_asignar(serial, cedula, operador='')` | Activa el plástico a nombre de una cuenta ya registrada (taquilla). |
+| `bt_estacion_asignar(serial, cedula, operador='')` | Activa el plástico a nombre de una cuenta ya registrada (taquilla). Exige que la estación haya enrolado el chip (`chip_uid` no nulo). |
 | `bt_cobrar_viaje(serial, unidad, monto)` | Cobro puntual desde el validador. |
 | `bt_aprobar_recarga(recarga, admin)` | Acredita saldo y marca la recarga. |
 | `bt_rechazar_recarga(recarga, admin, motivo)` | Rechaza el reporte. |

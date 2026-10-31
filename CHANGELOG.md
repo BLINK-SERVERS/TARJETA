@@ -18,6 +18,13 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 - Carga de artes y paquete de producción ZIP VDP / PDF-VT.
 - Restringir la estación de enrolado al rol del propietario.
 
+### Corregido
+
+- **Migración `0012_asignar_exige_enrolada.sql`**: `bt_estacion_asignar` ya no
+  activa plásticos sin `chip_uid`. Antes la taquilla podía asignar una tarjeta
+  que el validador no podía leer; ahora responde `bt:sin-enrolar` y remite a la
+  estación de enrolado.
+
 ## [1.4.0] — 2026-10-30
 
 Serial maestro de once dígitos `00-0-0000000-0` y alineación de la guía de
