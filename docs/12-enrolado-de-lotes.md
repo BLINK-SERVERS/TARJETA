@@ -364,7 +364,7 @@ perdida y se emite otra. `LOST` es irreversible desde el portal.
 | Cuenta del propietario | Registrada en el portal con cédula y PIN (la maestra se asigna a ella) |
 | Cuenta ADMIN | Con TOTP confirmado para entrar al back-office |
 | Back-office | `https://blink-servers.github.io/BACKOFFICE/` o `npm run dev` en `~/BLINK_Backoffice` |
-| Validador | ESP32 con firmware **v4** (`VERSION_FW = 4`) y MFRC522 conectado |
+| Validador | ESP32 con firmware **v5** (`VERSION_FW = 5`, con pantalla ST7789) y MFRC522 conectado |
 | Navegador | Chrome o Edge de escritorio: Web Serial no existe en móvil |
 | Plásticos | MIFARE Classic 1K en blanco, uno por serial |
 | Conexión a la base | Solo para administración; el operador no la necesita |
@@ -425,7 +425,7 @@ de firmware anteriores, de modo que un plástico viejo sigue funcionando.
 ### 7.5 Firmware
 
 Un validador con firmware v3 solo entiende la serie heredada de 10 dígitos: hay
-que actualizarlo a v4 antes de poner en circulación la serie nueva. Un plástico
+que actualizarlo a v5 antes de poner en circulación la serie nueva. Un plástico
 grabado por v3 se sigue leyendo con v4.
 
 ## 8. Verificación y control
@@ -509,7 +509,7 @@ producción el 2026-10-30 con `PRUEBAS_0009_OK` y sin dejar rastro.
 | Carga de artes y composición del reverso | Pendiente | — |
 | ZIP de producción (VDP + PDF/VT con XObject) | Pendiente | — |
 | Registro UID ↔ serial en la base | Implementado (captura manual) | `bt_estacion_enrolar` |
-| Grabado del chip desde la estación web | Pendiente: hoy va por consola `ENROLAR` | firmware v4 |
+| Grabado del chip desde la estación web | Pendiente: hoy va por consola `ENROLAR` | firmware v5 |
 | Cola secuencial, *tap & next* y punto de control | Pendiente | — |
 | Estación reservada al propietario | Pendiente: `bt_admin_sesion_mfa` admite ADMIN y TAQUILLA | `0007_backoffice_mfa.sql` |
 | Distribución pre-enrolada sin taquilla | Norma operativa vigente; el módulo Taquilla sigue existiendo para casos puntuales | back-office |
