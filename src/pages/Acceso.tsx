@@ -600,7 +600,7 @@ export function Acceso({ repo = repositorio, alEntrar }: Props) {
           </p>
         )}
         <p className="acceso__legal">
-          Al entrar aceptas las condiciones de uso de BLINK PASAJES. Tus datos se tratan
+          Al entrar aceptas las condiciones de uso de BLINK TARJETA. Tus datos se tratan
           según la política de privacidad de la línea.
         </p>
       </footer>

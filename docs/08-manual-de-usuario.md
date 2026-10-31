@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-08 |
-| Versión | 1.3.0 |
+| Versión | 1.4.0 |
 | Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 26511 · 26512 |
@@ -40,7 +40,7 @@ Sitio: https://blink-servers.github.io/TARJETA/
 
 Si el serial aparece como inválido, revisa que hayas copiado los 11 dígitos (10 en
 las tarjetas antiguas) y los guiones. Si dice que la tarjeta pertenece a otra
-cuenta, acude a taquilla.
+cuenta, contacta a atención al cliente.
 
 ### 1.3 Consultar saldo y movimientos
 
@@ -84,20 +84,33 @@ cuenta, acude a taquilla.
 En **Perfil**, al final, toca **Cerrar sesión**. La sesión también expira sola a
 las 12 horas.
 
-## 2. BLINK PASAJES — el chofer
+## 2. El validador y el lector — el chofer
 
-Sitio: https://pasajes.blink.com.ve/ · Módulo **Lector**
+El chofer no usa una web propia: el **validador ESP32** cobra el pasaje y se
+sincroniza solo. El **lector ESP32** es la herramienta de apoyo que se conecta
+por USB a la estación del back-office cuando hay que enrolar tarjetas nuevas.
 
-1. Conecta el lector al puerto USB.
-2. Toca **Conectar lector** y selecciona el puerto serie (solo navegadores
-   Chromium en escritorio).
+### 2.1 Cobrar a bordo
+
+1. Enciende el validador; la pantalla muestra la tarifa y el estado de la red.
+2. Acerca la tarjeta al lector del equipo. La pantalla confirma el cobro y el
+   saldo restante; los viajes se guardan aunque no haya internet.
+3. Al recuperar conexión, el validador sube los toques pendientes y descarga las
+   recargas aprobadas. Al apoyar una tarjeta con recarga pendiente muestra
+   `RECARGA_APLICADA` y suma el monto al plástico.
+4. Nunca apagues el equipo con la cola de viajes pendientes si puedes evitarlo;
+   si se apaga, los conserva en memoria al arrancar.
+
+### 2.2 Usar el lector en la estación
+
+1. Conecta el lector al puerto USB de la computadora del back-office.
+2. En la pantalla **Estación**, toca **Conectar lector** y elige el puerto serie
+   (solo navegadores Chromium/Edge en escritorio).
 3. El estado debe mostrar `READY,BLINK,1`.
-4. Acerca la tarjeta: el lector envía `CARD,<UID>` y el panel muestra el resultado
-   del cobro (saldo, tarifa y estado).
+4. Acerca la tarjeta: el lector envía su UID y el panel lo rellena en la fila.
 5. Si no hay respuesta, pulsa **Probar** (envía `PING` y espera `PONG`).
 
-Módulos **Fiscal** y **Admin** del panel muestran los totales del día y permiten
-aprobar recargas y liquidar la unidad, según el rol del operador.
+El procedimiento completo de enrolado está en §3 y en BLINK-DOC-12.
 
 ## 3. BLINK BACK-OFFICE — la operación
 
@@ -108,7 +121,7 @@ Web Serial, disponible en Chromium/Edge).
    Administrador o Taquilla. Un pasajero no puede entrar.
 2. **Inscribir el teléfono (solo la primera vez):** escanear el QR con Google
    Authenticator, Authy o 1Password y escribir el código de 6 dígitos. Sin este
-   paso el panel no deja crear lotes ni asignar tarjetas.
+   paso el panel no deja crear lotes ni enrolar tarjetas.
 3. **Resumen:** totales de tarjetas fabricadas, activas y asignadas.
 4. **Lotes:** elegir cantidad, patrocinante y origen; el sistema genera los
    seriales en estado «Fabricada / Inactiva / No asignada» y permite exportar la
@@ -116,8 +129,8 @@ Web Serial, disponible en Chromium/Edge).
 5. **Estación:** conectar el lector USB, pasar cada tarjeta y capturar su UID;
    revisar la lista y cargar en bloque. Los pares rechazados se muestran con el
    motivo sin detener la carga.
-6. **Taquilla:** escribir el serial y la cédula del pasajero ya registrado para
-   activar la tarjeta a su nombre.
+6. **Entrega:** el pasajero vincula el serial desde el portal (§1.2); la tarjeta
+   pasa a `ACTIVE` a su nombre. No hay asignación manual en taquilla.
 7. **Inventario:** filtrar por lote, serial o estado y exportar.
 8. **Salir** al terminar: el token vive solo en la pestaña.
 

@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-06 |
-| Versión | 1.4.0 |
+| Versión | 1.5.0 |
 | Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 12207 (operación y mantenimiento) |
@@ -17,31 +17,47 @@
 | GitHub CLI | 2.x | `gh auth login` con acceso a `BLINK-SERVERS`. |
 | psql | 16+ | Cliente para migraciones y consultas. |
 | arduino-cli | 1.x | Flasheo de firmware ESP32. |
-| Docker | opcional | PostgreSQL 16 local para probar migraciones. |
+| Docker | 29.x + `docker-compose` v1 | PostgreSQL 16 y la simulación completa (`simulacion/`). |
 
 ## 2. Desarrollo local
 
 ```bash
-# BLINK TARJETA
-cd BLINK_Tarjeta
+# BLINK TARJETA (portal)
+cd ~/BLINK/tarjeta
 npm ci
-npm run dev            # http://localhost:5173
+npm run dev            # http://localhost:5173 (5175 con simulacion/portal.sh)
 npm run typecheck
 npm test
 npm run build          # dist/
 
-# BLINK PASAJES
-cd BLINK_Pasajes_Project/app
-npm ci && npm run dev
-
 # BLINK BACK-OFFICE
-cd BLINK_Backoffice
-npm ci && npm run dev   # http://localhost:5176
+cd ~/BLINK/backoffice
+npm ci && npm run dev   # http://localhost:5176 (5173 con simulacion/backoffice.sh)
 
 # BLINK POS
-cd BLINK_POS_Project/app
+cd ~/BLINK/pos/pos/app
 npm ci && npm run dev
 ```
+
+Todo el material BLINK vive bajo `~/BLINK`; los enlaces simbólicos
+`~/BLINK_Tarjeta`, `~/BLINK_Backoffice`, `~/BLINK_POS_Project`,
+`~/BLINK_Posajes_Project`, `~/Arduino/BLINK_*` y `~/Documentación` mantienen
+compatibles las rutas antiguas (ver `~/BLINK/README.md`).
+
+### 2.1 Simulación local del flujo completo
+
+```bash
+cd ~/BLINK/simulacion
+./arrancar.sh        # PostgreSQL 16, migraciones, semilla, PostgREST y gateway
+./flujo.sh           # prueba el ciclo completo y muestra el resultado
+./portal.sh          # portal en http://127.0.0.1:5175
+./backoffice.sh      # panel en http://127.0.0.1:5173 (otra terminal)
+./detener.sh         # apaga y borra los volúmenes
+```
+
+`arrancar.sh` es idempotente: derriba la pila anterior, aplica las migraciones
+(salta `0002_demo.sql`), siembra la ruta de prueba y genera las claves JWT
+locales en `simulacion/.entorno`. Nada de esto toca Supabase de producción.
 
 Para que TARJETA use la nube en local, crear `.env.local` (nunca se commitea):
 
@@ -69,18 +85,21 @@ no se publica nada.
 - Verificación: `gh run list --repo BLINK-SERVERS/TARJETA --limit 3`
 - URL: https://blink-servers.github.io/TARJETA/
 
-### 3.2 BLINK PASAJES (automático)
+### 3.2 PASAJES-REDIRECT (automático)
 
-Igual que TARJETA, pero compila en la raíz (`npm run build`) porque sirve el
-dominio completo `pasajes.blink.com.ve`.
+`BLINK-SERVERS/PASAJES-REDIRECT` es un sitio estático con `CNAME`
+`pasajes.blink.com.ve`. Cada push a `main` publica en Pages sin compilar:
 
-- Verificación: `gh run list --repo BLINK-SERVERS/PASAJES --limit 3`
-- El script `npm run dominio` fija el dominio y fuerza HTTPS vía API de GitHub
-  (requiere `CLOUDFLARE_API_TOKEN` con acceso a la zona).
+- `index.html` redirige con `<meta http-equiv="refresh">` y `location.replace()`
+  a `https://blink-servers.github.io/TARJETA/`, conservando el ancla.
+- `404.html` repite la redirección para rutas antiguas y `.nojekyll` evita el
+  procesado de Jekyll.
+- Verificación: `gh run list --repo BLINK-SERVERS/PASAJES-REDIRECT --limit 3`
+- El repositorio `PASAJES` está archivado; no se publica ni se reintroduce.
 
 ### 3.3 BLINK BACK-OFFICE (automático)
 
-Repositorio propio (`BLINK-Servers/BACKOFFICE`), mismo código de base y mismo
+Repositorio propio (`BLINK-SERVERS/BACKOFFICE`), mismo código de base y mismo
 proyecto Supabase. Compila con la base `/BACKOFFICE/` porque no tiene dominio
 propio todavía.
 
@@ -99,7 +118,7 @@ git push origin main
 ### 3.4 BLINK POS (manual)
 
 ```bash
-cd BLINK_POS_Project/app
+cd ~/BLINK/pos/pos/app
 npm run deploy         # build:pages + gh-pages -d dist -t
 ```
 
@@ -110,7 +129,8 @@ Publica en la rama `gh-pages`; Cloudflare sirve `www.blink.com.ve`. El script
 
 | Producto | Procedimiento |
 | --- | --- |
-| TARJETA / PASAJES / BACKOFFICE | Revertir el commit conflictivo (`git revert`) y empujar; el workflow republica. Alternativa: `gh run rerun <id>` del último run bueno (no cambia el código). |
+| TARJETA / BACKOFFICE | Revertir el commit conflictivo (`git revert`) y empujar; el workflow republica. Alternativa: `gh run rerun <id>` del último run bueno (no cambia el código). |
+| PASAJES-REDIRECT | Revertir y empujar. Si el dominio queda sin CNAME, el certificado de GitHub Pages tarda en reemitirse; verificar con `gh api repos/BLINK-SERVERS/PASAJES-REDIRECT/pages`. |
 | POS | `npm run deploy` desde un checkout del commit anterior, o `git revert` + nuevo deploy. |
 
 ## 4. Dominios y DNS (Cloudflare)
@@ -118,8 +138,13 @@ Publica en la rama `gh-pages`; Cloudflare sirve `www.blink.com.ve`. El script
 | Registro | Destino | Proxy |
 | --- | --- | --- |
 | `www` | `blink-servers.github.io` (CNAME) | Proxied (Cloudflare) |
-| `pasajes` | `blink-servers.github.io` (CNAME) | **DNS only** |
+| `pasajes` | `blink-servers.github.io` (CNAME de PASAJES-REDIRECT) | **DNS only** |
 | Registros MX/TXT | Proveedor de correo | DNS only |
+
+> `pasajes.blink.com.ve` ya no sirve una aplicación: lo recibe el repositorio
+> `PASAJES-REDIRECT`, que lleva a BLINK TARJETA. El CNAME del dominio debe seguir
+> apuntando a `blink-servers.github.io`; el repositorio declara el dominio en su
+> propio `CNAME`.
 
 > Los CNAME de GitHub Pages **deben ser DNS-only**. Con proxy activo, GitHub no
 > puede emitir el certificado y el dominio queda en error. POS es la excepción
@@ -144,12 +169,22 @@ aplicar migraciones: el editor SQL es la vía alternativa al pooler.
 
 ### 5.2 Aplicar una migración (procedimiento obligatorio)
 
-1. Probar en PostgreSQL local:
+1. Probar en la simulación local (recomendado; aplica todas las migraciones y
+   ejecuta el flujo completo):
+
+   ```bash
+   cd ~/BLINK/simulacion && ./arrancar.sh && ./flujo.sh
+   ```
+
+   La pila levanta PostgreSQL 16 en `127.0.0.1:54329` y PostgREST detrás del
+   gateway `127.0.0.1:54321`. Antes de `0014` el script vacía las tablas de
+   tarjetas para que el lote heredado de `0006` no rompa la nueva serie; la
+   `0014` usa `-v ON_ERROR_STOP=1` en toda la cadena. Alternativa manual:
 
    ```bash
    docker run --rm -d --name blink-eco -p 55433:5432 -e POSTGRES_PASSWORD=local postgres:16-alpine
    psql "postgresql://postgres:local@127.0.0.1:55433/postgres" -f supabase/migrations/0001_tarjeta.sql
-   # … 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010
+   # … 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016
    ```
 
 2. Ejecutar la migración nueva dentro de una transacción con
@@ -196,13 +231,13 @@ select count(*) from public.recharges where status = 'pendiente';
 select count(*) from public.account_sessions where expira > now();
 ```
 
-### 5.4 Provisión de lotes y estación de asignación
+### 5.4 Provisión de lotes y estación de enrolado
 
 **Vía preferida: el back-office.** Abrir
 https://blink-servers.github.io/BACKOFFICE/ e iniciar sesión con cédula y PIN de
 una cuenta `ADMIN`/`TAQUILLA`. La primera vez el panel pide inscribir el segundo
 factor: escanear el QR con Google Authenticator, Authy o 1Password y escribir el
-código de 6 dígitos. Sin ese paso el panel no deja crear lotes ni asignar.
+código de 6 dígitos. Sin ese paso el panel no deja crear lotes ni enrolar.
 
 | Pantalla | Uso |
 | --- | --- |
@@ -210,7 +245,7 @@ código de 6 dígitos. Sin ese paso el panel no deja crear lotes ni asignar.
 | Lotes | Crear un lote `FABRICANTE`/`ESTACION` y exportar su hoja en CSV. |
 | Inventario | Filtrar por lote, serial o estado; exportar. |
 | Estación | Conectar el lector (Web Serial), capturar UID y cargar pares en bloque. |
-| Taquilla | Asignar un serial a una cédula ya registrada. |
+| Entrega | El pasajero reclama el serial desde el portal (`bt_vincular`). |
 
 **Vía SQL (consola o `service_role`), para automatizaciones:**
 
@@ -229,7 +264,7 @@ select public.bt_estacion_enrolar(
   'operador-01'
 );
 
--- Fase 2 alternativa · asignación en taquilla a una cuenta existente
+-- Fase 2 alternativa por SQL · asignación directa a una cuenta existente
 select public.bt_estacion_asignar('23-1-000001-9', 'V-34201580', 'taquilla-01');
 ```
 
@@ -346,18 +381,60 @@ En el portal, el pasajero ve el movimiento pasar de «Pago Móvil en revisión»
 cuando `synced_to_chip = true`; mientras siga en `false`, el dinero está en la
 nube pero todavía no en el plástico.
 
-## 6. Firmware
+### 5.7 Simulación del flujo completo
 
+La carpeta `~/BLINK/simulacion` (enlace `tarjeta/simulacion`) reproduce el
+contrato RPC completo sin tocar producción. Piezas:
+
+| Servicio | Imagen | Puerto local | Papel |
+| --- | --- | --- | --- |
+| `db` | `postgres:16-alpine` | `127.0.0.1:54329` | PostgreSQL efímero (`tmpfs`); pierde los datos al bajar. |
+| `rest` | `postgrest/postgrest:v12.2.3` | interno 3000 | Expone el esquema `public` como `anon`. |
+| `api` | `nginx:alpine` | `127.0.0.1:54321` | Gateway que reescribe `/rest/v1/` (la ruta que espera el portal). |
+
+Procedimiento:
+
+```bash
+cd ~/BLINK/simulacion
+./arrancar.sh          # pila + migraciones + semilla + claves JWT locales
+./flujo.sh             # ciclo completo con aserciones
+./portal.sh            # http://127.0.0.1:5175  (terminal 1)
+./backoffice.sh        # http://127.0.0.1:5173  (terminal 2)
+./detener.sh           # baja la pila y borra volúmenes
+```
+
+`./flujo.sh --continuar` evita reiniciar la base si acabas de ejecutar
+`./arrancar.sh`. El flujo **no es idempotente**: si ya corrió sobre esa pila,
+vuelve a ejecutar `./flujo.sh` sin argumentos para recrear el lote y las
+cuentas. La semilla crea la ruta
+«Ruta Simulación» (tarifa 500 / estudiante 250), el vehículo `SIM001` y la cuenta
+administradora `V-34201580` / PIN `258036`. El script `flujo.mjs` recorre:
+
+1. `bt_generar_lote(2, …)` y `bt_estacion_enrolar` con dos UID de prueba.
+2. `bt_registrar`, `bt_vincular` y consulta de billetera como `anon`.
+3. `bt_recargar` por Bs 1.000 y aparición en `bt_recargas_pendientes`.
+4. `bt_aprobar_recarga` → saldo 1.000; `bt_validador_emitir_token` y sincronización.
+5. Aplicación de la recarga al chip (`RECARGA_APLICADA`) y cobro de Bs 500.
+6. Verificación de saldo 500, `synced_to_chip = true` y movimientos.
+7. Rechazo de una segunda recarga y comprobación de referencia duplicada
+   (`bt:duplicada`).
+
+Las claves JWT se generan con un secreto fijo de desarrollo
+(`blink-simulacion-local-no-usar-en-produccion`) y se escriben en
+`simulacion/.entorno`, que está en `.gitignore`. **Nunca** se usan contra
+Supabase.
+
+## 6. Firmware
 | Sketch | Ruta | Función |
 | --- | --- | --- |
-| `BLINK_Lector` | `~/Arduino/BLINK_Lector/BLINK_Lector.ino` | Puente serie: `READY,BLINK,1`, `CARD,<UID>`, `PONG` a 115200 baudios. |
-| `BLINK_Validador` | `~/Arduino/BLINK_Validador/BLINK_Validador.ino` | Cobro offline, Wi-Fi, NTP, sincronización HTTPS con token. |
+| `BLINK_Lector` | `~/BLINK/firmware/lector/BLINK_Lector.ino` | Puente serie: `READY,BLINK,1`, `CARD,<UID>`, `PONG` a 115200 baudios. |
+| `BLINK_Validador` | `~/BLINK/firmware/validador/BLINK_Validador.ino` | Cobro offline, Wi-Fi, NTP, sincronización HTTPS con token. |
 
 Compilar y flashear:
 
 ```bash
-arduino-cli compile --fqbn esp32:esp32:esp32 ~/Arduino/BLINK_Lector
-arduino-cli upload  --fqbn esp32:esp32:esp32 -p /dev/ttyUSB0 ~/Arduino/BLINK_Lector
+arduino-cli compile --fqbn esp32:esp32:esp32 ~/BLINK/firmware/lector
+arduino-cli upload  --fqbn esp32:esp32:esp32 -p /dev/ttyUSB0 ~/BLINK/firmware/lector
 ```
 
 Enrolado manual (consola serie del validador):
@@ -369,8 +446,8 @@ ENROLAR,23-1-000001-9,50000,1,3981BF06
 `serial, saldo inicial, fare_type, UID`. El UID debe coincidir con
 `cards.chip_uid` (se registra con `bt_enrolar_tarjeta`).
 
-Los sketches **no están en los repositorios**; viven solo en el equipo de
-desarrollo. Trasladarlos a un repositorio (o a `firmware/`) es una brecha abierta
+Los sketches **no están en los repositorios**; viven en `~/BLINK/firmware`
+(enlaces desde `~/Arduino`). Trasladarlos a un repositorio es una brecha abierta
 (BLINK-DOC-09 R-04).
 
 ## 7. Monitoreo y alertas
@@ -399,6 +476,8 @@ No hay alertas automáticas configuradas; es una mejora pendiente (BLINK-DOC-09 
 ## 9. Lista de verificación de una publicación
 
 - [ ] `npm run typecheck` y `npm test` en verde.
+- [ ] `cd ~/BLINK/simulacion && ./flujo.sh` en verde (si cambió esquema, RPC o
+      flujo del portal/panel).
 - [ ] Migraciones aplicadas y verificadas (si las hay).
 - [ ] CHANGELOG actualizado.
 - [ ] Documentos afectados actualizados (BLINK-DOC-03/04/05).

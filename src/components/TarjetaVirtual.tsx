@@ -114,7 +114,7 @@ export function TarjetaVirtual({ tarjeta, saldoOculto, alAlternarSaldo }: Props)
                     <circle cx="18.4" cy="3.7" r="3.4" />
                     <path d="M10.4 9.2h10.2a5.1 5.1 0 0 1-10.2 0Z" />
                   </svg>
-                  <em>PASAJES</em>
+                  <em>TARJETA</em>
                 </span>
 
                 <span

@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-07 |
-| Versión | 1.3.1 |
-| Fecha | 2026-10-30 |
+| Versión | 1.4.0 |
+| Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 26513 · ISO/IEC 25010 |
 
@@ -15,21 +15,23 @@
 | Unidad | Vitest | Reglas de dominio, formato, PIN, carga del lote, repositorio local. |
 | Integración de datos | PostgreSQL 16 en contenedor + `psql` | Migraciones y RPC de punta a punta con `SET LOCAL ROLE anon`. |
 | Integración real | Supabase de producción dentro de una transacción con `ROLLBACK` | Contrato RPC real, permisos y RLS. |
+| Simulación | `simulacion/flujo.mjs` (pg + fetch) | Ciclo completo contra un backend local: lote, enrolado, registro, reclamo, recarga, aprobación, sincronización y cobro. |
 | Sistema (UI) | Navegador Chromium contra el sitio publicado | Registro, vínculo, recarga, perfil. |
 | Regresión visual | Medición de `aspect-ratio` y radio en 371/320/280 px | Tarjeta virtual ID-1. |
 
 No hay todavía pruebas E2E automatizadas en CI (Playwright existe solo en POS);
-es una brecha declarada (BLINK-DOC-09 R-05).
+es una brecha declarada (BLINK-DOC-09 D-04). La simulación cubre el contrato de
+datos, no la interfaz.
 
 ## 2. Suites automatizadas
 
-| Repo | Comando | Resultado 2026-10-30 |
+| Repo | Comando | Resultado 2026-10-31 |
 | --- | --- | --- |
-| TARJETA | `npm test` | **63 pruebas, 5 archivos, todas en verde** |
+| TARJETA | `npm test` | **74 pruebas, 6 archivos, todas en verde** |
 | TARJETA | `npm run typecheck` | Sin errores |
 | TARJETA | `npm run build` | Sin errores |
-| PASAJES | `npm test` | **56 pruebas, 4 archivos, todas en verde** |
 | BACKOFFICE | `npm run typecheck` / `npm run build` | Sin errores; bundle principal 254 kB con QR cargado bajo demanda |
+| Simulación | `cd simulacion && ./flujo.sh` | Ciclo completo en verde contra PostgreSQL 16 local |
 | POS | `npm test` / `npm run qa` | Suite propia; requiere Chromium instalado |
 
 Cobertura funcional de TARJETA por archivo:
@@ -41,6 +43,7 @@ Cobertura funcional de TARJETA por archivo:
 | `src/lib/local.test.ts` | Registro, entrada, vínculo, recarga y extracto en modo local. |
 | `src/lib/lote.test.ts` | Generación de lotes con Luhn y Code 128. |
 | `src/lib/codigos.test.ts` | Code 128 de 10 y 11 dígitos: símbolos, cambio de juego C→B y suma de control. |
+| `src/lib/offline.test.ts` | Copia local: caducidad, desfase de reloj, formato anterior, JSON corrupto, aislamiento por token y almacenamiento lleno. |
 
 ## 3. Pruebas de base de datos (2026-10-29)
 
@@ -231,7 +234,7 @@ Supabase. Cuenta de prueba creada y eliminada al terminar; datos restaurados.
 | Recarga de Bs 100 con banco y referencia | OK; comprobante en revisión |
 | Movimiento visible en el inicio | OK |
 | Perfil: datos, fuente de pago, tarjeta, apariencia, seguridad | OK |
-| Enlaces a PASAJES y blink.com.ve | OK (PASAJES apunta a `pasajes.blink.com.ve`) |
+| Enlaces a blink.com.ve; sin enlaces al panel retirado | OK (el perfil ya no ofrece «Panel de la línea») |
 | Limpieza de datos de prueba | OK; `accounts` volvió a 0 y la tarjeta a `account_id = null` |
 
 ### 4.2 Back-office
@@ -258,6 +261,30 @@ Tras la prueba se reinició el segundo factor de la cuenta administradora (ver
 BLINK-DOC-06 §5.5) para que cada operador inscriba su propio dispositivo; la
 cuenta queda en «MFA pendiente».
 
+### 4.3 Simulación del flujo completo (2026-10-31)
+
+Entorno: `~/BLINK/simulacion` con PostgreSQL 16 (`127.0.0.1:54329`), PostgREST
+v12 detrás del gateway nginx (`127.0.0.1:54321`) y las migraciones `0001`–`0016`
+salvo `0002_demo.sql`. Sin datos ni credenciales de producción.
+
+| # | Paso | Resultado |
+| --- | --- | --- |
+| 1 | `bt_generar_lote(2, …)` + `bt_estacion_enrolar` con dos UID | OK; 2 tarjetas `FABRICADA` con `chip_uid` |
+| 2 | `bt_registrar` de la pasajera de prueba y `bt_vincular` | OK; billetera con 1 tarjeta |
+| 3 | `bt_recargar` por Bs 1.000 (Banesco, ref. 4821) | OK; movimiento y recarga `pendiente`, saldo intacto |
+| 4 | `bt_recargas_pendientes` y `bt_aprobar_recarga` | OK; saldo virtual 1.000 |
+| 5 | `bt_validador_emitir_token` + `bt_validador_sincronizar_token` | OK; recarga en `pendientes` y token válido |
+| 6 | Aplicación al chip (`RECARGA_APLICADA`) y cobro de Bs 500 | OK; saldo 500, `synced_to_chip = true` |
+| 7 | `bt_recargar` de Bs 300 en la segunda tarjeta + `bt_rechazar_recarga` | OK; saldo sin cambios |
+| 8 | Referencia duplicada en la misma tarjeta y banco | `bt:duplicada` |
+| 9 | `bt_resumen_operativo` | OK; contadores coherentes con las filas creadas |
+
+La interfaz se comprobó en Chromium contra el mismo backend: el portal en
+`http://127.0.0.1:5175` mostró la billetera, el saldo y la recarga aprobada; el
+panel en `http://127.0.0.1:5173` permitió entrar con TOTP e inscribir el
+dispositivo. Los datos de la simulación viven en `tmpfs` y desaparecen al
+ejecutar `./detener.sh`.
+
 ## 5. Prueba de la tarjeta virtual (ID-1 / CR80)
 
 | Viewport | Ancho de tarjeta | Alto | Relación medida | Radio |
@@ -280,6 +307,7 @@ solapamiento de contenido. **Cumplido** tras sustituir `min-height` por
 | Proporción y radio de la tarjeta | Cumplido |
 | Back-office separado con rol administrativo y TOTP | Cumplido |
 | Pruebas unitarias en verde | Cumplido |
+| Simulación local del flujo completo | Cumplido (2026-10-31) |
 | Enrolado y cobro con tarjeta física | **Pendiente** (requiere lector y plástico) |
 
 ## 7. Calidad según ISO/IEC 25010
@@ -298,7 +326,8 @@ solapamiento de contenido. **Cumplido** tras sustituir `min-height` por
 ## 8. Deuda de pruebas
 
 1. Automatizar el flujo de §4 con Playwright contra un proyecto de pruebas.
-2. Añadir pruebas de RPC al CI con una base efímera (Docker + PostgreSQL 16).
+2. Llevar `simulacion/flujo.sh` al CI con la pila Docker efímera (hoy se ejecuta
+   a mano en el equipo de desarrollo).
 3. Probar el validador con tarjeta física y modo offline (tarea #28).
 4. Añadir prueba de regresión visual de la tarjeta en varios viewports.
 5. Probar el back-office con Playwright (acceso, TOTP y carga en bloque) sobre un

@@ -3,19 +3,20 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-00 |
-| Versión | 1.5.2 |
+| Versión | 1.6.0 |
 | Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Autor | Equipo BLINK (desarrollo asistido) |
-| Revisión | 5 |
+| Revisión | 6 |
 | Normas de referencia | ISO 9001:2015 §7.5 · ISO/IEC/IEEE 12207:2017 · ISO/IEC/IEEE 26511/26512/26513/26514/26515 · ISO/IEC 25010 · ISO/IEC 27001:2022 |
 
 ## 1. Propósito
 
 Esta carpeta reúne la documentación técnica y operativa del ecosistema **BLINK**,
-formado por tres aplicaciones web y un backend compartido. Su objetivo es que
-cualquier persona pueda **retomar el desarrollo, operar el sistema y auditar sus
-decisiones** sin depender del contexto de quien lo construyó.
+hoy formado por **dos aplicaciones web** —el portal del pasajero y la consola
+administrativa— y un backend compartido. Su objetivo es que cualquier persona
+pueda **retomar el desarrollo, operar el sistema, simular el flujo completo y
+auditar sus decisiones** sin depender del contexto de quien lo construyó.
 
 La suite sigue, en lo aplicable a un proyecto pequeño, las prácticas de control
 documental de ISO 9001 (§7.5), el ciclo de vida de ISO/IEC/IEEE 12207 y las
@@ -25,17 +26,31 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 
 | Producto | Repositorio | URL pública | Versión |
 | --- | --- | --- | --- |
-| BLINK POS (sitio de la línea y punto de venta) | `BLINK-SERVERS/POS` | https://www.blink.com.ve | 1.19.0 |
-| BLINK PASAJES (lector, fiscal, admin) | `BLINK-SERVERS/PASAJES` | https://pasajes.blink.com.ve | 0.1.0 |
-| BLINK TARJETA (portal del pasajero) | `BLINK-SERVERS/TARJETA` | https://blink-servers.github.io/TARJETA/ | 1.4.0 |
-| BLINK BACK-OFFICE (consola administrativa) | `BLINK-SERVERS/BACKOFFICE` | https://blink-servers.github.io/BACKOFFICE/ | 1.0.0 |
+| BLINK TARJETA (portal del pasajero) | `BLINK-SERVERS/TARJETA` | https://blink-servers.github.io/TARJETA/ | 1.5.0 |
+| BLINK BACK-OFFICE (gestión de tarjetas) | `BLINK-SERVERS/BACKOFFICE` | https://blink-servers.github.io/BACKOFFICE/ | 1.1.0 |
 | Backend (Supabase) | proyecto `gakkfzqcrapxeierfdhk` | — | PostgreSQL 17.11 |
+| Simulación local | `TARJETA/simulacion` | `http://127.0.0.1:54321` (API) · `:5175` (portal) · `:5173` (panel) | — |
 
-> **Base de datos compartida.** Las cuatro aplicaciones apuntan al **mismo proyecto
-> de Supabase** (TARJETA y BACKOFFICE usan además el mismo esquema `bt_*`).
-> BLINK POS usa Supabase Auth y las tablas `businesses` y `catalogo_global`;
-> BLINK PASAJES opera hoy en modo local con Web Serial y es la siguiente en migrar
-> al esquema `bt_*`. Cualquier cambio de esquema debe evaluarse contra todas.
+> **Base de datos compartida.** TARJETA y BACK-OFFICE apuntan al **mismo proyecto
+> de Supabase** y al mismo esquema `bt_*`; las migraciones viven en
+> `TARJETA/supabase/migrations` y son la fuente de verdad. Cualquier cambio de
+> esquema debe evaluarse contra ambas aplicaciones. BLINK POS (comercio) sigue
+> operando en `www.blink.com.ve` con las tablas `businesses` y `catalogo_global`
+> del mismo proyecto, pero queda **fuera del alcance funcional** de esta suite.
+
+> **BLINK PASAJES está retirado.** El repositorio `BLINK-SERVERS/PASAJES` quedó
+> archivado y su publicación eliminada. El dominio `pasajes.blink.com.ve` lo
+> sirve hoy `BLINK-SERVERS/PASAJES-REDIRECT`, que redirige a BLINK TARJETA. La
+> copia local del código histórico se conserva en `~/BLINK/archivo/pasajes`.
+
+> **Próximo hito: panel de fiscales.** Todavía no tiene repositorio. La materia
+> prima es la telemetría `trips_telemetry` y la liquidación `bt_liquidar`; el
+> diseño se decidirá después de estabilizar el flujo simulado de TARJETA.
+
+> **Simulación del flujo completo.** `TARJETA/simulacion` levanta PostgreSQL 16,
+> PostgREST y el portal/panel contra ese backend local, sin tocar producción.
+> Es el entorno de referencia para probar el ciclo completo (ver BLINK-DOC-06
+> §5.7 y BLINK-DOC-07 §4.3).
 
 ## 3. Documentos
 
@@ -82,6 +97,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | 1.5.0 | 2026-10-30 | BLINK-DOC-12 pasa a 2.0.0 con el estándar de producción del propietario; migración 0010 y serial maestro `00-0-0000000-0`. | Equipo BLINK |
 | 1.5.1 | 2026-10-31 | Revisión de seguridad del portal sin conexión: caducidad de la copia local, service worker acotado a su caché y ámbito; DOC-09 pasa a 1.5.0 con R-10, R-11 y D-09. | Equipo BLINK |
 | 1.5.2 | 2026-10-31 | Ciclo completo de la recarga: bandeja, aprobación/rechazo, entrega al chip y verificación (DOC-06 §5.6 y DOC-08 §5.1). | Equipo BLINK |
+| 1.6.0 | 2026-10-31 | Retiro de BLINK PASAJES y redirección de `pasajes.blink.com.ve` a TARJETA; alcance reducido a TARJETA + BACK-OFFICE con el panel fiscal como próximo hito; consolidación local en `~/BLINK`; simulación completa del flujo (DOC-06 §5.7 y DOC-07 §4.3) y marca TARJETA sin referencias al panel retirado. | Equipo BLINK |
 
 Reglas de mantenimiento:
 
@@ -95,11 +111,13 @@ Reglas de mantenimiento:
 
 | Término | Definición |
 | --- | --- |
-| **ID BLINK** | Serial visible con dígito verificador Luhn: 10 dígitos (`23-1-000001-9`) o 11 en la serie nueva (`23-1-0000001-9`). |
+| **ID BLINK** | Serial visible con dígito verificador Luhn: 10 dígitos (`23-1-000001-9`) o 11 en la serie nueva (`23-1-0000001-9`). La serie `T-LLLLL-UUU-V` de BLINK-DOC-12 usa Luhn mod 23. |
 | **Cuenta** | Identidad del pasajero (cédula, PIN, Pago Móvil) que puede tener N tarjetas. |
 | **Billetera** | Conjunto de tarjetas activas de una cuenta. |
 | **Validador** | Dispositivo ESP32 + RC522 que cobra el pasaje y sincroniza con la nube. |
-| **Lector** | Modo de BLINK PASAJES que lee el UID del chip por Web Serial. |
+| **Lector** | Puente ESP32 que lee el UID del chip por Web Serial; lo usan la estación del back-office y el firmware del validador. Ya no existe como módulo web propio. |
+| **Redirección** | Sitio estático `PASAJES-REDIRECT` que recibe `pasajes.blink.com.ve` y lleva a `blink-servers.github.io/TARJETA/` conservando el ancla de la URL. |
+| **Simulación** | Entorno local con PostgreSQL 16 + PostgREST + nginx que reproduce el contrato RPC para probar el flujo completo sin tocar producción. |
 | **RPC** | Función PostgreSQL expuesta por PostgREST (`POST /rest/v1/rpc/<nombre>`). |
 | **RLS** | Row Level Security: política de filas de PostgreSQL. |
 | **Pago Móvil** | Transferencia bancaria venezolana que el pasajero reporta y un admin aprueba. |

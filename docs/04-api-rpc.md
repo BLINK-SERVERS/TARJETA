@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-04 |
-| Versión | 1.3.1 |
-| Fecha | 2026-10-30 |
+| Versión | 1.3.2 |
+| Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26514 |
 | Transporte | PostgREST (`POST /rest/v1/rpc/<función>`) |
@@ -178,8 +178,7 @@ La operación es idempotente por par (mismo serial y UID no duplica).
 
 `bt_activar`, `bt_tarjeta(token)` y `card_sessions` pertenecen al modelo anterior
 (PIN por plástico). Se conservan para no romper instalaciones antiguas, pero el
-portal v2 no las usa. No ampliar su alcance; retirarlas en una migración futura
-cuando BLINK PASAJES migre a la cuenta.
+portal v2 no las usa. No ampliar su alcance; retirarlas en una migración futura.
 
 ## 4. Back-office (ejecutables por `anon`, autentican por token)
 

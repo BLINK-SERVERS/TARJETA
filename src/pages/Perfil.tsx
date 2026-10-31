@@ -17,7 +17,6 @@ import type { ModoTema } from "../lib/hooks";
 import { BANCOS } from "../lib/tipos";
 import type { Ajustes, Cuenta, DatosPago, Tarjeta } from "../lib/tipos";
 
-const PASAJES = "https://pasajes.blink.com.ve/";
 const SITIO = "https://www.blink.com.ve";
 
 const APARIENCIAS: { id: ModoTema; etiqueta: string; icono: "auto" | "sol" | "luna" }[] = [
@@ -313,17 +312,7 @@ export function Perfil({
       </section>
 
       <section className="panel">
-        <h2 className="panel__titulo">BLINK PASAJES</h2>
-        <a className="fila-accion" href={PASAJES} target="_blank" rel="noreferrer">
-          <span className="fila-accion__icono">
-            <Icon name="autobus" />
-          </span>
-          <span className="fila-accion__texto">
-            <strong>Panel de la línea</strong>
-            <span>Lector, fiscal y administración</span>
-          </span>
-          <Icon name="compartir" />
-        </a>
+        <h2 className="panel__titulo">BLINK</h2>
         <a className="fila-accion" href={SITIO} target="_blank" rel="noreferrer">
           <span className="fila-accion__icono">
             <Icon name="escudo" />

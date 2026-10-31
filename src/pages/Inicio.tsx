@@ -293,7 +293,7 @@ export function Inicio({
       )}
 
       <p className="pie-marca">
-        BLINK PASAJES · {tarjetas.length} {tarjetas.length === 1 ? "tarjeta" : "tarjetas"} en tu
+        BLINK TARJETA · {tarjetas.length} {tarjetas.length === 1 ? "tarjeta" : "tarjetas"} en tu
         cuenta
       </p>
     </div>

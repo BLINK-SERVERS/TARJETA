@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-01 |
-| Versión | 1.0.0 |
-| Fecha | 2026-10-29 |
+| Versión | 1.1.0 |
+| Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 12207:2017 · ISO/IEC/IEEE 29148 |
 
@@ -21,55 +21,63 @@ Classic 1K) y necesita:
 
 ## 2. Productos y alcance
 
-### 2.1 BLINK POS — `www.blink.com.ve`
+El ecosistema vigente son **dos aplicaciones web**: el portal del pasajero
+(BLINK TARJETA) y la consola administrativa (BLINK BACK-OFFICE). Ambas comparten
+el mismo proyecto Supabase y el esquema `bt_*`.
 
-Punto de venta y sitio público de la línea. Incluye autenticación real contra
-Supabase Auth, catálogo, ventas, caja, inventario y reportes del comercio. Sus
-datos viven en `businesses` y `catalogo_global`, aislados por RLS con `auth.uid()`.
-
-**En alcance:** operación del comercio, cuentas de usuario, catálogo, reportes.
-**Fuera de alcance:** cobro del pasaje y ciclo de la tarjeta (son de TARJETA/PASAJES).
-
-### 2.2 BLINK PASAJES — `pasajes.blink.com.ve`
-
-Panel de la línea con cuatro módulos:
-
-| Módulo | Función |
-| --- | --- |
-| **Lector** | Lee el UID del chip con Web Serial (protocolo del firmware BLINK_Lector) y muestra el resultado del cobro. |
-| **Fiscal** | Reporte fiscal de la línea (número de viajes, tarifa, totales). |
-| **Admin** | Aprobación de recargas, liquidación del día y gestión de tarjetas en modo local. |
-| **Pasajero** | Consulta de saldo y flujo guiado de recarga. |
-
-Estado actual: **modo local/demostración** con datos persistidos en el navegador.
-La integración con la nube `bt_*` está planificada (ver BLINK-DOC-09).
-
-### 2.3 BLINK TARJETA — `blink-servers.github.io/TARJETA/`
+### 2.1 BLINK TARJETA — `blink-servers.github.io/TARJETA/`
 
 Portal del pasajero: registro de cuenta con PIN de 6 dígitos, vinculación de una o
 varias tarjetas por serial, consulta de saldo, movimientos, reporte de recargas por
 Pago Móvil y administración de la fuente de pago.
 
 **En alcance:** identidad de la cuenta, billetera multi-tarjeta, recargas reportadas,
-extracto, cambio de PIN, datos de Pago Móvil.
-**Fuera de alcance:** aprobación de recargas (admin, hoy por RPC de servicio), cobro
-a bordo (validador) y emisión física de plásticos.
+extracto, cambio de PIN, datos de Pago Móvil, consulta sin conexión.
+**Fuera de alcance:** aprobación de recargas y gestión de lotes (back-office),
+cobro a bordo (validador) y emisión física de plásticos.
 
-### 2.4 Backend compartido — Supabase `gakkfzqcrapxeierfdhk`
+### 2.2 BLINK BACK-OFFICE — `blink-servers.github.io/BACKOFFICE/`
+
+Consola administrativa en repositorio propio: alta de lotes, inventario,
+estación de enrolado por Web Serial y resumen operativo. Exige rol `ADMIN` o
+`TAQUILLA` y segundo factor TOTP.
+
+**En alcance:** fabricación y trazabilidad de tarjetas y enrolado UID↔serial. La
+asignación a una cuenta la hace el pasajero desde el portal al reclamar el
+serial; la revisión de recargas se hace hoy por RPC de servicio (brecha B-04).
+**Fuera de alcance:** registro de pasajeros (portal) y liquidación fiscal.
+
+### 2.3 Backend compartido — Supabase `gakkfzqcrapxeierfdhk`
 
 PostgreSQL 17.11 con PostgREST, pgcrypto en el esquema `extensions` y RLS activo en
 todas las tablas. Aloja el esquema de transporte (`bt_*`) y el del comercio POS.
+
+### 2.4 Simulación local — `TARJETA/simulacion`
+
+Pila reproducible con PostgreSQL 16, PostgREST v12 y un gateway nginx que expone
+el mismo contrato `/rest/v1/rpc/*`. Aplica las migraciones, siembra una ruta y un
+validador de prueba, y ejecuta el ciclo completo (lote → enrolado → registro →
+reclamo → recarga → aprobación → sincronización → cobro) sin tocar producción.
+
+### 2.5 Productos fuera del alcance actual
+
+- **BLINK POS** (`www.blink.com.ve`): producto de comercio independiente que
+  comparte proyecto Supabase pero no el esquema `bt_*`.
+- **BLINK PASAJES**: retirado el 2026-10-31. El dominio `pasajes.blink.com.ve`
+  redirige a BLINK TARJETA mediante el repositorio `PASAJES-REDIRECT`.
+- **Panel de fiscales**: próximo hito, todavía sin repositorio. La materia prima
+  es `trips_telemetry` y la liquidación `bt_liquidar`.
 
 ## 3. Partes interesadas
 
 | Parte | Interés | Cómo lo cubre el sistema |
 | --- | --- | --- |
 | **Pasajero** | Recargar sin ir a taquilla, consultar saldo y movimientos. | BLINK TARJETA (registro, billetera, recargas, extracto). |
-| **Chofer / operador** | Cobrar rápido, con o sin internet. | Firmware BLINK_Validador + BLINK PASAJES › Lector. |
-| **Administrador de la línea** | Aprobar recargas, liquidar el día, detectar fraude. | RPC de servicio + BLINK PASAJES › Admin/Fiscal. |
-| **Comercio (POS)** | Vender, facturar, controlar inventario. | BLINK POS. |
-| **Desarrollo / mantenimiento** | Entender, desplegar y extender. | Esta suite documental y el CHANGELOG. |
-| **Autoridad fiscal** | Reportes de operación. | Telemetría `trips_telemetry` + módulo Fiscal. |
+| **Chofer / operador** | Cobrar rápido, con o sin internet. | Firmware BLINK_Validador. |
+| **Administrador de la línea** | Aprobar recargas, fabricar y asignar tarjetas, detectar fraude. | BLINK BACK-OFFICE (lotes, estación, recargas) + RPC de servicio. |
+| **Comercio (POS)** | Vender, facturar, controlar inventario. | BLINK POS (producto aparte, fuera de esta suite). |
+| **Desarrollo / mantenimiento** | Entender, desplegar, simular y extender. | Esta suite documental, `simulacion/` y el CHANGELOG. |
+| **Autoridad fiscal** | Reportes de operación. | Telemetría `trips_telemetry`; panel fiscal (próximo hito). |
 
 ## 4. Requisitos funcionales principales
 
@@ -85,9 +93,10 @@ todas las tablas. Aloja el esquema de transporte (`bt_*`) y el del comercio POS.
 | RF-08 | Cambiar el PIN validando el actual. | TARJETA | Implementado |
 | RF-09 | Cambiar la fuente de Pago Móvil (propia o de un familiar). | TARJETA | Implementado |
 | RF-10 | Bloquear la cuenta 5 minutos tras 5 PIN incorrectos. | TARJETA | Implementado |
-| RF-11 | Aprobar o rechazar recargas y acreditar saldo. | Admin (RPC) | Implementado |
+| RF-11 | Aprobar o rechazar recargas y acreditar saldo. | Back-office / RPC | Implementado |
 | RF-12 | Cobrar el pasaje y sincronizar validador con token. | Validador | Implementado, sin prueba física |
-| RF-13 | Operar BLINK PASAJES contra la nube compartida. | PASAJES | Pendiente |
+| RF-13 | Gestionar lotes, inventario y enrolado desde una consola con RBAC y TOTP. | Back-office | Implementado |
+| RF-14 | Simular el flujo completo contra un backend local reproducible. | Simulación | Implementado |
 
 ## 5. Supuestos y restricciones
 
@@ -108,3 +117,6 @@ todas las tablas. Aloja el esquema de transporte (`bt_*`) y el del comercio POS.
 2. La tarjeta virtual mantiene proporción ID-1/CR80 (1,586:1) y radio 3,7 % del
    ancho en cualquier viewport. **Verificado a 371, 320 y 280 px.**
 3. El despliegue automático publica cada push a `main`. **Verificado.**
+4. El flujo completo se reproduce en local sin tocar producción: lote, enrolado,
+   registro, reclamo, recarga, aprobación, sincronización y cobro.
+   **Verificado el 2026-10-31** (ver BLINK-DOC-07 §4.3).

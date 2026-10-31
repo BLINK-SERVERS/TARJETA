@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-02 |
-| Versión | 1.1.0 |
-| Fecha | 2026-10-29 |
+| Versión | 1.2.0 |
+| Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26514 · ISO/IEC/IEEE 42010 |
 
@@ -15,19 +15,19 @@ flowchart LR
   P[Pasajero] --> T[BLINK TARJETA<br/>Pages /TARJETA]
   C[Chofer] --> V[Validador ESP32<br/>BLINK_Validador]
   V -->|HTTPS + token| S[(Supabase<br/>PostgreSQL 17)]
-  O[Operador] --> J[BLINK PASAJES<br/>pasajes.blink.com.ve]
-  J -->|Web Serial 115200| L[Lector ESP32<br/>BLINK_Lector]
   A[Administrador] --> B[BLINK BACK-OFFICE<br/>Pages /BACKOFFICE]
   B -->|RPC bt_admin_*<br/>token + TOTP| S
-  B -->|Web Serial 115200| L
-  A[Administrador] --> K[BLINK POS<br/>www.blink.com.ve]
-  K -->|Auth + RLS| S
+  B -->|Web Serial 115200| L[Lector ESP32<br/>BLINK_Lector]
   T -->|RPC bt_*| S
-  CF[Cloudflare DNS] -.-> J
-  CF -.-> K
+  R[pasajes.blink.com.ve<br/>PASAJES-REDIRECT] -->|redirección| T
+  M[Simulación local<br/>Postgres 16 + PostgREST] -.->|mismo contrato| T
+  M -.-> B
+  CF[Cloudflare DNS] -.-> R
+  CF -.-> K[BLINK POS<br/>www.blink.com.ve]
   GH[GitHub Pages] -.-> T
-  GH -.-> J
-  GH -.-> K
+  GH -.-> R
+  GH -.-> B
+  K -->|Auth + RLS| S
 ```
 
 ## 2. Componentes
@@ -35,13 +35,14 @@ flowchart LR
 | Componente | Tecnología | Despliegue | Responsabilidad |
 | --- | --- | --- | --- |
 | BLINK TARJETA | React 19 · Vite 8 · TS strict | GitHub Pages (Actions), base `/TARJETA/` | Cuenta, billetera, recargas, extracto. |
-| BLINK PASAJES | React 19 · Vite 8 · Web Serial | GitHub Pages (Actions), base `/` | Lector, fiscal, admin, portal pasajero. |
-| BLINK BACK-OFFICE | React 19 · Vite 8 · TS strict · Web Serial | GitHub Pages (Actions), base `/BACKOFFICE/` | Lotes, inventario, estación y taquilla; exige rol administrativo y TOTP. |
-| BLINK POS | React 19 · Vite 8 · Konsta · Supabase JS | GitHub Pages rama `gh-pages` + Cloudflare | Comercio: ventas, caja, catálogo. |
+| BLINK BACK-OFFICE | React 19 · Vite 8 · TS strict · Web Serial | GitHub Pages (Actions), base `/BACKOFFICE/` | Lotes, inventario y estación de enrolado; exige rol administrativo y TOTP. |
+| PASAJES-REDIRECT | HTML estático | GitHub Pages, CNAME `pasajes.blink.com.ve` | Redirige el dominio retirado a BLINK TARJETA conservando el ancla. |
+| Simulación | PostgreSQL 16 · PostgREST v12 · nginx | Docker local (`simulacion/`) | Reproduce el contrato RPC y el flujo completo sin producción. |
+| BLINK POS | React 19 · Vite 8 · Konsta · Supabase JS | GitHub Pages rama `gh-pages` + Cloudflare | Comercio: ventas, caja, catálogo (fuera de esta suite). |
 | Backend | Supabase (PostgREST + PostgreSQL 17.11) | Gestionado | Datos, RLS, RPC `bt_*`, pgcrypto. |
 | Firmware lector | ESP32 + MFRC522 (Arduino) | Flasheo local | Emite `READY,BLINK,1`, `CARD,<UID>`, `PONG`. |
 | Firmware validador | ESP32 + MFRC522 + GPS/4G/OLED | Flasheo local | Cobro offline, sincronización con token. |
-| DNS | Cloudflare (zona `blink.com.ve`) | Gestionado | `www`, `pasajes` y correo. |
+| DNS | Cloudflare (zona `blink.com.ve`) | Gestionado | `www`, `pasajes` (redirección) y correo. |
 
 ## 3. Flujos principales
 
@@ -62,8 +63,8 @@ Usuario → Acceso.tsx (2 pasos) → repo.ts → nube.ts
 
 ```text
 TARJETA: bt_recargar → card_movements (pendiente) + recharges
-Admin:   bt_aprobar_recarga → acredita saldo, estado 'aprobada'
-         bt_rechazar_recarga → estado 'rechazada'
+Back-office/RPC: bt_aprobar_recarga → acredita saldo, estado 'aprobada'
+                 bt_rechazar_recarga → estado 'rechazada'
 Validador: bt_validador_sincronizar_token recibe recargas aprobadas
 ```
 
@@ -98,8 +99,10 @@ Regla de diseño: **ninguna pantalla llama a `fetch` directamente**; todo pasa p
 | Entorno | URL | Datos |
 | --- | --- | --- |
 | Desarrollo | `npm run dev` → `http://localhost:5173` | Local (sin variables) o nube por `.env.local`. |
+| Simulación | `http://127.0.0.1:5175/` (portal) · `:5173` (panel) | PostgreSQL 16 local en `127.0.0.1:54329` vía gateway `:54321`. |
 | Producción TARJETA | `https://blink-servers.github.io/TARJETA/` | Supabase real. |
-| Producción PASAJES | `https://pasajes.blink.com.ve/` | Local/demostración. |
+| Producción back-office | `https://blink-servers.github.io/BACKOFFICE/` | Supabase real. |
+| Redirección PASAJES | `https://pasajes.blink.com.ve/` | Sin datos; redirige a TARJETA. |
 | Producción POS | `https://www.blink.com.ve/` | Supabase real (Auth + `businesses`). |
 
 ## 6. CI/CD
@@ -107,7 +110,8 @@ Regla de diseño: **ninguna pantalla llama a `fetch` directamente**; todo pasa p
 | Repo | Disparador | Pasos | Publicación |
 | --- | --- | --- | --- |
 | TARJETA | push a `main` / manual | `npm ci` → typecheck → test → build (`--base=/TARJETA/`) | `upload-pages-artifact` + `deploy-pages` |
-| PASAJES | push a `main` / manual | `npm ci` → typecheck → test → build | `upload-pages-artifact` + `deploy-pages` |
+| BACKOFFICE | push a `main` / manual | `npm ci` → typecheck → test → build (`--base=/BACKOFFICE/`) | `upload-pages-artifact` + `deploy-pages` |
+| PASAJES-REDIRECT | push a `main` | sin compilación (HTML estático) | `deploy-pages` |
 | POS | manual (`npm run deploy`) | `build:pages` (404.html + `.nojekyll`) | rama `gh-pages` |
 
 Variables de configuración (no secretas):
@@ -132,3 +136,5 @@ usable.
 | ADR-04 | Tarjeta virtual con `container-type: inline-size` y `cqw`. | Mantiene la proporción ID-1 sin JS. | El CSS interior se expresa en `cqw`. |
 | ADR-05 | Modo local espejo del contrato de nube. | Permite demo y desarrollo sin backend. | Hay que mantener dos implementaciones. |
 | ADR-06 | Tokens de validador con `bt_validador_emitir_token`. | Evita usar la clave pública para operar. | Requiere provisioning por dispositivo. |
+| ADR-07 | Simulación local con Postgres + PostgREST + nginx en lugar de un Supabase de pruebas. | Permite probar el flujo completo sin cuota, red ni datos reales, y el gateway imita `/rest/v1/`. | Hay que mantener el compose y el gateway cuando cambie el contrato. |
+| ADR-08 | Retirar BLINK PASAJES y redirigir su dominio con un repo estático. | El panel duplicaba funciones del back-office y no tenía acceso al DNS por API. | `pasajes.blink.com.ve` depende de GitHub Pages y de su CNAME. |

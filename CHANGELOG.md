@@ -5,7 +5,7 @@ Todos los cambios relevantes de este producto se documentan aquí.
 Formato basado en [Keep a Changelog 1.1.0](https://keepachangelog.com/es-ES/1.1.0/)
 y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 8601.
 
-## [No publicado]
+## [1.5.0] — 2026-10-31
 
 ### Seguridad
 
@@ -26,6 +26,14 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 
 ### Añadido
 
+- **Simulación local del flujo completo** (`simulacion/`): PostgreSQL 16,
+  PostgREST v12 y un gateway nginx que reproduce `/rest/v1/rpc/*`. Los scripts
+  `arrancar.sh`, `flujo.sh`, `portal.sh`, `backoffice.sh` y `detener.sh` cubren
+  lote, enrolado, registro, reclamo, recarga, aprobación, sincronización con el
+  validador, aplicación al chip, cobro y referencia duplicada, con aserciones y
+  sin tocar producción. Incluye semilla de ruta, vehículo y cuenta `ADMIN`.
+- **Redirección del dominio retirado**: `pasajes.blink.com.ve` lo sirve el
+  repositorio `PASAJES-REDIRECT`, que lleva a BLINK TARJETA conservando el ancla.
 - **Portal instalable y sin conexión**: service worker que guarda el armazón y
   los recursos, y copia local de la última billetera con sus movimientos. Sin
   red se abre la tarjeta y el saldo guardados, con el aviso «Saldo guardado en
@@ -56,6 +64,10 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 
 ### Cambiado
 
+- **Se retira BLINK PASAJES**: el panel de la línea se archiva y su dominio pasa
+  a redirigir a este portal. El perfil ya no muestra el enlace «Panel de la línea»
+  y las referencias visibles dicen **BLINK TARJETA** (el titular legal de la
+  cuenta de Pago Móvil sigue siendo BLINK PASAJES, C.A.).
 - El back-office deja de ofrecer la asignación en taquilla: el flujo es
   estación del propietario → venta en comercios → reclamo en el portal.
 - `bs()` del back-office muestra bolívares enteros, sin céntimos.
@@ -85,6 +97,13 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 
 ### Documentación
 
+- **Suite documental 1.6.0 (BLINK-DOC-00)**: alcance reducido a TARJETA +
+  BACK-OFFICE con el panel fiscal como próximo hito; retiro de PASAJES,
+  redirección del dominio y consolidación en `~/BLINK`.
+- **BLINK-DOC-06 1.5.0 §5.7** y **BLINK-DOC-07 1.4.0 §4.3**: simulación local del
+  flujo completo, puertos, semilla y resultados de la prueba del 2026-10-31.
+- **BLINK-DOC-09 1.6.0**: brechas B-03 cerrada y B-04/B-18/B-19 actualizadas,
+  deuda D-10 y limitación L-06 del redirect.
 - **BLINK-DOC-06 1.4.0 §5.6**: ciclo completo de una recarga (reporte del
   pasajero, bandeja `bt_recargas_pendientes`, revisión contra el banco,
   aprobación/rechazo, entrega al chip por el validador y consultas de

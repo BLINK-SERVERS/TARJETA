@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-11 |
-| Versión | 1.0.0 |
-| Fecha | 2026-10-30 |
+| Versión | 1.1.0 |
+| Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Normas | ISO/IEC 27001:2022 (A.5.16, A.5.17, A.8.24) |
 | Disparador | Claves expuestas en chat y en el registro de una sesión de asistencia; secretos en archivos locales con formato roto |
@@ -85,7 +85,7 @@ Es pública por diseño; rotarla **no** protege datos, pero cierra el hallazgo.
 - [ ] GitHub → **Settings → Developer settings → Personal access tokens** →
       revocar el token viejo.
 - [ ] Crear uno *fine-grained*: acceso solo a `BLINK-SERVERS`, repositorios
-      `TARJETA`, `BACKOFFICE`, `PASAJES`, `POS`; permisos **Contents: RW**,
+      `TARJETA`, `BACKOFFICE`, `PASAJES-REDIRECT`, `POS`; permisos **Contents: RW**,
       **Actions: RW** (relanzar workflows), **Pages: RW**, **Metadata: R**;
       caducidad 90 días.
 - [ ] Copiarlo al gestor y a `~/Escritorio/.env`.
@@ -106,8 +106,9 @@ exportado. Los despliegues por Actions no dependen de él.
 - [ ] Verificar listando la zona (§5.4).
 - [ ] Revocar el token anterior.
 
-**Bloquea:** `npm run dominio` de PASAJES y cualquier cambio de DNS por API.
-No afecta a GitHub Pages ni al sitio en sí.
+**Bloquea:** cualquier cambio de DNS por API (la zona `blink.com.ve`).
+No afecta a GitHub Pages ni al sitio en sí: la redirección de `pasajes` y los
+CNAME se gestionan desde cada repositorio.
 
 ### Fase 6 · Claves de LLM (Gemini / LLM_API_KEY)
 
@@ -160,8 +161,8 @@ comprometió.
 | Clave secreta | `sb_secret_…` | `~/Escritorio/.env` | Scripts de servicio | Omite RLS: lectura y escritura total | Panel → API Keys |
 | Clave publicable | `sb_publishable_…` / JWT `anon` | Variables de repo, `.env` | Navegadores | Ninguno (RLS) | Panel → API Keys |
 | PAT GitHub | `ghp_…` | `~/Escritorio/.env`, `gh` | Scripts, CLI | Escritura en repositorios | GitHub → Developer settings |
-| Token Cloudflare | 40 caracteres | `~/Escritorio/.env` | `scripts/configurar-dominio.mjs` | Control del DNS de la zona | Cloudflare → API Tokens |
-| Token de gestión Supabase | `sbp_…` | `BLINK_POS_Project/app/.env.local` | Management API | Administración de proyectos | Supabase → Account → Access Tokens |
+| Token Cloudflare | 40 caracteres | `~/Escritorio/.env` | scripts de DNS (API de Cloudflare) | Control del DNS de la zona | Cloudflare → API Tokens |
+| Token de gestión Supabase | `sbp_…` | `~/BLINK/pos/pos/app/.env.local` | Management API | Administración de proyectos | Supabase → Account → Access Tokens |
 | Claves LLM | `AIza…` / otras | `~/Escritorio/.env` | Pruebas locales | Cuota y coste | AI Studio |
 | Token de validador | 64 hex | Hash en `vehicles.sync_token_hash` | ESP32 | Suplantar un validador | RPC (§2 fase 7) |
 | PIN del operador | 6 dígitos | `accounts.pin_hash` (bcrypt) | Back-office | Acceso con TOTP | Portal → Perfil |
@@ -173,7 +174,7 @@ comprometió.
 
 ```bash
 grep -rn --exclude-dir=node_modules --exclude-dir=.git \
-  -e 'postgres.gakkfzqcrapxeierfdhk' -e 'PGPASSWORD' ~/BLINK_* ~/Descargas/*.md 2>/dev/null
+  -e 'postgres.gakkfzqcrapxeierfdhk' -e 'PGPASSWORD' ~/BLINK ~/Descargas/*.md 2>/dev/null
 ```
 
 Cualquier hallazgo en un archivo del repositorio es además una fuga: se elimina y
@@ -185,7 +186,7 @@ el pooler («Only superusers can alter privileged roles»); la única vía es el
 ```bash
 grep -rn --exclude-dir=node_modules --exclude-dir=.git \
   -e 'GITHUB_TOKEN' -e 'GH_TOKEN' -e 'ghp_' \
-  ~/BLINK_Tarjeta ~/BLINK_Backoffice ~/BLINK_Pasajes_Project ~/BLINK_POS_Project 2>/dev/null
+  ~/BLINK/tarjeta ~/BLINK/backoffice ~/BLINK/pos/pos ~/BLINK/simulacion 2>/dev/null
 ```
 
 ### 4.3 Crear claves sin dejarlas en el historial
@@ -260,7 +261,7 @@ curl -s -X POST "$URL/rest/v1/rpc/bt_ajustes" \
 | --- | --- |
 | https://blink-servers.github.io/TARJETA/ | Carga en modo nube (sin aviso de demostración). |
 | https://blink-servers.github.io/BACKOFFICE/ | Muestra el formulario de acceso, no «Falta configurar el servidor». |
-| https://pasajes.blink.com.ve/ | Carga y certificado válido. |
+| https://pasajes.blink.com.ve/ | Redirige a https://blink-servers.github.io/TARJETA/ y el certificado es válido. |
 | https://www.blink.com.ve/ | Carga; si usa otra clave, rotarla en su propio proyecto. |
 
 ## 6. Higiene de archivos locales
@@ -268,20 +269,20 @@ curl -s -X POST "$URL/rest/v1/rpc/bt_ajustes" \
 1. `~/Escritorio/.env` está **partido en líneas**: hay valores sueltos de 41 a 427
    caracteres, uno de ellos un fragmento de la clave publicable. Reescribirlo con
    una pareja `NOMBRE=valor` por línea y sin líneas huérfanas.
-2. `~/BLINK_POS_Project/app/.env.local` tenía permisos `644` (legible por otros
+2. `~/BLINK/pos/pos/app/.env.local` tenía permisos `644` (legible por otros
    usuarios del equipo); el 2026-10-30 quedó en `600`. Verificar lo mismo en cada
    equipo donde se clone el proyecto: `chmod 600` a todos los `.env*`.
 3. No usar el Escritorio como gestor de secretos: mover a `~/.config/blink/` con
    permisos `600` o dejarlos solo en el gestor.
 4. `.env.example` **sí** se versiona, pero solo con marcadores. Revisión del
-   2026-10-30: `BLINK_Tarjeta/.env.example` está limpio; en
-   `BLINK_POS_Project/app/.env.example` la línea de `VITE_SUPABASE_PUBLISHABLE_KEY`
+   2026-10-30: `~/BLINK/tarjeta/.env.example` está limpio; en
+   `~/BLINK/pos/pos/app/.env.example` la línea de `VITE_SUPABASE_PUBLISHABLE_KEY`
    tiene una clave real (pública, riesgo bajo) y debe sustituirse por un
    marcador en el próximo commit del POS.
 5. Comprobar que ningún `.env` esté versionado:
 
    ```bash
-   for r in ~/BLINK_Tarjeta ~/BLINK_Backoffice ~/BLINK_Pasajes_Project ~/BLINK_POS_Project; do
+   for r in ~/BLINK/tarjeta ~/BLINK/backoffice ~/BLINK/pos/pos; do
      git -C "$r" ls-files | grep -iE '(^|/)\.env' && echo "revisar: $r"
    done
    ```

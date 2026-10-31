@@ -1,4 +1,4 @@
-# Arquitectura de Seguridad Bancaria y Operación Offline (Sin Decimales) - Blink Pasajes
+# Arquitectura de Seguridad Bancaria y Operación Offline (Sin Decimales) - BLINK
 
 | Campo | Valor |
 | --- | --- |

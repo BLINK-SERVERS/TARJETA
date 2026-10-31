@@ -3,65 +3,69 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-10 |
-| Versión | 1.3.0 |
-| Fecha | 2026-10-30 |
+| Versión | 1.4.0 |
+| Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26515 |
 
 ## 1. En diez minutos
 
 1. Lee el [índice](README.md) y la [arquitectura](02-arquitectura.md).
-2. Clona los cuatro repositorios de la organización `BLINK-SERVERS`:
-   `TARJETA`, `PASAJES`, `BACKOFFICE` y `POS`.
-3. Instala Node 22+, `gh` y `psql`; autentica con `gh auth login`.
-4. Ejecuta `npm ci && npm test` en cada repositorio.
+2. Todo el material BLINK vive en `~/BLINK` (ver su `README.md`). Los repositorios
+   vigentes de la organización `BLINK-SERVERS` son `TARJETA`, `BACKOFFICE`,
+   `PASAJES-REDIRECT` y `POS`; `PASAJES` está archivado y no se clona.
+3. Instala Node 22+, `gh`, `psql` y `docker-compose`; autentica con
+   `gh auth login`.
+4. Ejecuta `npm ci && npm test` en `tarjeta/` y `npm ci && npm run typecheck`
+   en `backoffice/`.
 5. TARJETA sin `.env.local` funciona en **modo demostración**; para la nube pide
    las variables a quien administre el proyecto Supabase.
-6. Para tocar la base, pide la contraseña al gestor de secretos (nunca por chat).
+6. Antes de tocar el flujo, ejecuta `cd ~/BLINK/simulacion && ./arrancar.sh && ./flujo.sh`.
+7. Para tocar la base real, pide la contraseña al gestor de secretos (nunca por
+   chat).
 
 ## 2. Mapa mental
 
 ```text
-BLINK_Tarjeta/                     ← portal del pasajero + esquema compartido
-  src/pages/                       Acceso, Inicio, Movimientos, Recargar, Perfil
-  src/lib/repo.ts                  selector nube/local
-  src/lib/nube.ts                  cliente RPC (contrato en BLINK-DOC-04)
-  src/lib/local.ts                 espejo local del contrato
-  src/components/TarjetaVirtual.tsx tarjeta ID-1 con giro 3D
-  src/styles/app.css               tarjeta con container queries (cqw)
-  supabase/migrations/             0001…0010 (0007 back-office + TOTP, 0008 lectura, 0009 serie de 7 dígitos, 0010 maestra de 11 dígitos)
-  scripts/lote.ts                  generación de lotes y hoja de impresión
-  docs/                            esta suite
+~/BLINK/
+  README.md                        mapa de carpetas y comandos rápidos
+  tarjeta/                         ← portal del pasajero + esquema compartido
+    src/pages/                     Acceso, Inicio, Movimientos, Recargar, Perfil
+    src/lib/repo.ts                selector nube/local
+    src/lib/nube.ts                cliente RPC (contrato en BLINK-DOC-04)
+    src/lib/local.ts               espejo local del contrato
+    src/components/TarjetaVirtual.tsx  tarjeta ID-1 con giro 3D
+    src/styles/app.css             tarjeta con container queries (cqw)
+    supabase/migrations/           0001…0016
+    scripts/lote.ts                generación de lotes y hoja de impresión
+    docs/                          esta suite
+    simulacion/                    pila Docker + flujo.mjs + scripts
 
-BLINK_Backoffice/                  ← consola administrativa (rol ADMIN/TAQUILLA + TOTP)
-  src/lib/api.ts                   cliente RPC con token de sesión (BLINK-DOC-04 §4)
-  src/lib/serial.ts                lector ESP32 por Web Serial
-  src/pages/Acceso.tsx, Mfa.tsx    login cédula+PIN y alta del segundo factor
-  src/pages/Lotes.tsx              creación de lotes y exportación CSV
-  src/pages/Inventario.tsx         filtros por lote, serial y estado
-  src/pages/Estacion.tsx           captura UID y carga masiva
-  src/pages/Taquilla.tsx           asignación serial ↔ cédula
+  backoffice/                      ← consola administrativa (rol ADMIN/TAQUILLA + TOTP)
+    src/lib/api.ts                 cliente RPC con token de sesión (BLINK-DOC-04 §4)
+    src/lib/serial.ts              lector ESP32 por Web Serial
+    src/pages/Acceso.tsx, Mfa.tsx  login cédula+PIN y alta del segundo factor
+    src/pages/Lotes.tsx            creación de lotes y exportación CSV
+    src/pages/Inventario.tsx       filtros por lote, serial y estado
+    src/pages/Estacion.tsx         captura UID y carga masiva
+    src/pages/Taquilla.tsx         asignación serial ↔ cédula
 
-BLINK_Pasajes_Project/app/         ← panel de la línea (local + Web Serial)
-  src/pages/Lector.tsx             puente serie con el lector ESP32
-  src/pages/Fiscal.tsx             reporte fiscal
-  src/pages/Admin.tsx              aprobación y liquidación (local)
-  src/pages/Pasajero.tsx           flujo de recarga guiado
-  src/lib/serial.ts                protocolo READY/CARD/PONG
-  scripts/configurar-dominio.mjs   dominio + HTTPS vía API de GitHub
-
-BLINK_POS_Project/app/             ← comercio (Supabase Auth + RLS)
-  src/lib/cloud.ts                 autenticación y persistencia
-  src/lib/store.tsx                estado global
-  README.md                        documentación extensa de POS
+  pos/pos/app/                     ← comercio (Supabase Auth + RLS), producto aparte
+  firmware/lector/, firmware/validador/   sketches ESP32
+  documentacion/fuentes/           diseño técnico y guías originales (.md)
+  documentacion/hardware/          datasheets, índice y paquetes Arduino
+  archivo/pasajes/                 copia histórica de BLINK PASAJES (retirado)
 ```
 
-Firmware (fuera de git): `~/Arduino/BLINK_Lector` y `~/Arduino/BLINK_Validador`.
+Los enlaces `~/BLINK_Tarjeta`, `~/BLINK_Backoffice`, `~/BLINK_POS_Project`,
+`~/BLINK_Pasajes_Project`, `~/Arduino/BLINK_*` y `~/Documentación` apuntan a las
+carpetas nuevas para no romper hábitos ni scripts.
 
 ## 3. Cómo añadir una función al portal
 
-1. **Base de datos:** nueva migración `0010_*.sql` con la función
-   `bt_*` (`security definer`, `search_path` fijo) y sus `revoke`/`grant`.
+1. **Base de datos:** nueva migración con el número siguiente (`0017_*.sql`) con
+   la función `bt_*` (`security definer`, `search_path` fijo) y sus
+   `revoke`/`grant`.
 2. **Contrato:** añade el método en `src/lib/nube.ts` y su gemelo en
    `src/lib/local.ts`. Si la función es de operación, añade además el envoltorio
    `bt_admin_*` con `p_token` y su método en `BACKOFFICE/src/lib/api.ts`
@@ -85,6 +89,20 @@ Firmware (fuera de git): `~/Arduino/BLINK_Lector` y `~/Arduino/BLINK_Validador`.
 - **Secretos:** jamás en el repositorio ni en la documentación.
 
 ## 5. Recetas frecuentes
+
+### Probar el flujo completo sin producción
+
+```bash
+cd ~/BLINK/simulacion
+./arrancar.sh          # PostgreSQL + PostgREST + gateway + semilla
+./flujo.sh             # lote → enrolado → registro → recarga → chip → cobro
+./portal.sh            # interfaz del pasajero en :5175
+./backoffice.sh        # panel en :5173 (otra terminal)
+./detener.sh           # borra la base efímera
+```
+
+Si cambias una migración o un RPC, vuelve a ejecutar `./arrancar.sh && ./flujo.sh`
+antes de commitear.
 
 ### Rotar la clave publishable
 
@@ -120,8 +138,8 @@ borrar sus sesiones; el panel vuelve a pedir la inscripción.
 ```bash
 npm run typecheck && npm test
 git commit -am "Corrige …"
-git push origin main          # TARJETA/PASAJES/BACKOFFICE publican solos
-cd BLINK_POS_Project/app && npm run deploy   # POS es manual
+git push origin main          # TARJETA/BACKOFFICE publican solos
+cd ~/BLINK/pos/pos/app && npm run deploy   # POS es manual
 ```
 
 ## 6. Lista de verificación antes de un PR
@@ -137,11 +155,12 @@ cd BLINK_POS_Project/app && npm run deploy   # POS es manual
 
 | Tema | Fuente |
 | --- | --- |
-| Diseño técnico original | `~/Descargas/Documentación Técnica del Ecosistema Blink Pasajes.md` |
-| Guía visual de la tarjeta | `~/Descargas/Guía de Implementación UI - Tarjeta Virtual Blink Pasajes.md` |
-| Registro multi-tarjeta | `~/Descargas/Implementación de Registro y Gestión Multi-Tarjeta.md` |
-| POS | `BLINK_POS_Project/app/README.md` y `~/BLINK_POS_Documentos/` |
+| Diseño técnico original | `~/BLINK/documentacion/fuentes/Documentación Técnica del Ecosistema Blink Pasajes.md` |
+| Guía visual de la tarjeta | `~/BLINK/documentacion/fuentes/Guía de Implementación UI - Tarjeta Virtual Blink Pasajes.md` |
+| Registro multi-tarjeta | `~/BLINK/documentacion/fuentes/Implementación de Registro y Gestión Multi-Tarjeta.md` |
+| Estándares de hardware | `~/BLINK/documentacion/fuentes/Estándares_Industriales_y_Controles_de_Calidad_Adaptados_de_Tarjeta.md` |
+| POS | `~/BLINK/pos/pos/app/README.md` y `~/BLINK/pos/documentos/` |
 | Historial de cambios | `CHANGELOG.md` de cada repositorio |
 
-Si un documento de Descargas ya no existe, pídelo a quien mantenga el proyecto: es
-la referencia de diseño y no debe reinventarse.
+Si un documento de `documentacion/fuentes` ya no existe, pídelo a quien mantenga
+el proyecto: es la referencia de diseño y no debe reinventarse.

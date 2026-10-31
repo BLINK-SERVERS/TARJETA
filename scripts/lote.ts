@@ -1,5 +1,5 @@
 /*
- * Genera un lote de tarjetas BLINK PASAJES.
+ * Genera un lote de tarjetas BLINK TARJETA.
  *
  *   npm run lote -- --cantidad 500 --lote 7 --patrocinante "Comercial, C.A."
  *
@@ -21,7 +21,7 @@ const PORTAL_POR_DEFECTO = "https://blink-servers.github.io/TARJETA/";
 const SALIDA_POR_DEFECTO = "lotes";
 const TARJETAS_POR_HOJA = 8;
 
-const AYUDA = `BLINK PASAJES · generador de lotes
+const AYUDA = `BLINK TARJETA · generador de lotes
 
   npm run lote -- [opciones]
 
@@ -166,7 +166,7 @@ function tarjetaHtml(lote: LoteGenerado, tarjeta: TarjetaLote, qr: string): stri
         <article class="tarjeta">
           <div class="filo"></div>
           <div class="cuerpo">
-            <div class="marca"><span class="logo">BLINK</span><span class="descriptor">PASAJES</span></div>
+            <div class="marca"><span class="logo">BLINK</span><span class="descriptor">TARJETA</span></div>
             <div class="serial">${tarjeta.serial}</div>
             <div class="meta"><span>Lote ${lote.numero}</span><span>Tarifa ${etiquetaTarifa}</span></div>
             <div class="patrocinante">${escaparHtml(patrocinante)}</div>
@@ -339,7 +339,7 @@ function documento(lote: LoteGenerado, url: string): string {
     hojas.push(`
     <section class="hoja">
       <header class="hoja-cabecera">
-        <span><strong>BLINK PASAJES</strong> · datos variables del reverso</span>
+        <span><strong>BLINK TARJETA</strong> · datos variables del reverso</span>
         <span class="rango">${primero} → ${ultimo}</span>
         <span>Lote ${lote.numero} · ${lote.cantidad} tarjetas · hoja ${pagina + 1} de ${paginas}</span>
       </header>

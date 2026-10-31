@@ -7,3 +7,4 @@ lotes/
 *.local
 .DS_Store
 backups/
+simulacion/.entorno

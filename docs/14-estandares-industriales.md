@@ -11,7 +11,7 @@
 
 ## 1. Objeto
 
-Este documento formaliza las lecciones aprendidas y los mejores estándares industriales extraídos de las especificaciones técnicas del sistema de transporte masivo **Bip!** (Santiago de Chile), adaptados a la arquitectura ligera, propietaria y automatizada de **Blink Pasajes**. Su propósito es elevar el control físico, la durabilidad del material y la seguridad del inventario de tarjetas a un nivel de grado industrial.
+Este documento formaliza las lecciones aprendidas y los mejores estándares industriales extraídos de las especificaciones técnicas del sistema de transporte masivo **Bip!** (Santiago de Chile), adaptados a la arquitectura ligera, propietaria y automatizada de **BLINK**. Su propósito es elevar el control físico, la durabilidad del material y la seguridad del inventario de tarjetas a un nivel de grado industrial.
 
 ---
 
