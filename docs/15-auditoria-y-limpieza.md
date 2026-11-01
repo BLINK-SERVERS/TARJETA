@@ -41,15 +41,16 @@ No existe una tabla `transactions` separada.
 
 ## 3. Inventario posterior a la limpieza
 
-Conteo al 2026-10-31 20:44 (hora de Caracas). Los números de operación cambian
-con el uso normal.
+Conteo al 2026-10-31 20:48 (hora de Caracas). Los números de operación cambian
+con el uso normal; durante la propia auditoría entraron dos recargas nuevas
+desde el portal.
 
 | Tabla | Filas | Función | RLS |
 | --- | ---: | --- | --- |
 | `accounts` | 1 | Cuenta administradora real. | Activa |
 | `cards` | 1 | Maestra `A-00000-000-H`, saldo 4500 Bs. | Activa |
-| `card_movements` | 3 | Recarga 5000 (aprobada), viaje −500, recarga 5000 en revisión. | Activa |
-| `recharges` | 2 | Una aprobada y sincronizada; una pendiente nueva. | Activa |
+| `card_movements` | 4 | Recarga 5000 (aprobada), viaje −500 y dos recargas en revisión (5000 y 500). | Activa |
+| `recharges` | 3 | Una aprobada y sincronizada; dos pendientes nuevas. | Activa |
 | `trips_telemetry` | 1 | Primer viaje real, tarifa 500, saldo de chip 4500. | Activa |
 | `card_events` | 4 | Historia de la maestra (MAESTRA → ALFA → ENROLADA). | Activa |
 | `account_sessions` | 5 | Sesiones vigentes del panel; ninguna vencida. | Activa |
@@ -180,9 +181,10 @@ que es justo lo que representa `synced_to_chip`.
 | Saldos | `virtual_balance = last_chip_balance = 4500`; movimientos +5000 y −500. |
 | Resumen operativo | 1 pasaje, 500 recaudados, 500 por liquidar, 1 tarjeta activa, 4500 Bs en circulación. |
 
-La recarga pendiente que aparece después (referencia `6466`, 5000 Bs, BBVA
-Provincial) es un reporte nuevo del portal hecho durante la auditoría; es dato
-real y queda para que el administrador lo revise.
+Al cierre de este informe quedaron **dos recargas pendientes nuevas**
+(referencias `6466` por 5000 Bs y `4346` por 500 Bs), reportadas desde el portal
+durante la auditoría. Son datos reales: esperan la revisión y aprobación del
+administrador y no se tocaron.
 
 ## 9. Revisión de funciones y disparadores
 

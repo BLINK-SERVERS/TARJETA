@@ -39,7 +39,7 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 - Cargar el Pago Móvil real en `settings.publico` (hoy RIF y teléfono de
   ejemplo).
 - Aplicar las guardas F-01/F-02 y la caducidad de pendientes (F-04).
-- Revisar la recarga pendiente `6466` reportada durante la prueba.
+- Revisar las recargas pendientes `6466` y `4346` reportadas durante la prueba.
 - Rotación de secretos y restauración del MFA.
 
 ## [1.5.0] — 2026-10-31
