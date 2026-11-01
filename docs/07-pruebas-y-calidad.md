@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-07 |
-| Versión | 1.6.0 |
+| Versión | 1.7.0 |
 | Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 26513 · ISO/IEC 25010 |
@@ -331,6 +331,19 @@ debe confirmar `TAP,ok=1` y `inciertas=0` en `INFO`. Queda pendiente la prueba
 de fallo (retirar la tarjeta a media escritura) para ver la pantalla
 **VERIFICAR** y la lista `inciertas`; ver BLINK-DOC-16 §8.
 
+### 4.6 Códigos de respuesta POS (firmware 7, 2026-10-31)
+
+La especificación `ISO-POS-015` pide un catálogo `ISO-00`/`ERR-xx` y una
+pantalla de tres zonas. Se adoptó el catálogo y los iconos; la geometría de
+128×128 no aplica al panel ST7789 de 240×240 (ADR-12, BLINK-DOC-17).
+
+| # | Prueba | Resultado |
+| --- | --- | --- |
+| 1 | Compilar el firmware 7 (códigos, iconos y `codigo=` en `TAP`) | 1 209 963 bytes (92 %), 51 788 bytes de RAM (15 %) |
+| 2 | Flashear y abrir el monitor (22:08) | `READY,BLINK,7,0,0` sin errores |
+| 3 | Revisar el mapeo motivo → código | `saldo`→`ERR-12`, `llave`/`lectura`→`ERR-30`, `no-enrolada`→`ERR-41`, `bloqueada`→`ERR-54`, `corrupta`/`valor`/`escritura`/`verificacion`/`incierta`→`ERR-63`, `tiempo`→`ERR-91` |
+| 4 | Toque con saldo y retirada a media lectura | **Pendiente** (ver §8, puntos 6 y 8) |
+
 ## 5. Prueba de la tarjeta virtual (ID-1 / CR80)
 
 | Viewport | Ancho de tarjeta | Alto | Relación medida | Radio |
@@ -357,6 +370,7 @@ solapamiento de contenido. **Cumplido** tras sustituir `min-height` por
 | Enrolado y cobro con tarjeta física | Cumplido (2026-10-31, §4.4) |
 | Cobro repetido sin reiniciar y contador del chip en la nube | Cumplido (2026-10-31, §4.5) |
 | Read-After-Write y estado incierto bajo fallo de hardware | Pendiente (B-23) |
+| Código POS visible en pantalla y en serie | Implementado; toque real pendiente (§4.6) |
 
 ## 7. Calidad según ISO/IEC 25010
 
@@ -387,3 +401,5 @@ solapamiento de contenido. **Cumplido** tras sustituir `min-height` por
    (B-23, BLINK-DOC-16 §4.3).
 7. Medir el tiempo de cobro completo con marcas de tiempo en serie; la
    especificación externa pide 0,3–0,6 s (BLINK-DOC-16 §8).
+8. Retirar la tarjeta a media lectura para forzar `ERR-91` (`REPITA EL TOQUE`)
+   y comprobar que no marca la tarjeta como incierta (ADR-13).

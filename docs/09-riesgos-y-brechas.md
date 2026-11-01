@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-09 |
-| Versión | 1.8.0 |
+| Versión | 1.9.0 |
 | Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 12207 (riesgos) · ISO/IEC 27001 (A.5.7) |
@@ -58,6 +58,7 @@ implementación:
 | B-21 | No hay caducidad de recargas pendientes ni trabajo programado; `pg_cron` no está instalado. | M | Una recarga sin revisar queda pendiente indefinidamente. Aplicar la política de rechazo por antigüedad (BLINK-DOC-15 §9, F-04). |
 | B-22 | Las tarjetas con estado incierto solo se desbloquean por consola serie (`LIMPIAR_INCIERTAS`); no hay comando en el back-office ni reporte en la nube. | M | Un operador sin acceso al puerto serie no puede habilitar la tarjeta ni enterarse del incidente (BLINK-DOC-16 §4.3). |
 | B-23 | Falta inyectar un fallo real de escritura para comprobar el flujo `VERIFICAR` y la lista `inciertas`; el tiempo de cobro completo no se ha medido. | M | La protección existe pero no está validada con hardware; la especificación pide 0,3–0,6 s (BLINK-DOC-16 §8). |
+| B-24 | Los códigos POS (`ISO-00`/`ERR-xx`) solo viven en el firmware y en la serie: no se guardan ni se cuentan en la nube. | B | No se puede medir cuántos rechazos por saldo, llave o bloqueo ocurren por unidad (BLINK-DOC-17 §9). |
 
 ## 3. Deuda técnica
 
@@ -113,11 +114,15 @@ implementación:
 | 14 | Cargar el Pago Móvil real en `settings.publico` (B-20). | Propietario | Inmediato |
 | 15 | Añadir un comando de `inciertas` al back-office y reportarlas a la nube (B-22). | Desarrollo | Corto |
 | 16 | Forzar un corte a media escritura y medir el tiempo de cobro con hardware (B-23). | Desarrollo | Corto |
+| 17 | Guardar o contar los códigos de rechazo por unidad y exponerlos en el panel fiscal (B-24). | Desarrollo | Medio |
 
 ## 6. Revisión
 
 Este registro se actualiza al cerrar cada hito. La última revisión corresponde al
-2026-10-31 y acompañó el cobro repetido por tarjeta y la especificación offline
+2026-10-31 y acompañó los códigos de respuesta POS del validador (BLINK-DOC-17,
+firmware 7): se añadió B-24 (los códigos no se guardan en la nube).
+La revisión anterior, del 2026-10-31, acompañó el cobro repetido por tarjeta y
+la especificación offline
 (BLINK-DOC-16): se cerró B-01 (mapa de bloques y llaves derivadas), se añadieron
 B-22 (inciertas solo por consola), B-23 (falta prueba de fallo de escritura y
 medición de tiempos), D-12 (`chip_counter` sin validación de secuencia) y L-07

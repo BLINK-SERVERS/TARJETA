@@ -31,6 +31,13 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
   o de relectura emite `INCIDENCIA`, marca el serial como incierto y bloquea
   toques posteriores con **VERIFICAR** hasta que un operador envía
   `LIMPIAR_INCIERTAS`.
+- **Códigos de respuesta POS** (firmware 7, BLINK-DOC-17): cada `TAP` lleva
+  `codigo=ISO-00` o `ERR-12/30/41/54/63/91`; la pantalla pinta el código con
+  un visto bueno o una cruz y el monto/saldo en la franja del resultado.
+  `ERR-91` se reserva a la tarjeta retirada a medio gesto; un timeout durante
+  la escritura sigue siendo `ERR-63` e incierta (ADR-13).
+- **Nuevo BLINK-DOC-17** con el catálogo de códigos, la adaptación de la
+  interfaz al panel de 240×240 (ADR-12) y la matriz de retención (5 s).
 
 ### Corregido
 
@@ -61,6 +68,9 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 - **Un toque = un pasaje (ADR-09)**: se descarta acumular toques durante 2 s y
   el rebote de 15 s; cada presentación de la tarjeta cobra un pasaje, lo que
   permite pagar dos pasajes con dos toques.
+- **Firmware 7**: `READY` e `INFO` informan `fw=7` y cada `TAP` agrega el campo
+  `codigo=`; el resto del protocolo serie no cambia. Un anfitrión que ignore el
+  campo sigue funcionando con `ok` y `motivo`.
 
 ### Pendiente
 
