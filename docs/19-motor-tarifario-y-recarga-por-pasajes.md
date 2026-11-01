@@ -5,7 +5,7 @@
 | Código | BLINK-DOC-19 |
 | Versión | 1.0.0 |
 | Fecha | 2026-11-01 |
-| Estado | Vigente (simulación verificada; producción pendiente de `0019` y `0020`) |
+| Estado | Vigente (simulación y producción; `0019` y `0020` aplicadas el 2026-11-01) |
 | Autor | Equipo BLINK (desarrollo asistido) |
 | Normas de referencia | ISO/IEC/IEEE 29148 · ISO/IEC 25010 · ISO 9241-210 · ISO 20022 · ISO/IEC 27001:2022 |
 
@@ -223,10 +223,18 @@ para que el chip reciba `monto_base` y no el bruto (ver §8.2).
 4. Crea `bt_recargar_pasajes` y redefine `bt_aprobar_recarga` y
    `bt_admin_recargas`.
 
-Antes de aplicarla en producción: respaldar `recharges` y `settings`, revisar
-que el tope publicado no contradiga una decisión comercial vigente y confirmar
-con el propietario el precio de venta de cada bloque (la tabla de §3.3). La
-migración no toca recargas existentes; el rollback consiste en volver a la
+Antes de aplicar en producción se respaldaron `recharges`, `cards` y
+`settings` en `backups/2026-11-01_*_antes_0019.jsonl`, se revisó que el tope
+publicado no contradijera una decisión comercial vigente y se confirmó con el
+propietario el precio de venta de cada bloque (la tabla de §3.3). **Ambas
+migraciones se aplicaron el 2026-11-01** en una transacción cada una; la
+verificación posterior confirmó `settings.publico.tarifario` con base 500,
+entrada 0,015, salida 0,003, margen 0,04 y redondeo 10, `topeRecarga` en
+20.000, la cotización de 2 pasajes en 1.060/1.000 y la de 10 en 5.300/5.000,
+y que `bt_validador_sincronizar` entrega `coalesce(monto_base, amount)`. Las
+5 recargas anteriores conservan `monto_base` nulo y su importe original.
+
+La migración no toca recargas existentes; el rollback consiste en volver a la
 definición anterior de las tres funciones y dejar las columnas (nulas) en su
 sitio.
 

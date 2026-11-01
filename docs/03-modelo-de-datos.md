@@ -44,8 +44,8 @@
 | `0016_corrige_alfabeto_verificador.sql` | Reabre la letra `U` en el alfabeto verificador. | Aplicada |
 | `0017_contador_de_chip.sql` | Columna y consulta del contador de transacciones del chip (`Tx_Counter`). | Aplicada el 2026-10-31 |
 | `0018_admin_recargas.sql` | Bandeja de recargas con sesión + MFA (`bt_admin_recargas`, `bt_admin_resolver_recarga`). | Aplicada el 2026-11-01 |
-| `0019_motor_tarifario.sql` | Recarga por pasajes: columnas contables en `recharges`, `bt_tarifario`, `bt_cotizar_recarga`, `bt_recargar_pasajes` y aprobación por `monto_base`. | **Pendiente de aplicar en producción** (probada en la simulación) |
-| `0020_chip_monto_base.sql` | La sincronización del validador entrega `coalesce(monto_base, amount)` al chip, no el bruto. | **Pendiente de aplicar en producción** (probada en la simulación) |
+| `0019_motor_tarifario.sql` | Recarga por pasajes: columnas contables en `recharges`, `bt_tarifario`, `bt_cotizar_recarga`, `bt_recargar_pasajes` y aprobación por `monto_base`. | Aplicada el 2026-11-01 |
+| `0020_chip_monto_base.sql` | La sincronización del validador entrega `coalesce(monto_base, amount)` al chip, no el bruto. | Aplicada el 2026-11-01 |
 
 Reglas:
 
