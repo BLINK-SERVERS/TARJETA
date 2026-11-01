@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-09 |
-| Versión | 1.6.0 |
+| Versión | 1.7.0 |
 | Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 12207 (riesgos) · ISO/IEC 27001 (A.5.7) |
@@ -36,12 +36,12 @@ implementación:
 | ID | Brecha | Impacto | Notas |
 | --- | --- | --- | --- |
 | B-01 | Mapa de memoria MIFARE por sectores y claves diversificadas `HMAC_SHA256(master, UID)` no implementado en la nube. | M | El firmware y el esquema actual usan UID + saldo virtual; falta la escritura segura del plástico. |
-| B-02 | Lista negra offline en el validador: descarga implementada, prueba física pendiente. | M | Depende de la tarea #28. |
+| B-02 | Lista negra offline en el validador: descarga implementada, prueba física pendiente. | M | El 2026-10-31 se probaron físicamente el enrolado y el cobro; falta bloquear una tarjeta y confirmar que el validador la rechaza sin red (BLINK-DOC-15 §8.4). |
 | B-03 | ~~BLINK PASAJES opera en local, sin RPC `bt_*`.~~ | — | **Cerrada** el 2026-10-31: el panel se retiró; el flujo pasó al portal y al back-office. |
 | B-04 | Aprobación de recargas sin bandeja en el back-office: se resuelve con RPC de servicio (`bt_recargas_pendientes`/`bt_aprobar_recarga`). | M | Añadir la pantalla de recargas pendientes al panel. |
 | B-05 | Recuperación de PIN inexistente en el portal. | M | Requiere flujo de atención o verificación por correo. |
 | B-06 | Telemetría fiscal sin exportación oficial (GTFS/CSV). | B | El módulo Fiscal muestra totales, no descarga. |
-| B-07 | Estación de enrolado: la carga masiva UID↔serial existe en `0006` y su interfaz en el back-office (`BACKOFFICE`), falta el circuito físico completo con la placa. | M | Falta conectar el lector y probar el alta en el panel; depende de la tarea #28. |
+| B-07 | Estación de enrolado: la carga masiva UID↔serial existe en `0006` y su interfaz en el back-office (`BACKOFFICE`), falta el circuito físico completo con la placa. | M | El grabado del chip funciona por la consola serie (prueba real del 2026-10-31); falta conectarlo a la interfaz web. |
 | B-08 | Sin notificaciones al pasajero (correo/SMS) al aprobar recargas. | B | El correo se captura pero no se usa. |
 | B-09 | Firmas HMAC de peticiones no aplicadas en el portal. | B | Se reservan para servidor-a-servidor: la clave pública vive en el navegador (ver BLINK-DOC-05 §4). |
 | B-10 | Sin verificación automatizada de TLS 1.3 en las publicaciones. | M | GitHub Pages no permite fijar la versión; revisar trimestralmente con `openssl s_client`. |
@@ -54,6 +54,8 @@ implementación:
 | B-17 | La estación no está reservada al propietario: `bt_admin_sesion_mfa` admite ADMIN y TAQUILLA. | M | Contradice la exclusividad de la estación que exige BLINK-DOC-12 §1. |
 | B-18 | Panel de fiscales inexistente: la telemetría y la liquidación solo se consultan por SQL. | M | Próximo hito; aún sin repositorio. |
 | B-19 | La simulación no corre en CI: se ejecuta a mano en el equipo de desarrollo. | M | Ver D-10; bloquea detectar regresiones del contrato en cada push. |
+| B-20 | `settings.publico` conserva el Pago Móvil de ejemplo (RIF `J-00000000-0`, teléfono `0414-0000000`, titular «BLINK PASAJES, C.A.»). | A | Un pasajero real vería datos bancarios falsos. El dueño debe cargar el RIF, teléfono y titular definitivos (BLINK-DOC-15 §6). |
+| B-21 | No hay caducidad de recargas pendientes ni trabajo programado; `pg_cron` no está instalado. | M | Una recarga sin revisar queda pendiente indefinidamente. Aplicar la política de rechazo por antigüedad (BLINK-DOC-15 §9, F-04). |
 
 ## 3. Deuda técnica
 
@@ -61,7 +63,7 @@ implementación:
 | --- | --- | --- | --- |
 | D-01 | Dos implementaciones del mismo contrato (`local.ts` y `nube.ts`). | Un cambio debe replicarse en ambas. | Alta |
 | D-02 | Funciones legadas (`bt_activar`, `bt_tarjeta`, `card_sessions`). | Superficie de ataque y confusión. | Media |
-| D-03 | Firmware fuera de git (`~/Arduino`). | Se pierde si falla el equipo. | Alta |
+| D-03 | Firmware del **lector** fuera de git (`~/Arduino`). El validador ya tiene repositorio propio en `~/BLINK/firmware/validador`. | Se pierde el lector si falla el equipo. | Alta |
 | D-04 | Sin E2E en CI. | Regresiones detectadas tarde. | Media |
 | D-05 | Sin alertas de recargas pendientes ni validadores caídos. | Operación a ciegas. | Media |
 | D-06 | Pruebas de integración se hacen contra producción con rollback. | Riesgo de dejar datos si falla a mitad. | Media |
@@ -69,6 +71,7 @@ implementación:
 | D-08 | `VITE_SUPABASE_ANON_KEY` guarda una clave publishable (nombre heredado). | Confusión al rotar. | Baja |
 | D-09 | La copia sin conexión no se cifra con WebCrypto ni se ata al PIN. | Un XSS o un teléfono desbloqueado puede leer los datos mientras la copia viva (12 h). | Media |
 | D-10 | La simulación local no está integrada al CI y depende de `docker-compose` v1. | El contrato RPC se prueba a mano; un cambio puede llegar a `main` sin pasar por el flujo completo. | Media |
+| D-11 | La aprobación de recargas no verifica que exista su movimiento y la sincronización de toques no usa `ON CONFLICT`. | Una recarga podría acreditarse sin historial y dos sincronizaciones simultáneas podrían abortar el lote (BLINK-DOC-15 §9, F-01/F-02). | Media |
 
 ## 4. Limitaciones conocidas de la plataforma
 
@@ -91,7 +94,7 @@ implementación:
 | 1d | ~~Aplicar `0009` y crear la tarjeta maestra~~ (hecho el 2026-10-30; ver BLINK-DOC-07 §3.5 y BLINK-DOC-12). | Administrador | Cerrado |
 | 1e | ~~Aplicar `0010` y renumerar la maestra a `00-0-0000000-0`~~ (hecho el 2026-10-30; ver BLINK-DOC-07 §3.6). | Administrador | Cerrado |
 | 2 | Rotar contraseña de PostgreSQL y tokens expuestos (checklist en BLINK-DOC-11). | Administrador | Inmediato |
-| 3 | Mover firmware a un repositorio con `firmware/`. | Desarrollo | Corto |
+| 3 | Mover el firmware del **lector** a un repositorio con `firmware/` (el validador ya está en git). | Desarrollo | Corto |
 | 4 | ~~Migrar BLINK PASAJES al esquema `bt_*`~~ (cerrado el 2026-10-31: panel retirado y dominio redirigido a TARJETA). | Desarrollo | Cerrado |
 | 4b | Construir el panel de fiscales sobre `trips_telemetry` y `bt_liquidar`. | Producto | Próximo hito |
 | 5 | Añadir E2E de registro/recarga en CI. | Desarrollo | Medio |
@@ -102,16 +105,22 @@ implementación:
 | 10 | Restringir la estación al rol del propietario (B-17). | Desarrollo | Corto |
 | 11 | Cifrar la copia sin conexión con WebCrypto y el PIN del pasajero (R-10, D-09). | Desarrollo | Medio |
 | 12 | Llevar `simulacion/flujo.sh` al CI (B-19, D-10). | Desarrollo | Corto |
+| 13 | Aplicar las guardas F-01 y F-02 del ciclo de recarga (D-11) y definir la caducidad de pendientes (B-21). | Desarrollo | Corto |
+| 14 | Cargar el Pago Móvil real en `settings.publico` (B-20). | Propietario | Inmediato |
 
 ## 6. Revisión
 
 Este registro se actualiza al cerrar cada hito. La última revisión corresponde al
-2026-10-31, con el retiro de BLINK PASAJES (B-03 cerrada, L-03 acotada a
-TARJETA/BACKOFFICE), la redirección del dominio (L-06) y la simulación local del
-flujo completo (B-19, D-10). La revisión anterior, del 2026-10-31, acompañó la
-seguridad del portal sin conexión: se añadieron R-10, R-11 y D-09, y se
-endurecieron la caducidad de la copia local y el alcance del service worker. La
-revisión del 2026-10-30 acompañó las migraciones `0009` (serie de 7 dígitos) y
-`0010` (maestra `00-0-0000000-0`) y la alineación de BLINK-DOC-12 con el estándar
-de producción del propietario (impresión ID-1, paquete VDP y enrolado
-secuencial).
+2026-10-31, con la auditoría de datos y el cierre del ciclo de recarga
+(BLINK-DOC-15): se cerró la prueba física de enrolado y cobro, se purgó la
+unidad demo, se añadieron B-20 (Pago Móvil de ejemplo), B-21 (pendientes sin
+caducidad) y D-11 (guardas del ciclo), y se acotó D-03 al firmware del lector.
+La revisión anterior, del 2026-10-31, acompañó el retiro de BLINK PASAJES (B-03
+cerrada, L-03 acotada a TARJETA/BACKOFFICE), la redirección del dominio (L-06)
+y la simulación local del flujo completo (B-19, D-10). La revisión del
+2026-10-31 anterior acompañó la seguridad del portal sin conexión: se añadieron
+R-10, R-11 y D-09, y se endurecieron la caducidad de la copia local y el alcance
+del service worker. La revisión del 2026-10-30 acompañó las migraciones `0009`
+(serie de 7 dígitos) y `0010` (maestra `00-0-0000000-0`) y la alineación de
+BLINK-DOC-12 con el estándar de producción del propietario (impresión ID-1,
+paquete VDP y enrolado secuencial).

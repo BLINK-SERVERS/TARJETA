@@ -5,6 +5,43 @@ Todos los cambios relevantes de este producto se documentan aquí.
 Formato basado en [Keep a Changelog 1.1.0](https://keepachangelog.com/es-ES/1.1.0/)
 y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 8601.
 
+## [No publicado]
+
+### Añadido
+
+- **BLINK-DOC-15**: auditoría de datos, RLS, integridad referencial y cierre
+  del ciclo de recarga, con la evidencia de la prueba física.
+- **Script de limpieza** `supabase/limpieza/2026-10-31_auditoria_y_purga.sql`:
+  transaccional e idempotente, archiva lo que borra en
+  `respaldo.purga_20261031` y se niega a tocar unidades con operación.
+- **Prueba real de punta a punta**: la maestra `A-00000-000-H` quedó grabada
+  en el chip (UID `3981BF06`); el primer toque aplicó una recarga de 5000 Bs y
+  cobró 500, dejando `virtual_balance = last_chip_balance = 4500`, la recarga
+  con `synced_to_chip = true` y una fila de telemetría.
+
+### Corregido
+
+- **Re-enrolado tras autenticación fallida (firmware v6)**: `reseleccionar()`
+  corta y reenciende el campo RF antes de reintentar, porque el PICC no vuelve
+  a IDLE por sí solo. El comando `ENROLAR … FORZAR` ya no termina en
+  `ERROR,enrolado,lector`.
+
+### Cambiado
+
+- **Purga del vehículo demo `A99XY7Z`** (MAC `001122334455`, sin viajes ni
+  liquidaciones); queda la unidad real `A12BC3D`. No se reiniciaron secuencias
+  ni se tocaron cuentas, tarjetas, recargas, movimientos ni telemetría.
+- **Suite documental 1.7.0**: DOC-07 §4.4 (prueba física), DOC-09 1.7.0
+  (B-20, B-21, D-11), DOC-12 2.0.1 (estado del grabado) y DOC-15 nuevo.
+
+### Pendiente
+
+- Cargar el Pago Móvil real en `settings.publico` (hoy RIF y teléfono de
+  ejemplo).
+- Aplicar las guardas F-01/F-02 y la caducidad de pendientes (F-04).
+- Revisar la recarga pendiente `6466` reportada durante la prueba.
+- Rotación de secretos y restauración del MFA.
+
 ## [1.5.0] — 2026-10-31
 
 ### Seguridad

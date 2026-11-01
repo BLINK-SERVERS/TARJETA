@@ -3,11 +3,11 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-00 |
-| Versión | 1.6.0 |
+| Versión | 1.7.0 |
 | Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Autor | Equipo BLINK (desarrollo asistido) |
-| Revisión | 6 |
+| Revisión | 7 |
 | Normas de referencia | ISO 9001:2015 §7.5 · ISO/IEC/IEEE 12207:2017 · ISO/IEC/IEEE 26511/26512/26513/26514/26515 · ISO/IEC 25010 · ISO/IEC 27001:2022 |
 
 ## 1. Propósito
@@ -32,8 +32,9 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | Simulación local | `TARJETA/simulacion` | `http://127.0.0.1:54321` (API) · `:5175` (portal) · `:5173` (panel) | — |
 
 > **Base de datos compartida.** TARJETA y BACK-OFFICE apuntan al **mismo proyecto
-> de Supabase** y al mismo esquema `bt_*`; las migraciones viven en
-> `TARJETA/supabase/migrations` y son la fuente de verdad. Cualquier cambio de
+> de Supabase** y al mismo esquema `public` (tablas sin prefijo y funciones
+> `bt_*`); las migraciones viven en `TARJETA/supabase/migrations` y son la
+> fuente de verdad. Cualquier cambio de
 > esquema debe evaluarse contra ambas aplicaciones. BLINK POS (comercio) sigue
 > operando en `www.blink.com.ve` con las tablas `businesses` y `catalogo_global`
 > del mismo proyecto, pero queda **fuera del alcance funcional** de esta suite.
@@ -70,6 +71,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | BLINK-DOC-12 | [Enrolado y producción de lotes de tarjetas](12-enrolado-de-lotes.md) | 7810 · 7812-1 · 15417 · PDF/VT |
 | BLINK-DOC-13 | [Seguridad bancaria y operación offline](13-seguridad-bancaria-offline.md) | 7812-1 · 7064 · 14443 · GlobalPlatform |
 | BLINK-DOC-14 | [Estándares industriales y control de calidad](14-estandares-industriales.md) | 14443 · 7810 · 10373 |
+| BLINK-DOC-15 | [Auditoría de datos, limpieza y cierre del ciclo de recarga](15-auditoria-y-limpieza.md) | 27001 A.8.10 · 12207 |
 | — | [CHANGELOG](../CHANGELOG.md) | Keep a Changelog 1.1.0 + SemVer |
 
 ## 4. Convenciones de esta suite
@@ -98,6 +100,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | 1.5.1 | 2026-10-31 | Revisión de seguridad del portal sin conexión: caducidad de la copia local, service worker acotado a su caché y ámbito; DOC-09 pasa a 1.5.0 con R-10, R-11 y D-09. | Equipo BLINK |
 | 1.5.2 | 2026-10-31 | Ciclo completo de la recarga: bandeja, aprobación/rechazo, entrega al chip y verificación (DOC-06 §5.6 y DOC-08 §5.1). | Equipo BLINK |
 | 1.6.0 | 2026-10-31 | Retiro de BLINK PASAJES y redirección de `pasajes.blink.com.ve` a TARJETA; alcance reducido a TARJETA + BACK-OFFICE con el panel fiscal como próximo hito; consolidación local en `~/BLINK`; simulación completa del flujo (DOC-06 §5.7 y DOC-07 §4.3) y marca TARJETA sin referencias al panel retirado. | Equipo BLINK |
+| 1.7.0 | 2026-10-31 | Nuevo BLINK-DOC-15: auditoría de RLS, integridad y datos placeholder, purga archivada del vehículo demo y cierre del ciclo de recarga con la prueba física de la maestra; DOC-07 §4.4 y DOC-09 1.7.0. | Equipo BLINK |
 
 Reglas de mantenimiento:
 

@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-12 |
-| Versión | 2.0.0 |
+| Versión | 2.0.1 |
 | Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Normas | ISO/IEC 7812-1 · ISO/IEC 7064 · ISO/IEC 7810 · ISO/IEC/IEEE 26511 · 26514 |
@@ -242,3 +242,11 @@ Cuando la imprenta te entrega la caja de tarjetas físicas impresas en orden (`0
 6. Distribución comercial    → Venta en kioscos/tiendas (ya enroladas)
 7. Reclamo en Portal Web     → bt_vincular pasa la tarjeta a ACTIVE
 ```
+
+**Estado del grabado físico (2026-10-31).** El paso 5 se verificó con el
+validador v6 y la maestra blanca (UID `3981BF06`): la consola serie
+`ENROLAR,A-00000-000-H,0,0,3981BF06,FORZAR` escribió el bloque de identidad v3,
+el saldo y los sectores con sus llaves derivadas. La estación web todavía no
+graba el chip (B-14); el procedimiento D sigue dependiendo de la consola serie
+hasta que se conecte el lector a la interfaz. La prueba completa está en
+BLINK-DOC-07 §4.4 y BLINK-DOC-15 §8.4.

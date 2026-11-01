@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-07 |
-| Versión | 1.4.0 |
+| Versión | 1.5.0 |
 | Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 26513 · ISO/IEC 25010 |
@@ -285,6 +285,30 @@ panel en `http://127.0.0.1:5173` permitió entrar con TOTP e inscribir el
 dispositivo. Los datos de la simulación viven en `tmpfs` y desaparecen al
 ejecutar `./detener.sh`.
 
+### 4.4 Prueba física de punta a punta en producción (2026-10-31)
+
+Equipo: validador ESP32 v6 con pantalla ST7789, RC522 y firmware corregido;
+tarjeta maestra blanca UID `3981BF06`; firmware compilado con `arduino-cli`
+(92 % de flash, 15 % de RAM) y flasheado por `/dev/ttyUSB0`; Wi-Fi temporal
+`BLINK-VALIDADOR` (10.42.0.89) para la sincronización.
+
+| # | Paso | Resultado |
+| --- | --- | --- |
+| 1 | `INFO` tras el flasheo | `fw=6`, `token=1`, `pendientes=1`, MAC `1C608BDF948C` |
+| 2 | `ENROLAR,A-00000-000-H,0,0,3981BF06,FORZAR` | `ENROLADA,serial=A-00000-000-H,uid=3981BF06` |
+| 3 | Primer toque (recarga de 5000 Bs aprobada + pasaje de 500) | Recarga aplicada y viaje cobrado; `saldo=4500`, `recarga=5000` |
+| 4 | `recharges.synced_to_chip` | `true`, `synced_at` 20:40 |
+| 5 | `trips_telemetry` | 1 fila, tarifa 500, `chip_balance_after = 4500`, `offline_id` único |
+| 6 | `card_movements` | `recarga +5000` y `viaje −500`, ambos aprobados |
+| 7 | `cards` | `virtual_balance = last_chip_balance = 4500` |
+| 8 | `bt_resumen_operativo` | 1 pasaje, 500 recaudados, 500 por liquidar |
+
+La primera versión del firmware fallaba al re-enrolar (`ERROR,enrolado,lector`)
+porque, tras una autenticación fallida, el PICC no vuelve a IDLE sin cortar el
+campo. `reseleccionar()` ahora apaga y enciende la antena antes de cada
+reintento; con ese cambio el grabado y el toque funcionaron a la primera. La
+evidencia completa, con identificadores y saldos, está en BLINK-DOC-15 §8.4.
+
 ## 5. Prueba de la tarjeta virtual (ID-1 / CR80)
 
 | Viewport | Ancho de tarjeta | Alto | Relación medida | Radio |
@@ -308,7 +332,7 @@ solapamiento de contenido. **Cumplido** tras sustituir `min-height` por
 | Back-office separado con rol administrativo y TOTP | Cumplido |
 | Pruebas unitarias en verde | Cumplido |
 | Simulación local del flujo completo | Cumplido (2026-10-31) |
-| Enrolado y cobro con tarjeta física | **Pendiente** (requiere lector y plástico) |
+| Enrolado y cobro con tarjeta física | Cumplido (2026-10-31, §4.4) |
 
 ## 7. Calidad según ISO/IEC 25010
 
@@ -328,7 +352,8 @@ solapamiento de contenido. **Cumplido** tras sustituir `min-height` por
 1. Automatizar el flujo de §4 con Playwright contra un proyecto de pruebas.
 2. Llevar `simulacion/flujo.sh` al CI con la pila Docker efímera (hoy se ejecuta
    a mano en el equipo de desarrollo).
-3. Probar el validador con tarjeta física y modo offline (tarea #28).
+3. Probar el validador con tarjeta física en modo offline y con una tarjeta en
+   lista negra (el enrolado y el cobro en línea ya se probaron el 2026-10-31).
 4. Añadir prueba de regresión visual de la tarjeta en varios viewports.
 5. Probar el back-office con Playwright (acceso, TOTP y carga en bloque) sobre un
    proyecto de pruebas, porque los códigos TOTP no se pueden reutilizar en CI sin
