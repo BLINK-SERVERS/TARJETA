@@ -42,6 +42,9 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 
 - La simulación (`flujo.mjs`) prueba la recarga por pasajes y verifica el
   desglose y el importe que recibe el chip.
+- La caché del service worker sube a `v4` para que los pasajeros con la
+  versión anterior instalada reciban el portal por pasajes y no el armazón
+  viejo.
 
 ### Añadido (acumulado desde 1.5.0)
 
