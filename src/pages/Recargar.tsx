@@ -3,21 +3,20 @@ import { Icon } from "../components/Icon";
 import { ErrorBlink } from "../lib/repo";
 import { CAMPOS_RECARGA, buscarRecargaDuplicada, erroresRecarga, pasajesEquivalentes } from "../lib/dominio";
 import type { BorradorRecarga, CampoRecarga, ErroresRecarga } from "../lib/dominio";
-import { formatearBs, formatearEntero, formatearMovimiento, formatearTelefono, soloDigitos } from "../lib/formato";
+import { formatearBs, formatearMovimiento, formatearTelefono, soloDigitos } from "../lib/formato";
 import { useCopiar } from "../lib/hooks";
+import { cotizarRecarga, maximoPasajes, type Cotizacion } from "../lib/tarifa";
 import { BANCOS } from "../lib/tipos";
 import type { Ajustes, DatosPago, Movimiento, RecargaNueva, Tarjeta } from "../lib/tipos";
 
-type Paso = "monto" | "pago" | "revision" | "listo";
+type Paso = "pasajes" | "pago" | "revision" | "listo";
 
-const MONTOS = [50, 100, 200, 500];
+const BLOQUES = [1, 2, 3, 5, 10];
 const PASOS: { id: Paso; etiqueta: string }[] = [
-  { id: "monto", etiqueta: "Monto" },
+  { id: "pasajes", etiqueta: "Pasajes" },
   { id: "pago", etiqueta: "Pago" },
   { id: "revision", etiqueta: "Confirmar" },
 ];
-
-
 
 interface Props {
   tarjeta: Tarjeta;
@@ -40,9 +39,9 @@ export function Recargar({
   alVerMovimientos,
   alEditarPago,
 }: Props) {
-  const [paso, setPaso] = useState<Paso>("monto");
+  const [paso, setPaso] = useState<Paso>("pasajes");
   const [borrador, setBorrador] = useState<BorradorRecarga>(() => ({
-    monto: "",
+    pasajes: "",
     telefono: formatearTelefono(datosPago.telefono),
     banco: datosPago.banco,
     referencia: "",
@@ -54,9 +53,25 @@ export function Recargar({
   const [copiado, copiar] = useCopiar();
   const titulo = useRef<HTMLHeadingElement>(null);
 
-  const monto = Number(borrador.monto);
-  const montoValido = Number.isFinite(monto) && monto > 0;
-  const saldoResultante = tarjeta.saldo + (montoValido ? monto : 0);
+  const parametros = useMemo(
+    () => ({ ...ajustes.tarifario, base: tarjeta.tarifa }),
+    [ajustes.tarifario, tarjeta.tarifa]
+  );
+  const tope = ajustes.topeRecarga;
+  const maximo = useMemo(() => maximoPasajes(tope, parametros), [tope, parametros]);
+
+  const cantidad = Number(borrador.pasajes);
+  const valida = Number.isInteger(cantidad) && cantidad >= 1;
+  const cotizacion: Cotizacion | null = useMemo(() => {
+    if (!valida) return null;
+    try {
+      return cotizarRecarga(cantidad, parametros);
+    } catch {
+      return null;
+    }
+  }, [cantidad, parametros, valida]);
+
+  const saldoResultante = tarjeta.saldo + (cotizacion?.acreditado ?? 0);
   const pasajesNuevos = pasajesEquivalentes(saldoResultante, tarjeta.tarifa);
 
   const indicePaso = PASOS.findIndex((p) => p.id === paso);
@@ -83,25 +98,29 @@ export function Recargar({
     requestAnimationFrame(() => document.getElementById(`rc-${campo}`)?.focus());
   }
 
-  function validarMonto() {
-    const problemas = erroresRecarga({ ...borrador, telefono: "04140000000", banco: "Otro", referencia: "0000" }, ajustes);
-    if (problemas.monto) {
-      setErrores({ monto: problemas.monto });
-      enfocar("monto");
+  function validarPasajes() {
+    const problemas = erroresRecarga(
+      { ...borrador, telefono: "04140000000", banco: "Otro", referencia: "0000" },
+      ajustes,
+      tarjeta.tarifa
+    );
+    if (problemas.pasajes) {
+      setErrores({ pasajes: problemas.pasajes });
+      enfocar("pasajes");
       return false;
     }
     setErrores({});
     return true;
   }
 
-  function continuarMonto(evento: FormEvent) {
+  function continuarPasajes(evento: FormEvent) {
     evento.preventDefault();
-    if (validarMonto()) irA("pago");
+    if (validarPasajes()) irA("pago");
   }
 
   function continuarPago(evento: FormEvent) {
     evento.preventDefault();
-    const problemas = erroresRecarga(borrador, ajustes);
+    const problemas = erroresRecarga(borrador, ajustes, tarjeta.tarifa);
     const primerCampo = CAMPOS_RECARGA.find((campo) => problemas[campo]);
     if (primerCampo) {
       setErrores(problemas);
@@ -126,12 +145,14 @@ export function Recargar({
   }
 
   async function confirmar() {
-    if (enviando) return;
+    if (enviando || !cotizacion) return;
     setEnviando(true);
     setAviso(null);
     try {
       const movimiento = await alReportar({
-        monto: Math.round(monto * 100) / 100,
+        pasajes: cotizacion.pasajes,
+        monto: cotizacion.total,
+        montoBase: cotizacion.acreditado,
         telefono: soloDigitos(borrador.telefono),
         banco: borrador.banco,
         referencia: soloDigitos(borrador.referencia).slice(-4),
@@ -155,32 +176,34 @@ export function Recargar({
 
   function otraRecarga() {
     setBorrador({
-      monto: "",
+      pasajes: "",
       telefono: formatearTelefono(datosPago.telefono),
       banco: datosPago.banco,
       referencia: "",
     });
     setReportada(null);
     setErrores({});
-    irA("monto");
+    irA("pasajes");
   }
 
   const comprobante = useMemo(() => {
-    if (!reportada) return "";
+    if (!reportada || !cotizacion) return "";
     return [
       "BLINK TARJETA — reporte de recarga",
       `Tarjeta: ${tarjeta.serial}`,
       `Titular: ${tarjeta.titular.nombre}`,
-      `Monto: ${formatearBs(reportada.monto)}`,
+      `Pasajes: ${cotizacion.pasajes}`,
+      `Transferido: ${formatearBs(cotizacion.total)}`,
+      `A acreditar: ${formatearBs(cotizacion.acreditado)}`,
       `Banco: ${reportada.banco ?? ""}`,
-      `Teléfono: ${formatearTelefono(reportada.referencia ? borrador.telefono || "" : "")}`,
+      `Teléfono: ${formatearTelefono(borrador.telefono)}`,
       `Referencia: ${reportada.referencia ?? ""}`,
       `Fecha: ${formatearMovimiento(reportada.at)}`,
       "Estado: en revisión (Admin confirma el Pago Móvil)",
     ].join("\n");
-  }, [reportada, tarjeta, borrador.telefono]);
+  }, [reportada, cotizacion, tarjeta, borrador.telefono]);
 
-  if (paso === "listo" && reportada) {
+  if (paso === "listo" && reportada && cotizacion) {
     return (
       <div className="vista">
         <section className="exito" aria-live="polite">
@@ -189,9 +212,10 @@ export function Recargar({
           </span>
           <h1 className="exito__titulo">Recarga reportada</h1>
           <p className="exito__texto">
-            Registramos tu Pago Móvil de <strong>{formatearBs(reportada.monto)}</strong>. El
-            saldo se acredita cuando Admin confirme la referencia{" "}
-            <span className="mono">{reportada.referencia}</span>.
+            Registramos tu Pago Móvil de <strong>{formatearBs(cotizacion.total)}</strong> por{" "}
+            {cotizacion.pasajes} {cotizacion.pasajes === 1 ? "pasaje" : "pasajes"}. Al
+            confirmarlo se acreditarán <strong>{formatearBs(cotizacion.acreditado)}</strong> a tu
+            saldo.
           </p>
           <dl className="datos">
             <div>
@@ -201,6 +225,10 @@ export function Recargar({
             <div>
               <dt>Banco emisor</dt>
               <dd>{reportada.banco}</dd>
+            </div>
+            <div>
+              <dt>Referencia</dt>
+              <dd className="mono">{reportada.referencia}</dd>
             </div>
             <div>
               <dt>Fecha</dt>
@@ -260,60 +288,95 @@ export function Recargar({
       </ol>
 
       <h2 className="paso-titulo" tabIndex={-1} ref={titulo}>
-        {paso === "monto"
-          ? "¿Cuánto vas a recargar?"
+        {paso === "pasajes"
+          ? "¿Cuántos pasajes deseas recargar?"
           : paso === "pago"
             ? "Datos del Pago Móvil"
             : "Revisa antes de reportar"}
       </h2>
 
-      {paso === "monto" && (
-        <form className="tarjeta-panel" onSubmit={continuarMonto} noValidate>
-          <div className="chips" role="group" aria-label="Montos frecuentes">
-            {MONTOS.map((valor) => (
-              <button
-                key={valor}
-                type="button"
-                className={`chip${borrador.monto === String(valor) ? " chip--activo" : ""}`}
-                aria-pressed={borrador.monto === String(valor)}
-                onClick={() => {
-                  cambiar("monto", String(valor));
-                  setErrores({});
-                }}
-              >
-                {formatearEntero(valor)}
-                <span>Bs</span>
-              </button>
-            ))}
+      {paso === "pasajes" && (
+        <form className="tarjeta-panel" onSubmit={continuarPasajes} noValidate>
+          <p className="recarga__tarifa">
+            <Icon name="autobus" />
+            Pasaje a {formatearBs(tarjeta.tarifa)}. El monto a transferir incluye la comisión
+            bancaria y el margen de servicio.
+          </p>
+
+          <div className="chips chips--pasajes" role="group" aria-label="Cantidades frecuentes">
+            {BLOQUES.map((valor) => {
+              const disponible = valor <= maximo;
+              return (
+                <button
+                  key={valor}
+                  type="button"
+                  className={`chip${borrador.pasajes === String(valor) ? " chip--activo" : ""}`}
+                  aria-pressed={borrador.pasajes === String(valor)}
+                  disabled={!disponible}
+                  onClick={() => {
+                    cambiar("pasajes", String(valor));
+                    setErrores({});
+                  }}
+                >
+                  {valor}
+                  <span>{valor === 1 ? "pasaje" : "pasajes"}</span>
+                </button>
+              );
+            })}
           </div>
 
           <div className="campo">
-            <label className="campo__etiqueta" htmlFor="rc-monto">
-              Otro monto (Bs)
+            <label className="campo__etiqueta" htmlFor="rc-pasajes">
+              Otra cantidad de pasajes
             </label>
             <input
-              id="rc-monto"
+              id="rc-pasajes"
               className="entrada entrada--cifra"
               type="number"
               min="1"
-              step="0.01"
-              inputMode="decimal"
-              placeholder="0,00"
-              value={borrador.monto}
-              onChange={(evento) => cambiar("monto", evento.target.value)}
-              aria-invalid={errores.monto ? true : undefined}
-              aria-describedby={errores.monto ? "rc-monto-error" : "rc-monto-ayuda"}
+              max={maximo || undefined}
+              step="1"
+              inputMode="numeric"
+              placeholder="0"
+              value={borrador.pasajes}
+              onChange={(evento) => cambiar("pasajes", soloDigitos(evento.target.value))}
+              aria-invalid={errores.pasajes ? true : undefined}
+              aria-describedby={errores.pasajes ? "rc-pasajes-error" : "rc-pasajes-ayuda"}
             />
-            <span className="campo__ayuda" id="rc-monto-ayuda">
-              Tope por operación: {formatearBs(ajustes.topeRecarga)}. Si transferiste más,
-              divide el pago en varias referencias.
+            <span className="campo__ayuda" id="rc-pasajes-ayuda">
+              {maximo > 0
+                ? `Hasta ${maximo} ${maximo === 1 ? "pasaje" : "pasajes"} por operación (tope ${formatearBs(
+                    tope
+                  )}).`
+                : "La tarifa supera el tope por operación configurado."}
             </span>
-            {errores.monto && (
-              <p className="campo__error" id="rc-monto-error">
-                {errores.monto}
+            {errores.pasajes && (
+              <p className="campo__error" id="rc-pasajes-error">
+                {errores.pasajes}
               </p>
             )}
           </div>
+
+          {cotizacion && (
+            <div className="recibo" aria-live="polite">
+              <div className="recibo__total">
+                <span>Transfiere exactamente</span>
+                <strong>{formatearBs(cotizacion.total)}</strong>
+              </div>
+              <div className="recibo__detalle">
+                <div>
+                  <span>Pasajes</span>
+                  <strong>
+                    {cotizacion.pasajes} · {formatearBs(cotizacion.acreditado)}
+                  </strong>
+                </div>
+                <div>
+                  <span>Comisiones y servicio</span>
+                  <strong>{formatearBs(cotizacion.total - cotizacion.acreditado)}</strong>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="proyeccion">
             <div>
@@ -326,7 +389,7 @@ export function Recargar({
               <strong className="proyeccion__nuevo">{formatearBs(saldoResultante)}</strong>
             </div>
           </div>
-          {montoValido && (
+          {cotizacion && (
             <p className="proyeccion__pasajes">
               <Icon name="autobus" />
               Te quedarían {pasajesNuevos} {pasajesNuevos === 1 ? "pasaje" : "pasajes"} a{" "}
@@ -341,7 +404,7 @@ export function Recargar({
         </form>
       )}
 
-      {paso === "pago" && (
+      {paso === "pago" && cotizacion && (
         <>
           <section className="pago-movil">
             <header className="pago-movil__cabecera">
@@ -376,22 +439,39 @@ export function Recargar({
                 </div>
               ))}
             </dl>
+            <div className="pago-movil__monto">
+              <div>
+                <span>Transfiere exactamente</span>
+                <strong>{formatearBs(cotizacion.total)}</strong>
+                <small>
+                  {cotizacion.pasajes} {cotizacion.pasajes === 1 ? "pasaje" : "pasajes"} · se
+                  acreditan {formatearBs(cotizacion.acreditado)}
+                </small>
+              </div>
+              <button
+                type="button"
+                className="boton boton--secundario boton--compacto"
+                onClick={() => void copiar(String(cotizacion.total), "monto")}
+              >
+                <Icon name={copiado === "monto" ? "check" : "copiar"} />
+                {copiado === "monto" ? "Monto copiado" : "Copiar monto"}
+              </button>
+            </div>
             <button
               type="button"
               className="boton boton--secundario boton--compacto"
               onClick={() =>
                 void copiar(
-                  `${pagoMovil.banco}\n${pagoMovil.rif}\n${pagoMovil.telefono}\n${pagoMovil.titular}`,
+                  `${pagoMovil.banco}\n${pagoMovil.rif}\n${pagoMovil.telefono}\n${pagoMovil.titular}\n${formatearBs(
+                    cotizacion.total
+                  )}`,
                   "todo"
                 )
               }
             >
               <Icon name={copiado === "todo" ? "check" : "copiar"} />
-              {copiado === "todo" ? "Datos copiados" : "Copiar datos"}
+              {copiado === "todo" ? "Datos copiados" : "Copiar datos y monto"}
             </button>
-            <p className="pago-movil__monto">
-              Transfiere exactamente <strong>{formatearBs(montoValido ? monto : 0)}</strong>.
-            </p>
           </section>
 
           <form className="tarjeta-panel" onSubmit={continuarPago} noValidate>
@@ -500,7 +580,7 @@ export function Recargar({
             )}
 
             <div className="acciones-paso">
-              <button type="button" className="boton boton--fantasma" onClick={() => irA("monto")}>
+              <button type="button" className="boton boton--fantasma" onClick={() => irA("pasajes")}>
                 <Icon name="atras" />
                 Atrás
               </button>
@@ -513,7 +593,7 @@ export function Recargar({
         </>
       )}
 
-      {paso === "revision" && (
+      {paso === "revision" && cotizacion && (
         <section className="tarjeta-panel">
           <dl className="datos">
             <div>
@@ -521,8 +601,18 @@ export function Recargar({
               <dd className="mono">{tarjeta.serial}</dd>
             </div>
             <div>
-              <dt>Monto</dt>
-              <dd className="mono">{formatearBs(monto)}</dd>
+              <dt>Pasajes</dt>
+              <dd>
+                {cotizacion.pasajes} a {formatearBs(cotizacion.tarifaBase)}
+              </dd>
+            </div>
+            <div>
+              <dt>Monto a transferir</dt>
+              <dd className="mono">{formatearBs(cotizacion.total)}</dd>
+            </div>
+            <div>
+              <dt>Se acredita a tu saldo</dt>
+              <dd className="mono">{formatearBs(cotizacion.acreditado)}</dd>
             </div>
             <div>
               <dt>Banco emisor</dt>
@@ -535,13 +625,6 @@ export function Recargar({
             <div>
               <dt>Referencia</dt>
               <dd className="mono">…{borrador.referencia}</dd>
-            </div>
-            <div>
-              <dt>Pasajes</dt>
-              <dd>
-                +{pasajesEquivalentes(monto, tarjeta.tarifa)} a{" "}
-                {formatearBs(tarjeta.tarifa)}
-              </dd>
             </div>
           </dl>
 
@@ -556,7 +639,7 @@ export function Recargar({
             <Icon name="escudo" />
             <p>
               Al confirmar, tu reporte queda en revisión. Admin verifica el Pago Móvil y
-              acredita el saldo; normalmente en minutos.
+              acredita {formatearBs(cotizacion.acreditado)} a tu saldo; normalmente en minutos.
             </p>
           </div>
 

@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-08 |
-| Versión | 1.4.0 |
-| Fecha | 2026-10-31 |
+| Versión | 1.5.0 |
+| Fecha | 2026-11-01 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 26511 · 26512 |
 | Público | Pasajero, chofer, operador de taquilla, administrador de línea |
@@ -52,17 +52,28 @@ cuenta, contacta a atención al cliente.
 
 ### 1.4 Recargar con Pago Móvil
 
-1. Toca **Recargar** y elige un monto (o escríbelo). El tope por operación se
-   muestra en pantalla (hoy Bs 5.000,00).
-2. Revisa los datos de BLINK para hacer el Pago Móvil desde tu banco:
-   banco, RIF, teléfono y titular. Puedes **copiarlos** con un toque.
-3. Transfiere exactamente el monto indicado.
-4. De vuelta en el portal, elige tu **banco emisor**, confirma el teléfono desde el
-   que pagaste y escribe los **últimos 4 dígitos de la referencia**.
-5. Toca **Revisar** y luego **Confirmar recarga**. Verás el comprobante en estado
+1. Toca **Recargar** y elige **cuántos pasajes** quieres: 1, 2, 3, 5 o 10 con
+   los botones, o escribe otra cantidad entera. La pantalla muestra la tarifa
+   vigente y el máximo por operación (hoy 37 pasajes con tope Bs 20.000,00).
+2. Lee el recibo: **transfiere exactamente** el monto en bolívares, cuántos
+   pasajes recibirás y cuánto sube tu saldo. El monto incluye la comisión del
+   banco y el servicio; no lo cambies a mano.
+3. En **Pago**, revisa los datos de BLINK (banco, RIF, teléfono y titular) y usa
+   **Copiar monto** o **Copiar datos y monto** si vas a pagar desde el banco.
+4. Transfiere exactamente ese monto.
+5. De vuelta en el portal, elige tu **banco emisor**, confirma el teléfono desde el
+   que pagaste y escribe los **últimos 4 dígitos de la referencia**. No hay que
+   escribir el monto: el portal ya lo sabe.
+6. Toca **Revisar** y luego **Confirmar recarga**. Verás el comprobante en estado
    **En revisión**.
-6. Cuando el administrador verifica el pago, el saldo se acredita y el movimiento
-   cambia de estado. El saldo también se actualiza en el próximo tap del validador.
+7. Cuando el administrador verifica el pago, se acredita el **valor de los
+   pasajes** (no el monto transferido) y el movimiento cambia de estado. El
+   saldo también se actualiza en el próximo tap del validador.
+
+Ejemplo: 3 pasajes a Bs 500 transfieren **Bs 1.590** y acreditan **Bs 1.500**.
+Los Bs 90 restantes cubren la comisión bancaria (Bs 23,85), la provisión de la
+liquidación al chofer (Bs 4,50), el margen del servicio (Bs 60,00) y el ajuste
+de redondeo (Bs 1,68).
 
 **Errores frecuentes**
 
@@ -70,7 +81,8 @@ cuenta, contacta a atención al cliente.
 | --- | --- |
 | "Ya reportaste esa referencia" | Revisa Movimientos; no envíes dos veces la misma recarga. |
 | "Demasiados reportes seguidos" | Espera unos minutos antes de reportar otra. |
-| "El monto mínimo es Bs 1,00" / "tope por recarga" | Ajusta el monto o divide el pago. |
+| "El tope por recarga es Bs 20.000" | Compra menos pasajes o divide el pago; la pantalla dice cuántos caben. |
+| "Escribe una cantidad entera de pasajes" | Usa un número entero de 1 o más; no se aceptan decimales. |
 | "La sesión expiró" | Vuelve a entrar con tu cédula y PIN. |
 
 ### 1.5 Cambiar el PIN o los datos de pago
@@ -175,20 +187,22 @@ BLINK-DOC-06 §5.6. En corto:
 
 1. **Bandeja:** abre **Recargas** en el back-office (sesión con segundo factor).
    Lista los reportes pendientes del más antiguo al más reciente con el total,
-   el monto en revisión, el serial, el titular, el banco, los últimos 4 dígitos
-   de la referencia y el saldo actual de la tarjeta.
-2. **Revisión:** compara con el estado de cuenta del banco el monto, el banco,
-   el teléfono emisor y los **últimos 4 dígitos** de la referencia (es lo único
-   que guarda el portal).
+   el monto por conciliar, lo que se acreditará, los pasajes, el serial, el
+   titular, el banco, los últimos 4 dígitos de la referencia y el saldo actual
+   de la tarjeta.
+2. **Revisión:** compara con el estado de cuenta del banco el **monto
+   transferido** (el bruto), el banco, el teléfono emisor y los **últimos 4
+   dígitos** de la referencia (es lo único que guarda el portal). No compares
+   contra el saldo a acreditar: son importes distintos a propósito.
 3. **Resolución:** pulsa **Aprobar** y confirma, o **Rechazar** y escribe el
    motivo. Nunca se actualiza la tabla a mano: el servidor acredita el saldo y
    deja el movimiento consistente. **Aprobar es irreversible** y una recarga ya
    resuelta no se puede volver a tocar. La vía SQL de emergencia sigue siendo
    `select public.bt_aprobar_recarga('<uuid>', 'Operador');` o
    `select public.bt_rechazar_recarga('<uuid>', 'Operador', 'Motivo');`.
-4. **Entrega al chip:** en la siguiente sincronización el validador descarga la
-   recarga aprobada y, al apoyar la tarjeta, incrementa el saldo del plástico
-   (`RECARGA_APLICADA` por serie). El ciclo cierra cuando la base marca
+4. **Entrega al chip:** en la siguiente sincronización el validador descarga el
+   **monto a acreditar** y, al apoyar la tarjeta, incrementa el saldo del
+   plástico (`RECARGA_APLICADA` por serie). El ciclo cierra cuando la base marca
    `synced_to_chip = true`.
 5. **Comprobación:** el pasajero ve el movimiento «Pago Móvil aprobado» y el
    saldo nuevo en el portal; el operador lo confirma con

@@ -7,7 +7,43 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 
 ## [No publicado]
 
+## [1.6.0] — 2026-11-01
+
 ### Añadido
+
+- **Motor tarifario y recarga por pasajes** (migración `0019`): el pasajero
+  elige cuántos pasajes compra (1, 2, 3, 5, 10 o una cantidad entera) y el
+  portal calcula el monto exacto con gross-up de la comisión de entrada (1,5 %),
+  provisión de salida (0,3 %), margen del 4 % y redondeo a la decena superior.
+  El recibo muestra lo que se transfiere, lo que se acredita y el saldo
+  resultante (BLINK-DOC-19).
+- **`bt_recargar_pasajes`** recotiza en el servidor con `cards.tarifa`; guarda
+  `pasajes`, `tarifa_base`, `monto_base`, `comision_entrada`,
+  `provision_salida`, `margen_blink`, `excedente_redondeo` y una copia del
+  tarifario en cada recarga. `amount` sigue siendo el bruto que se concilia.
+- **`bt_aprobar_recarga` acredita el monto base**, no el bruto; las recargas
+  anteriores a `0019` conservan su importe.
+- **Migración `0020`**: la sincronización del validador entrega `monto_base` al
+  chip (antes enviaba el bruto y el plástico quedaba con más saldo que la nube).
+- Botones **Copiar monto** y **Copiar datos y monto** en el paso de Pago.
+- El tope por recarga sube a Bs 20.000 para que quepan los bloques de 10 y 20
+  pasajes; el campo libre indica el máximo (37 a Bs 500).
+- **BLINK-DOC-19** con el veredicto de las tres especificaciones, ADR-16 a
+  ADR-20 y las brechas B-27 a B-31.
+
+### Cambiado
+
+- El paso 1 de **Recargar** ya no acepta un monto en bolívares: se compra una
+  cantidad de pasajes. El monto a transferir es calculado y de solo lectura.
+- La bandeja del back-office y el manual muestran pasajes, monto por conciliar
+  (bruto) y monto a acreditar por separado.
+
+### Corregido
+
+- La simulación (`flujo.mjs`) prueba la recarga por pasajes y verifica el
+  desglose y el importe que recibe el chip.
+
+### Añadido (acumulado desde 1.5.0)
 
 - **Migración `0018_admin_recargas`**: `bt_admin_recargas` y
   `bt_admin_resolver_recarga` exponen la bandeja de Pago Móvil y su resolución
@@ -62,7 +98,7 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
   interfaz al panel de 240×240 (ADR-12) y la matriz de retención (hoy 2,5 s y
   3,0 s con el firmware 8).
 
-### Corregido
+### Corregido (acumulado desde 1.5.0)
 
 - **«Cobra una vez y luego no lee»** (firmware v6): tras autenticar, el
   MFRC522 quedaba en Crypto1 y el siguiente `REQA` viajaba cifrado, así que el
@@ -80,7 +116,7 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
   a IDLE por sí solo. El comando `ENROLAR … FORZAR` ya no termina en
   `ERROR,enrolado,lector`.
 
-### Cambiado
+### Cambiado (acumulado desde 1.5.0)
 
 - **Firmware 8**: `READY` e `INFO` informan `fw=8`; la retención del resultado
   pasa de 5 s a 2,5 s (aprobado) y 3,0 s (denegado); el resultado deja de

@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-10 |
-| Versión | 1.4.0 |
-| Fecha | 2026-10-31 |
+| Versión | 1.5.0 |
+| Fecha | 2026-11-01 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26515 |
 
@@ -112,12 +112,40 @@ antes de commitear.
 3. Actualizar `.env.local` de POS.
 4. Relanzar el workflow de Pages (push vacío o `workflow_dispatch`).
 
-### Aprobar una recarga (mientras no hay UI)
+### Aprobar una recarga
+
+En el back-office: **Recargas** → **Aprobar** → confirmar. La vía SQL queda
+solo para emergencias:
 
 ```sql
 select * from public.bt_recargas_pendientes(50);
 select public.bt_aprobar_recarga('<uuid-de-recarga>', 'admin');
 ```
+
+Recuerda que la aprobación acredita `coalesce(monto_base, amount)`: en una
+recarga por pasajes, el saldo sube por el valor de los pasajes, no por lo que
+el pasajero transfirió (BLINK-DOC-19 §4).
+
+### Cambiar el precio de la recarga
+
+El precio se calcula, no se escribe. Para cambiar la tarifa base, las
+comisiones o el margen:
+
+```sql
+update public.settings
+   set valor = jsonb_set(valor, '{tarifario}',
+         '{"base":500,"comisionEntrada":0.015,"comisionSalida":0.003,"margen":0.04,"redondeo":10}'::jsonb),
+       actualizada = now()
+ where clave = 'publico';
+```
+
+Ojo: `settings.publico.tarifario.base` es el **respaldo** cuando una tarjeta
+tiene `cards.tarifa` nula o cero. Cada plástico usa su propia `tarifa`
+(500 general, 250 estudiante); para cambiar el precio de un plástico hay que
+actualizar `cards.tarifa`. Las comisiones, el margen y el redondeo sí salen
+siempre de `settings`. El portal previsualiza con `bt_ajustes` y el servidor
+recotiza con `bt_cotizar_recarga`. Actualiza `src/lib/tarifa.test.ts` si cambia
+la fórmula, no solo los valores.
 
 ### Crear una cuenta de demostración en producción
 

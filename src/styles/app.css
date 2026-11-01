@@ -1875,6 +1875,82 @@ body {
   opacity: 0.8;
 }
 
+.chip:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.chips--pasajes {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.recarga__tarifa {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin: 0 0 1rem;
+  font-size: var(--fs-sm);
+  color: var(--color-text-secondary);
+}
+
+.recarga__tarifa svg {
+  flex: 0 0 auto;
+  margin-top: 0.15rem;
+}
+
+.recibo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--ios-separator-strong);
+  border-radius: 18px;
+  background: var(--color-bg-elevated);
+}
+
+.recibo__total {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.recibo__total span {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.recibo__total strong {
+  font-size: 1.75rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.recibo__detalle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--ios-separator);
+}
+
+.recibo__detalle div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.recibo__detalle span {
+  font-size: var(--fs-xs);
+  color: var(--color-text-secondary);
+}
+
+.recibo__detalle strong {
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
 .proyeccion {
   display: flex;
   align-items: center;
@@ -1961,15 +2037,38 @@ body {
 }
 
 .pago-movil__monto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   padding-top: 0.7rem;
   border-top: 1px solid var(--ios-separator);
   font-size: var(--fs-sm);
   color: var(--color-text-secondary);
 }
 
+.pago-movil__monto > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.pago-movil__monto span {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .pago-movil__monto strong {
   color: var(--color-text-primary);
+  font-size: 1.4rem;
   font-variant-numeric: tabular-nums;
+}
+
+.pago-movil__monto small {
+  color: var(--color-text-secondary);
+  font-size: var(--fs-xs);
 }
 
 .form-titulo {

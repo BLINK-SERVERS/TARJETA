@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-04 |
-| Versión | 1.3.2 |
-| Fecha | 2026-10-31 |
+| Versión | 1.4.0 |
+| Fecha | 2026-11-01 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26514 |
 | Transporte | PostgREST (`POST /rest/v1/rpc/<función>`) |
@@ -57,7 +57,8 @@ curl -sS -X POST "$VITE_SUPABASE_URL/rest/v1/rpc/bt_entrar" \
 | `bt_sesion` | `p_token` | `{cuenta, tarjetas[]}` |
 | `bt_vincular` | `p_token, p_serial` | Billetera actualizada |
 | `bt_movimientos` | `p_token, p_serial, p_limite=100` | `{movimientos[]}` |
-| `bt_recargar` | `p_token, p_serial, p_monto, p_telefono, p_banco, p_referencia` | `{movimiento}` |
+| `bt_recargar_pasajes` | `p_token, p_serial, p_pasajes, p_telefono, p_banco, p_referencia` | `{movimiento, cotizacion}` |
+| `bt_recargar` (legado) | `p_token, p_serial, p_monto, p_telefono, p_banco, p_referencia` | `{movimiento}` |
 | `bt_cambiar_pin` | `p_token, p_actual, p_nuevo` | `{ok:true}` |
 | `bt_actualizar_pago` | `p_token, p_propio, p_banco='', p_telefono='', p_cedula=''` | `{cuenta}` |
 | `bt_salir` | `p_token` | `{ok:true}` |
@@ -86,10 +87,18 @@ pertenencia a otra cuenta (`ya-activada`) o duplicado en la propia billetera
 `ACTIVE` sin dueño pasa a `ACTIVE`, se sella `asignada_at`/`asignada_por='portal'`
 y se escribe la bitácora `ASIGNADA`. `BLOCKED` y `LOST` responden `bloqueada`.
 
-**`bt_recargar`** — valida monto (1 ≤ monto ≤ tope, dos decimales), teléfono,
-banco y últimos 4 dígitos de la referencia. Limita a 6 reportes por tarjeta cada
-10 minutos y rechaza referencias repetidas (`duplicada`). Crea el movimiento en
-estado `pendiente` y el registro en `recharges`.
+**`bt_recargar_pasajes`** — recibe una cantidad entera de pasajes, **no un
+monto**. Recotiza en el servidor con `bt_cotizar_recarga` usando la tarifa del
+plástico (`cards.tarifa`), rechaza si el total supera `bt_tope_recarga` y valida
+teléfono (11 dígitos desde 0), banco y últimos 4 dígitos de la referencia.
+Limita a 6 reportes por tarjeta cada 10 minutos y rechaza referencias repetidas
+(`duplicada`). Crea el movimiento pendiente con `monto = acreditado` y la
+recarga con `amount = total`, `monto_base`, `pasajes` y el desglose contable.
+Devuelve el movimiento y la cotización aplicada.
+
+**`bt_recargar`** (legado) — acepta un monto libre de 1 a tope y guarda la
+recarga sin desglose. Se mantiene solo para clientes con el service worker
+anterior en caché (BLINK-DOC-19, B-27); la UI actual no lo usa.
 
 **`bt_movimientos`** — máximo 300 filas, orden descendente por fecha. Si la tarjeta
 no pertenece a la cuenta responde `sin-tarjeta`.
@@ -112,7 +121,7 @@ entorno de confianza (script de administración, validador con token o consola S
 | `bt_estacion_catalogo(lote)` | Devuelve el lote con serial, UID y estado de cada tarjeta (hoja de la estación). |
 | `bt_estacion_asignar(serial, cedula, operador='')` | Activa el plástico a nombre de una cuenta ya registrada (taquilla). Exige que la estación haya enrolado el chip (`chip_uid` no nulo). |
 | `bt_cobrar_viaje(serial, unidad, monto)` | Cobro puntual desde el validador. |
-| `bt_aprobar_recarga(recarga, admin)` | Acredita saldo y marca la recarga. |
+| `bt_aprobar_recarga(recarga, admin)` | Acredita `coalesce(monto_base, amount)` (el bruto en recargas anteriores a `0019`), actualiza el movimiento y marca la recarga. |
 | `bt_rechazar_recarga(recarga, admin, motivo)` | Rechaza el reporte. |
 | `bt_recargas_pendientes(limite)` | Lista recargas por revisar. |
 | `bt_bloquear_tarjeta(serial, motivo)` / `bt_desbloquear_tarjeta(serial)` | Cambia el estado del plástico. |
@@ -200,8 +209,8 @@ operador nunca lleva una credencial con acceso total a la base.
 | `bt_admin_asignar` | `p_token, p_serial, p_cedula, p_operador=''` | Tarjeta activada a nombre de la cuenta |
 | `bt_admin_lotes` | `p_token, p_limite=20` | Lotes con `enroladas`, `asignadas`, `fabricadas` |
 | `bt_admin_tarjetas` | `p_token, p_lote=null, p_buscar='', p_estado=null, p_limite=200` | `{total, tarjetas[]}` con titular, cédula y saldo |
-| `bt_admin_recargas` | `p_token, p_limite=100` | `{total, monto, recargas[], operador}` de las recargas pendientes |
-| `bt_admin_resolver_recarga` | `p_token, p_recarga, p_aprobar, p_motivo=null` | `{ok, saldo, recarga, aprobada, operador}`; el rechazo exige motivo |
+| `bt_admin_recargas` | `p_token, p_limite=100` | `{total, monto, base, pasajes, recargas[], operador}`; cada recarga trae `montoBase`, `pasajes` y `tarifaBase` |
+| `bt_admin_resolver_recarga` | `p_token, p_recarga, p_aprobar, p_motivo=null` | `{ok, saldo, acreditado, pasajes, recarga, aprobada, operador}`; el rechazo exige motivo |
 
 ### Reglas
 
@@ -257,7 +266,8 @@ curl -sS -X POST "$URL/rest/v1/rpc/bt_admin_tarjetas" \
 `bt_estado_portal`, `bt_tarjeta_vigente`, `bt_tarjeta_json`, `bt_movimiento_json`,
 `bt_cuenta_json`, `bt_tarjeta_cuenta_json`, `bt_billetera_json`,
 `bt_tarjeta_de_cuenta`, `bt_sesion_cuenta`, `bt_totp_base32`, `bt_totp_codigo`,
-`bt_totp_valido`, `bt_admin_sesion`, `bt_admin_sesion_mfa`.
+`bt_totp_valido`, `bt_admin_sesion`, `bt_admin_sesion_mfa`, `bt_tarifario`,
+`bt_cotizar_recarga`.
 
 `revoke all` aplica a `public`, `anon` y `authenticated`. Solo se invocan desde
 otras funciones `security definer`.

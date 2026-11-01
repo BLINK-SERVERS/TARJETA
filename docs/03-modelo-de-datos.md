@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-03 |
-| Versión | 1.3.1 |
-| Fecha | 2026-10-30 |
+| Versión | 1.4.0 |
+| Fecha | 2026-11-01 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26514 |
 | Motor | PostgreSQL 17.11 (Supabase) |
@@ -36,6 +36,16 @@
 | `0008_backoffice_lectura.sql` | Consultas de solo lectura del panel: `bt_admin_lotes` y `bt_admin_tarjetas` (lotes e inventario con titular, estado y saldo). | Aplicada el 2026-10-29 |
 | `0009_serie_siete_digitos.sql` | Serie de 7 dígitos (`23-1-0000001-9`) con Luhn genérico de 10 y 11 dígitos, tarjeta maestra, `fare_type = 0` y renumeración de las tarjetas `FABRICADA` sin uso. | Aplicada el 2026-10-30 · prueba de aceptación en verde |
 | `0010_maestra_once_digitos.sql` | Serial maestro de 11 dígitos `00-0-0000000-0`: reescribe `bt_crear_tarjeta_maestra`, renumera la maestra existente y deja el evento `ASIGNADA` de canal `sistema`. | Aplicada el 2026-10-30 · prueba de aceptación en verde |
+| `0011_estacion_secuencial.sql` | Estación secuencial: `bt_admin_siguiente` entrega el próximo serial sin grabar del lote. | Aplicada |
+| `0012_asignar_exige_enrolada.sql` | La taquilla no activa plásticos sin `chip_uid`. | Aplicada |
+| `0013_portal_exige_enrolada.sql` | El portal tampoco: `bt_vincular`/`bt_activar` responden `bt:sin-enrolar`. | Aplicada |
+| `0014_serie_cinco_mas_tres.sql` | Serie `T-LLLLL-UUU-V` con Luhn mod 23, tarjeta Alfa, lotes de 999, `SCRAP` y montos enteros. | Aplicada |
+| `0015_lotes_con_mermas.sql` | Conteo de lotes descontando mermas. | Aplicada |
+| `0016_corrige_alfabeto_verificador.sql` | Reabre la letra `U` en el alfabeto verificador. | Aplicada |
+| `0017_contador_de_chip.sql` | Columna y consulta del contador de transacciones del chip (`Tx_Counter`). | Aplicada el 2026-10-31 |
+| `0018_admin_recargas.sql` | Bandeja de recargas con sesión + MFA (`bt_admin_recargas`, `bt_admin_resolver_recarga`). | Aplicada el 2026-11-01 |
+| `0019_motor_tarifario.sql` | Recarga por pasajes: columnas contables en `recharges`, `bt_tarifario`, `bt_cotizar_recarga`, `bt_recargar_pasajes` y aprobación por `monto_base`. | **Pendiente de aplicar en producción** (probada en la simulación) |
+| `0020_chip_monto_base.sql` | La sincronización del validador entrega `coalesce(monto_base, amount)` al chip, no el bruto. | **Pendiente de aplicar en producción** (probada en la simulación) |
 
 Reglas:
 
@@ -89,6 +99,10 @@ Columnas relevantes: `visible_id` (ID BLINK único), `chip_uid`, `barcode_data`,
 `batch_id`, `nombre`, `tarifa`, `emitida`, `vence`, `account_id` (FK a `accounts`,
 `on delete set null`), `asignada_at`, `asignada_por`, `enrolada_at`, `enrolada_por`.
 
+`tarifa` es el precio base del pasaje de ese plástico (500 por defecto, 250
+estudiante) y desde `0019` es la base que usa el motor tarifario al cotizar la
+recarga (BLINK-DOC-19 §3).
+
 Restricciones de `visible_id` (migración 0009):
 
 - Formato `EE-T-SSSSSSS-C`: entidad de 2 dígitos, tarifa de 1, secuencial de **6 o
@@ -125,9 +139,26 @@ garantizan con `for update`.
 
 ### 3.5 `recharges` — reportes de Pago Móvil
 
-`card_id`, `movement_id`, `amount`, `bank`, `bank_reference`, `sender_phone`,
-`status`, `synced_to_chip`, `synced_at`, `created_at`, `resolved_at`,
-`resolved_by`. Índice parcial de pendientes.
+`card_id`, `movement_id`, `amount` (monto bruto transferido), `bank`,
+`bank_reference`, `sender_phone`, `status`, `synced_to_chip`, `synced_at`,
+`created_at`, `resolved_at`, `resolved_by`. Índice parcial de pendientes.
+
+Desde `0019` guarda el desglose de la compra por pasajes:
+
+| Columna | Tipo | Contenido |
+| --- | --- | --- |
+| `pasajes` | `int` | N comprado; `null` en recargas anteriores. |
+| `tarifa_base` | `numeric(12,2)` | Tarifa del plástico al reportar. |
+| `monto_base` | `numeric(12,2)` | Bs que se acreditan a la tarjeta. |
+| `comision_entrada` | `numeric(12,2)` | 1,5 % del bruto. |
+| `provision_salida` | `numeric(12,2)` | 0,3 % del acreditado. |
+| `margen_blink` | `numeric(12,2)` | 4 % del acreditado. |
+| `excedente_redondeo` | `numeric(12,2)` | Total − bruto. |
+| `tarifario` | `jsonb` | Copia de los parámetros usados. |
+
+`amount` sigue siendo el bruto que se concilia contra el banco y `monto_base`
+el que recibe el pasajero; la aprobación acredita `coalesce(monto_base,
+amount)` para no romper las recargas históricas (BLINK-DOC-19 §4).
 
 ### 3.6 `trips_telemetry` — telemetría de viajes
 
@@ -194,7 +225,9 @@ erDiagram
 | Serial con Luhn | `bt_luhn_valido` (10 u 11 dígitos, serie heredada y nueva) |
 | Tarjeta maestra | `bt_crear_tarjeta_maestra` inserta `00-0-0000000-0` con `fare_type = 0`; solo `service_role` |
 | Vigencia de la tarjeta | `bt_tarjeta_vigente` (vence > hoy) |
-| Tope de recarga | `bt_tope_recarga` lee `settings.publico.topeRecarga` (defecto 5.000) |
+| Tope de recarga | `bt_tope_recarga` lee `settings.publico.topeRecarga` (defecto 20.000 desde `0019`) |
+| Precio de la recarga | `bt_cotizar_recarga` aplica gross-up y redondeo a la decena; `bt_recargar_pasajes` recotiza con `cards.tarifa` y guarda el desglose |
+| Crédito de la recarga | `bt_aprobar_recarga` acredita `coalesce(monto_base, amount)` |
 | Referencia duplicada | `bt_recargar` consulta `recharges` por tarjeta+banco+referencia |
 | Ráfaga de reportes | máximo 6 reportes por tarjeta en 10 minutos |
 | Bloqueo por PIN | 5 fallos → 5 minutos (`intentos`, `bloqueado_hasta`) |

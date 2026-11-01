@@ -82,7 +82,9 @@ describe("repositorio local", () => {
   it("reporta una recarga pendiente sin tocar el saldo", async () => {
     const { token } = await repositorioLocal.entrar(DEMO.cedula, DEMO.pin);
     const movimiento = await repositorioLocal.reportarRecarga(token, "G-00001-001-N", {
-      monto: 150,
+      pasajes: 1,
+      monto: 530,
+      montoBase: 500,
       telefono: "04141234567",
       banco: "Banco Mercantil",
       referencia: "7788",
@@ -95,14 +97,18 @@ describe("repositorio local", () => {
   it("no acepta dos veces la misma referencia vigente", async () => {
     const { token } = await repositorioLocal.entrar(DEMO.cedula, DEMO.pin);
     await repositorioLocal.reportarRecarga(token, "G-00001-001-N", {
-      monto: 100,
+      pasajes: 1,
+      monto: 530,
+      montoBase: 500,
       telefono: "04141234567",
       banco: "Banco Mercantil",
       referencia: "7788",
     });
     await expect(
       repositorioLocal.reportarRecarga(token, "G-00001-001-N", {
-        monto: 100,
+        pasajes: 1,
+        monto: 530,
+        montoBase: 500,
         telefono: "04141234567",
         banco: "Banco Mercantil",
         referencia: "7788",

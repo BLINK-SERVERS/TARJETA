@@ -1,5 +1,7 @@
 // Dominio de BLINK TARJETA: la cuenta del pasajero y su billetera de plásticos.
 
+import { TARIFARIO_POR_DEFECTO, type ParametrosTarifarios } from "./tarifa";
+
 export type EstadoTarjeta = "activa" | "bloqueada";
 
 export type TipoDocumento = "V" | "E";
@@ -47,7 +49,12 @@ export interface Movimiento {
 }
 
 export interface RecargaNueva {
+  /** Cantidad de pasajes comprada. */
+  pasajes: number;
+  /** Monto bruto transferido por Pago Móvil, con comisiones y margen. */
   monto: number;
+  /** Bs que se acreditan al saldo utilizable de la tarjeta. */
+  montoBase: number;
   telefono: string;
   banco: string;
   referencia: string;
@@ -152,8 +159,10 @@ export interface DatosPagoMovil {
 
 export interface Ajustes {
   pagoMovil: DatosPagoMovil;
-  /** Tope de recarga por operación, en Bs. */
+  /** Tope de recarga por operación, en Bs (monto bruto transferido). */
   topeRecarga: number;
+  /** Parámetros del motor tarifario (BLINK-DOC-19). */
+  tarifario: ParametrosTarifarios;
   /** Teléfono de atención al cliente. */
   atencion: string;
 }
@@ -165,6 +174,7 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
     telefono: "0414-0000000",
     titular: "BLINK PASAJES, C.A.",
   },
-  topeRecarga: 5000,
+  topeRecarga: 20000,
+  tarifario: TARIFARIO_POR_DEFECTO,
   atencion: "0800-BLINK-00",
 };

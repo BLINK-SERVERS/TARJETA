@@ -16,6 +16,7 @@ export function ajustesPorDefecto(): Ajustes {
       ...AJUSTES_POR_DEFECTO,
       ...guardado,
       pagoMovil: { ...AJUSTES_POR_DEFECTO.pagoMovil, ...guardado.pagoMovil },
+      tarifario: { ...AJUSTES_POR_DEFECTO.tarifario, ...guardado.tarifario },
     };
   } catch {
     return AJUSTES_POR_DEFECTO;

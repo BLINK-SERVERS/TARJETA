@@ -89,25 +89,36 @@ try {
   assert.equal(reclamo.tarjetas.length, 1, "debe quedar una tarjeta en la billetera");
   ok(`tarjeta ${seriales[0]} activa con saldo ${reclamo.tarjetas[0].saldo} Bs`);
 
-  paso(3, "Pasajera: reporta el Pago Móvil de 1.000 Bs");
-  const recarga = await rpc("bt_recargar", {
+  paso(3, "Pasajera: compra 2 pasajes (transfiere Bs 1.060)");
+  const recarga = await rpc("bt_recargar_pasajes", {
     p_token: token,
     p_serial: seriales[0],
-    p_monto: 1000,
+    p_pasajes: 2,
     p_telefono: "04141234567",
     p_banco: "Banesco",
     p_referencia: "4821",
   });
   assert.equal(recarga.movimiento.estado, "pendiente");
-  ok(`movimiento ${recarga.movimiento.estado}: «${recarga.movimiento.detalle}»`);
+  assert.equal(Number(recarga.cotizacion.total), 1060);
+  assert.equal(Number(recarga.cotizacion.acreditado), 1000);
+  ok(
+    `movimiento ${recarga.movimiento.estado}: «${recarga.movimiento.detalle}» · ` +
+      `transfiere ${recarga.cotizacion.total} / acredita ${recarga.cotizacion.acreditado}`,
+  );
 
   paso(4, "Operador: bandeja de recargas pendientes");
   const [bandejaFila] = await servicio(
     "select public.bt_recargas_pendientes(10) as r",
   );
   const pendiente = bandejaFila.r.recargas[0];
-  assert.equal(pendiente.monto, 1000);
+  assert.equal(pendiente.monto, 1060);
   assert.equal(pendiente.referencia, "4821");
+  const { rows: desglose } = await db.query(
+    "select pasajes, monto_base from public.recharges where id = $1",
+    [pendiente.recarga],
+  );
+  assert.equal(desglose[0].pasajes, 2);
+  assert.equal(Number(desglose[0].monto_base), 1000);
   ok(`${bandejaFila.r.recargas.length} pendiente(s): ${pendiente.serial} · ${pendiente.banco} · ref ${pendiente.referencia}`);
 
   paso(5, "Operador: aprueba la recarga");
@@ -163,12 +174,21 @@ try {
   );
   assert.equal(Number(tarjetas[0].virtual_balance), 500);
   const { rows: recargas } = await db.query(
-    "select status, synced_to_chip from public.recharges where id = $1",
+    `select status, synced_to_chip, amount, monto_base, pasajes,
+            comision_entrada, provision_salida, margen_blink, excedente_redondeo
+       from public.recharges where id = $1`,
     [pendiente.recarga],
   );
   assert.equal(recargas[0].status, "aprobado");
   assert.equal(recargas[0].synced_to_chip, true);
-  ok("saldo virtual 500 Bs · recarga aprobada y entregada al chip");
+  assert.equal(Number(recargas[0].amount), 1060);
+  assert.equal(Number(recargas[0].monto_base), 1000);
+  assert.equal(recargas[0].pasajes, 2);
+  assert.equal(Number(recargas[0].comision_entrada), 15.9);
+  assert.equal(Number(recargas[0].provision_salida), 3);
+  assert.equal(Number(recargas[0].margen_blink), 40);
+  assert.equal(Number(recargas[0].excedente_redondeo), 1.12);
+  ok("saldo virtual 500 Bs · recarga aprobada, desglosada y entregada al chip");
 
   const movimientos = await rpc("bt_movimientos", {
     p_token: token,
@@ -177,17 +197,19 @@ try {
   });
   const lista = movimientos.movimientos;
   assert.ok(
-    lista.some((m) => m.detalle === "Pago Móvil aprobado" && m.estado === "aprobado"),
+    lista.some(
+      (m) => m.detalle === "Pago Móvil aprobado · 2 pasajes" && m.estado === "aprobado",
+    ),
   );
   assert.ok(lista.some((m) => m.tipo === "viaje" && Number(m.monto) === -500));
   ok(`portal: ${lista.length} movimientos (recarga aprobada + viaje)`);
 
   paso(9, "Rechazo y regla de duplicado");
   await rpc("bt_vincular", { p_token: token, p_serial: seriales[1] });
-  await rpc("bt_recargar", {
+  await rpc("bt_recargar_pasajes", {
     p_token: token,
     p_serial: seriales[1],
-    p_monto: 300,
+    p_pasajes: 1,
     p_telefono: "04141234567",
     p_banco: "Mercantil",
     p_referencia: "7777",
@@ -196,7 +218,7 @@ try {
     "select public.bt_recargas_pendientes(10) as r",
   );
   const porRechazar = bandeja2Fila.r.recargas.find(
-    (r) => r.serial === seriales[1] && r.monto === 300,
+    (r) => r.serial === seriales[1] && r.monto === 530,
   );
   assert.ok(porRechazar, "la recarga de la segunda tarjeta debe estar pendiente");
   const [rechazadaFila] = await servicio(
@@ -213,10 +235,10 @@ try {
 
   let duplicado = null;
   try {
-    await rpc("bt_recargar", {
+    await rpc("bt_recargar_pasajes", {
       p_token: token,
       p_serial: seriales[0],
-      p_monto: 1000,
+      p_pasajes: 2,
       p_telefono: "04141234567",
       p_banco: "Banesco",
       p_referencia: "4821",

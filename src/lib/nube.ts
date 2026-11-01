@@ -200,10 +200,10 @@ export const repositorioNube: Repositorio = {
   },
 
   reportarRecarga(token, serial, recarga: RecargaNueva) {
-    return rpc<{ movimiento: Movimiento }>("bt_recargar", {
+    return rpc<{ movimiento: Movimiento }>("bt_recargar_pasajes", {
       p_token: token,
       p_serial: serial,
-      p_monto: recarga.monto,
+      p_pasajes: recarga.pasajes,
       p_telefono: recarga.telefono,
       p_banco: recarga.banco,
       p_referencia: recarga.referencia,
@@ -234,7 +234,13 @@ export const repositorioNube: Repositorio = {
 
   async ajustes() {
     try {
-      return await rpc<Ajustes>("bt_ajustes", {});
+      const remoto = await rpc<Partial<Ajustes>>("bt_ajustes", {});
+      return {
+        ...AJUSTES_POR_DEFECTO,
+        ...remoto,
+        pagoMovil: { ...AJUSTES_POR_DEFECTO.pagoMovil, ...remoto.pagoMovil },
+        tarifario: { ...AJUSTES_POR_DEFECTO.tarifario, ...remoto.tarifario },
+      };
     } catch {
       return AJUSTES_POR_DEFECTO;
     }

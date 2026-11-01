@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-06 |
-| Versión | 1.5.0 |
+| Versión | 1.6.0 |
 | Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 12207 (operación y mantenimiento) |
@@ -302,22 +302,28 @@ El pasajero reporta un Pago Móvil, el operador lo verifica contra el banco y el
 validador entrega el dinero al chip en la siguiente sincronización. Cada paso
 deja rastro en la base y ninguno se puede saltar.
 
-**Paso 1 — reporte del pasajero.** El portal llama a `bt_recargar` (única RPC de
-escritura abierta a `anon`). Crea un movimiento `pendiente` con detalle «Pago
-Móvil en revisión» y una fila en `recharges` con estado `pendiente`. El saldo
-**no** cambia. El portal solo guarda los **últimos 4 dígitos** de la referencia
+**Paso 1 — reporte del pasajero.** El portal llama a `bt_recargar_pasajes`
+(única RPC de escritura abierta a `anon` para recargas; `bt_recargar` queda
+como compatibilidad temporal). El pasajero elige **N pasajes**; el servidor
+recotiza con `bt_cotizar_recarga` y la tarifa del plástico. Crea un movimiento
+`pendiente` con detalle «Recarga de N pasajes en revisión» y `monto =
+acreditado`, y una fila en `recharges` con estado `pendiente`, `amount = bruto`,
+`monto_base = N × tarifa` y el desglose contable. El saldo **no** cambia. El
+portal solo guarda los **últimos 4 dígitos** de la referencia
 (`right(digitos,4)`), porque es lo que el banco muestra en el comprobante.
-Rechaza montos con decimales o ≤ 0, montos sobre el tope, teléfonos que no
-cumplen `^0\d{10}$`, referencias de menos de 4 dígitos, más de 6 reportes en
-10 minutos por tarjeta y una referencia repetida en la misma tarjeta y banco
-(`bt:duplicada`).
+Rechaza cantidades que no sean enteras o ≥ 1, totales sobre el tope, teléfonos
+que no cumplen `^0\d{10}$`, referencias de menos de 4 dígitos, más de 6
+reportes en 10 minutos por tarjeta y una referencia repetida en la misma
+tarjeta y banco (`bt:duplicada`). El monto a transferir **no se escribe** en
+ningún campo.
 
 **Paso 2 — revisión de la bandeja.** En el back-office, menú **Recargas**
 (requiere sesión de `ADMIN`/`TAQUILLA` y el segundo factor activo). La pantalla
-muestra el total pendiente y el monto en revisión, y lista del reporte más
-antiguo al más reciente: fecha de reporte, serial con titular y cédula, monto,
-banco con los últimos 4 dígitos de la referencia, teléfono emisor y saldo actual
-de la tarjeta. Se aprueba **solo** si coinciden monto, banco, teléfono emisor y
+muestra pendientes, **monto por conciliar** (bruto), **a acreditar**
+(`monto_base`) y pasajes, y lista del reporte más antiguo al más reciente:
+fecha de reporte, serial con titular y cédula, pasajes × tarifa, monto
+transferido con la línea «acredita», banco con los últimos 4 dígitos de la
+referencia, teléfono emisor y saldo actual de la tarjeta. Se aprueba **solo** si coinciden monto, banco, teléfono emisor y
 los últimos 4 dígitos de la referencia con el estado de cuenta real. Si hay más
 de 200 pendientes, la pantalla lo advierte y muestra los 200 más antiguos.
 
@@ -342,8 +348,10 @@ select public.bt_aprobar_recarga('<uuid>', 'Nombre del operador');
 select public.bt_rechazar_recarga('<uuid>', 'Nombre del operador', 'Motivo');
 ```
 
-`bt_aprobar_recarga` suma `amount` a `cards.virtual_balance`, marca el movimiento
-como `aprobado` con `saldo_despues`, y deja `recharges.status = 'aprobado'`,
+`bt_aprobar_recarga` suma `coalesce(monto_base, amount)` a
+`cards.virtual_balance`, marca el movimiento como `aprobado` con
+`saldo_despues` (y su importe igual al crédito), y deja
+`recharges.status = 'aprobado'`,
 `resolved_at` y `resolved_by`. Falla si la recarga no existe o ya fue resuelta.
 **Aprobar es irreversible**: no hay «desaprobar»; una equivocación se corrige
 con un ajuste manual supervisado. `bt_rechazar_recarga` marca el movimiento como
@@ -352,7 +360,8 @@ con un ajuste manual supervisado. `bt_rechazar_recarga` marca el movimiento como
 **Paso 4 — entrega al chip.** La sincronización del validador
 (`bt_validador_sincronizar_token`) devuelve en `pendientes` las recargas con
 `status = 'aprobado'`, `synced_to_chip = false`, tarjeta `ACTIVE` y `chip_uid`
-presente, con `id`, `serial`, `uid` y `monto`. El ESP32 las guarda en NVS y, al
+presente, con `id`, `serial`, `uid` y `monto` = `coalesce(monto_base, amount)`
+(desde `0020`; antes enviaba el bruto). El ESP32 las guarda en NVS y, al
 apoyar esa tarjeta, incrementa el bloque de valor del chip e imprime
 `RECARGA_APLICADA,serial=…,monto=…,id=…`; la pantalla muestra la tarjeta con el
 saldo nuevo. En el siguiente envío el equipo reporta el `id` en `p_recargas` y la
@@ -418,11 +427,13 @@ administradora `V-34201580` / PIN `258036`. El script `flujo.mjs` recorre:
 
 1. `bt_generar_lote(2, …)` y `bt_estacion_enrolar` con dos UID de prueba.
 2. `bt_registrar`, `bt_vincular` y consulta de billetera como `anon`.
-3. `bt_recargar` por Bs 1.000 y aparición en `bt_recargas_pendientes`.
+3. `bt_recargar_pasajes` con 2 pasajes (bruto 1.060, base 1.000) y aparición en
+   `bt_recargas_pendientes`.
 4. `bt_aprobar_recarga` → saldo 1.000; `bt_validador_emitir_token` y sincronización.
-5. Aplicación de la recarga al chip (`RECARGA_APLICADA`) y cobro de Bs 500.
-6. Verificación de saldo 500, `synced_to_chip = true` y movimientos.
-7. Rechazo de una segunda recarga y comprobación de referencia duplicada
+5. Aplicación al chip de `monto_base` 1.000 (`RECARGA_APLICADA`) y cobro de Bs 500.
+6. Verificación de saldo 500, `synced_to_chip = true`, desglose contable y
+   movimientos.
+7. Rechazo de una recarga de 1 pasaje y comprobación de referencia duplicada
    (`bt:duplicada`).
 
 Las claves JWT se generan con un secreto fijo de desarrollo

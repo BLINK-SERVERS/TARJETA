@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-07 |
-| Versión | 1.8.0 |
-| Fecha | 2026-10-31 |
+| Versión | 1.9.0 |
+| Fecha | 2026-11-01 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 26513 · ISO/IEC 25010 |
 
@@ -25,9 +25,9 @@ datos, no la interfaz.
 
 ## 2. Suites automatizadas
 
-| Repo | Comando | Resultado 2026-10-31 |
+| Repo | Comando | Resultado 2026-11-01 |
 | --- | --- | --- |
-| TARJETA | `npm test` | **74 pruebas, 6 archivos, todas en verde** |
+| TARJETA | `npm test` | **87 pruebas, 7 archivos, todas en verde** |
 | TARJETA | `npm run typecheck` | Sin errores |
 | TARJETA | `npm run build` | Sin errores |
 | BACKOFFICE | `npm run typecheck` / `npm run build` | Sin errores; bundle principal 254 kB con QR cargado bajo demanda |
@@ -44,6 +44,7 @@ Cobertura funcional de TARJETA por archivo:
 | `src/lib/lote.test.ts` | Generación de lotes con Luhn y Code 128. |
 | `src/lib/codigos.test.ts` | Code 128 de 10 y 11 dígitos: símbolos, cambio de juego C→B y suma de control. |
 | `src/lib/offline.test.ts` | Copia local: caducidad, desfase de reloj, formato anterior, JSON corrupto, aislamiento por token y almacenamiento lleno. |
+| `src/lib/tarifa.test.ts` | Motor tarifario: tabla exacta de 1 a 20 pasajes, múltiplos de 10, conservación, monotonía, entradas inválidas, tarifa de estudiante y máximo por tope. |
 
 ## 3. Pruebas de base de datos (2026-10-29)
 
@@ -402,6 +403,28 @@ factor activo en la base local; los datos de prueba se borraron al terminar.
 Queda pendiente repetir el recorrido en producción cuando se restaure el MFA
 (hoy en modo bypass).
 
+### 4.9 Motor tarifario y recarga por pasajes (migraciones 0019 y 0020, 2026-11-01)
+
+Se reemplazó el monto libre por la compra de pasajes y se separó el bruto del
+crédito. Las pruebas unitarias fijan la tabla del requerimiento y las de base
+ejecutan el ciclo completo en la simulación.
+
+| # | Prueba | Resultado |
+| --- | --- | --- |
+| 1 | Tabla de validación de 1, 2, 3, 5, 10 y 20 pasajes | Total, acreditado, comisión, provisión y utilidad exactos (`tarifa.test.ts`) |
+| 2 | Conservación y redondeo | `acreditado + ce + ps + utilidad = total`; todo total es múltiplo de 10 |
+| 3 | Tope y máximo de pasajes | 9 con tope 5.000; 37 con 20.000; el error indica cuántos caben |
+| 4 | Reporte de 3 pasajes (SQL) | Movimiento pendiente 1.500; recarga 1.590 / base 1.500 / ce 23,85 / ps 4,50 / mg 60,00 / ex 1,68 |
+| 5 | Aprobación | Saldo 1.000 → 2.500; movimiento «Pago Móvil aprobado · 3 pasajes» |
+| 6 | Rechazo sin motivo / aprobación repetida | `bt:datos` con el mensaje correspondiente; saldo intacto |
+| 7 | Flujo completo `./flujo.sh` | 2 pasajes → bruto 1.060, base 1.000; aprobado; chip recibe **1.000** y cobra 500; desglose verificado; rechazo y duplicado |
+| 8 | Navegador (simulación) | Bloque 3 → recibo Bs 1.590; reporte con referencia 7731; bandeja con 3 pasajes / 1.590 / 1.500; aprobación → saldo 2.500 |
+| 9 | Regresión detectada y corregida | La sincronización enviaba el bruto al chip (1.060); `0020` la corrige a `coalesce(monto_base, amount)` |
+
+El punto 9 es el hallazgo más importante de la verificación: sin `0020`, el
+plástico habría quedado con 60 Bs más que la nube. La prueba de flujo ahora
+compara el importe del `RECARGA_APLICADA` con `monto_base`.
+
 ## 5. Prueba de la tarjeta virtual (ID-1 / CR80)
 
 | Viewport | Ancho de tarjeta | Alto | Relación medida | Radio |
@@ -424,7 +447,8 @@ solapamiento de contenido. **Cumplido** tras sustituir `min-height` por
 | Proporción y radio de la tarjeta | Cumplido |
 | Back-office separado con rol administrativo y TOTP | Cumplido |
 | Pruebas unitarias en verde | Cumplido |
-| Simulación local del flujo completo | Cumplido (2026-10-31) |
+| Simulación local del flujo completo | Cumplido (2026-10-31; recarga por pasajes el 2026-11-01) |
+| Recarga por pasajes con desglose contable y crédito del monto base | Cumplido (2026-11-01, §4.9) |
 | Enrolado y cobro con tarjeta física | Cumplido (2026-10-31, §4.4) |
 | Cobro repetido sin reiniciar y contador del chip en la nube | Cumplido (2026-10-31, §4.5) |
 | Read-After-Write y estado incierto bajo fallo de hardware | Pendiente (B-23) |

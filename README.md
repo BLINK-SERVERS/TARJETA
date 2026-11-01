@@ -7,7 +7,7 @@ de **BLINK**. React 19 + Vite 8 + TypeScript estricto.
 - **Panel administrativo:** https://blink-servers.github.io/BACKOFFICE/
 - **Redirección legacy:** https://pasajes.blink.com.ve/ → este portal
 - **Comercio:** https://www.blink.com.ve/
-- **Versión:** 1.5.0 · [CHANGELOG](CHANGELOG.md)
+- **Versión:** 1.6.0 · [CHANGELOG](CHANGELOG.md)
 
 ## Qué hace
 
@@ -67,7 +67,7 @@ tarjeta.
 npm ci
 npm run dev        # http://localhost:5173
 npm run typecheck
-npm test           # 74 pruebas
+npm test           # 87 pruebas
 npm run build
 npm run lote       # genera un lote de seriales y la hoja de impresión
 ```
@@ -91,7 +91,7 @@ src/
     local.ts        espejo local del mismo contrato
     dominio.ts      validaciones de cédula, teléfono, serial, montos
   styles/           tokens, base y BEM de la app (tarjeta con cqw)
-supabase/migrations/ 0001…0016 (esquema compartido del ecosistema)
+supabase/migrations/ 0001…0020 (esquema compartido del ecosistema)
 scripts/lote.ts      generador de lotes y hoja imprimible
 simulacion/          pila Docker, semilla y flujo completo
 docs/                documentación ISO del ecosistema

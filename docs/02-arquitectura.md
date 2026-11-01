@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-02 |
-| Versión | 1.5.0 |
-| Fecha | 2026-10-31 |
+| Versión | 1.6.0 |
+| Fecha | 2026-11-01 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26514 · ISO/IEC/IEEE 42010 |
 
@@ -62,11 +62,20 @@ Usuario → Acceso.tsx (2 pasos) → repo.ts → nube.ts
 ### 3.2 Recarga por Pago Móvil
 
 ```text
-TARJETA: bt_recargar → card_movements (pendiente) + recharges
-Back-office/RPC: bt_aprobar_recarga → acredita saldo, estado 'aprobada'
-                 bt_rechazar_recarga → estado 'rechazada'
+TARJETA: pasajero elige N pasajes
+         cotizarRecarga -> vista previa (monto exacto, acreditado, comisiones)
+         bt_recargar_pasajes -> recotiza con cards.tarifa
+                              -> card_movements (pendiente, monto = acreditado)
+                              -> recharges (amount = bruto, monto_base = N×tarifa,
+                                 pasajes, comisión, provisión, margen, excedente)
+Back-office/RPC: bt_aprobar_recarga -> acredita monto_base, estado 'aprobado'
+                 bt_rechazar_recarga -> estado 'rechazado'
 Validador: bt_validador_sincronizar_token recibe recargas aprobadas
 ```
+
+El **monto bruto** es el que se concilia contra el banco; el **monto base** es
+el que recibe la tarjeta. Esa separación (BLINK-DOC-19 §4) es la que permite
+cuadrar caja y liquidar al chofer sin recalcular comisiones.
 
 ### 3.3 Cobro a bordo
 
@@ -151,3 +160,8 @@ usable.
 | ADR-13 | `ERR-91` (repetir el toque) solo antes de escribir; un timeout durante la escritura es `ERR-63` e incierta. | Antes del decremento no hay nada que reconciliar; después sí. | Un corte a media escritura nunca se reintenta a ciegas. |
 | ADR-14 | El resultado del cobro ocupa la pantalla completa 2,5 s / 3,0 s y luego se repinta el panel de diagnóstico. | `ISO-UI-240-REV2` pide color sólido a pantalla completa; el propietario pide conservar el estado vivo. | Ambas cosas conviven separadas en el tiempo (DOC-18). |
 | ADR-15 | Sin Wi-Fi, la banda inferior pasa a amarillo `#FFD700` con texto negro y el número de pendientes. | Transparencia operativa offline que exige la especificación. | Ocupa 56 px y reduce la cola a un dato mientras no hay red. |
+| ADR-16 | El precio de la recarga lo calcula el servidor a partir de `cards.tarifa`; el cliente solo previsualiza. | Un cliente manipulado no puede comprar 10 pasajes por 500 Bs. | El portal y el backend comparten fórmula y hay que mantenerlas (BLINK-DOC-19 §10). |
+| ADR-17 | Margen de plataforma del 4 % y no del 5 % del ejemplo de `FIN-BEE-001`. | Prevalece el requerimiento tarifario y la arquitectura. | El parámetro vive en `settings.publico.tarifario` y se copia por recarga. |
+| ADR-18 | Total redondeado a la decena superior con excedente explícito. | Regla comercial; el pasajero transfiere un monto «redondo». | La utilidad se calcula sobre el total y el excedente se audita aparte. |
+| ADR-19 | Tope de recarga de 20.000 Bs y máximo de pasajes derivado. | Los bloques de 10 y 20 pasajes excedían el tope anterior de 5.000. | La UI calcula el máximo por operación; la RPC lo revalida. |
+| ADR-20 | `bt_recargar` (monto libre) se mantiene de forma temporal. | Clientes con service worker antiguo no deben fallar. | Superficie legada hasta cerrar B-27. |

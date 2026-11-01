@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deja una base PostgreSQL limpia con las 16 migraciones y la API PostgREST.
+# Deja una base PostgreSQL limpia con todas las migraciones y la API PostgREST.
 # No toca el proyecto de Supabase de producción.
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -22,7 +22,7 @@ create role authenticated nologin;
 create role service_role nologin bypassrls;
 SQL
 
-echo "· Aplicando migraciones 0001–0016…"
+echo "· Aplicando todas las migraciones…"
 for archivo in ../supabase/migrations/*.sql; do
   nombre="$(basename "$archivo")"
   case "$nombre" in

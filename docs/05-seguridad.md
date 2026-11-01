@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-05 |
-| Versión | 1.2.1 |
+| Versión | 1.3.0 |
 | Fecha | 2026-10-29 |
 | Estado | Vigente |
 | Norma | ISO/IEC 27001:2022 (A.5, A.8) · OWASP ASVS L1 |
@@ -41,6 +41,12 @@ Controles implementados:
   `bt_totp_*`, etc.) están revocadas.
 - `anon` ejecuta el contrato del portal **y** trece RPC de back-office que
   autentican por token de sesión con rol administrativo y segundo factor.
+- **El precio de la recarga es autoritativo del servidor.** `bt_recargar_pasajes`
+  no acepta montos: recotiza con `cards.tarifa` y `bt_cotizar_recarga`, y
+  `bt_tarifario`/`bt_cotizar_recarga` están revocadas para clientes. Un cliente
+  que altere la vista previa no cambia lo que se guarda.
+- El tope de recarga y los parámetros tarifarios viven en `settings.publico`;
+  el cliente solo los lee para previsualizar (`bt_ajustes`).
 - El PIN nunca viaja al cliente después del registro y nunca se devuelve.
 - La respuesta de `bt_entrar` no distingue entre cédula inexistente y PIN erróneo
   (mensaje genérico `credenciales`), salvo el bloqueo temporal.

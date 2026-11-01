@@ -3,11 +3,11 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-00 |
-| Versión | 1.11.0 |
+| Versión | 1.12.0 |
 | Fecha | 2026-11-01 |
 | Estado | Vigente |
 | Autor | Equipo BLINK (desarrollo asistido) |
-| Revisión | 11 |
+| Revisión | 12 |
 | Normas de referencia | ISO 9001:2015 §7.5 · ISO/IEC/IEEE 12207:2017 · ISO/IEC/IEEE 26511/26512/26513/26514/26515 · ISO/IEC 25010 · ISO/IEC 27001:2022 |
 
 ## 1. Propósito
@@ -75,6 +75,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | BLINK-DOC-16 | [Cumplimiento de la especificación offline y del cobro MIFARE](16-especificacion-offline.md) | 14443-3 · 27001 |
 | BLINK-DOC-17 | [Interfaz del validador y códigos de respuesta POS](17-interfaz-y-codigos-pos.md) | 9241 · 8583 · 26514 |
 | BLINK-DOC-18 | [Interfaz datáfono 240×240 (ISO-UI-240-REV2)](18-interfaz-datofono-240.md) | 9241-3 · 25010 · 26514 |
+| BLINK-DOC-19 | [Motor tarifario y recarga por pasajes](19-motor-tarifario-y-recarga-por-pasajes.md) | 29148 · 25010 · 9241-210 · 20022 |
 | — | [CHANGELOG](../CHANGELOG.md) | Keep a Changelog 1.1.0 + SemVer |
 
 ## 4. Convenciones de esta suite
@@ -108,6 +109,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | 1.9.0 | 2026-10-31 | Nuevo BLINK-DOC-17: códigos de respuesta POS (`ISO-00`/`ERR-xx`) e iconos en el validador (firmware 7), campo `codigo=` en `TAP` y respuesta adaptada al panel de 240×240 (ADR-12 y ADR-13). | Equipo BLINK |
 | 1.10.0 | 2026-10-31 | Nuevo BLINK-DOC-18: interfaz datáfono `ISO-UI-240-REV2` (firmware 8) con resultado a pantalla completa 2,5 s / 3,0 s, banda amarilla offline, renderizado medido en 39–40 ms, ADR-14 y ADR-15; DOC-02, DOC-07, DOC-09 y DOC-17 actualizados. | Equipo BLINK |
 | 1.11.0 | 2026-11-01 | Bandeja de recargas en el back-office (migración `0018`, `bt_admin_recargas` y `bt_admin_resolver_recarga` con sesión + MFA); B-04 cerrada; DOC-01, DOC-02, DOC-04, DOC-06, DOC-07, DOC-08 y DOC-10 actualizados. | Equipo BLINK |
+| 1.12.0 | 2026-11-01 | Nuevo BLINK-DOC-19: motor tarifario por pasajes (migraciones `0019` y `0020`, `bt_recargar_pasajes`, desglose contable y ADR-16 a ADR-20); el portal deja de aceptar montos libres; B-27 a B-31 abiertas; DOC-01 a DOC-10 actualizados. | Equipo BLINK |
 
 Reglas de mantenimiento:
 

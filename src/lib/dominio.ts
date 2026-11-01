@@ -1,9 +1,11 @@
 import type { Ajustes, DatosPago, Movimiento } from "./tipos";
 import { bancoPorNombre } from "./tipos.ts";
 import { soloDigitos } from "./formato.ts";
+import { cotizarRecarga, maximoPasajes, type ParametrosTarifarios } from "./tarifa.ts";
 
 export interface BorradorRecarga {
-  monto: string;
+  /** Cantidad de pasajes escrita o elegida, como texto de formulario. */
+  pasajes: string;
   telefono: string;
   banco: string;
   referencia: string;
@@ -11,7 +13,7 @@ export interface BorradorRecarga {
 
 export type CampoRecarga = keyof BorradorRecarga;
 
-export const CAMPOS_RECARGA: CampoRecarga[] = ["monto", "telefono", "banco", "referencia"];
+export const CAMPOS_RECARGA: CampoRecarga[] = ["pasajes", "telefono", "banco", "referencia"];
 
 export type ErroresRecarga = Partial<Record<CampoRecarga, string>>;
 
@@ -163,21 +165,30 @@ export function saldoParaPasajes(saldo: number, tarifa: number, pasajes: number)
 /** Errores por campo del reporte de recarga, listos para pintar bajo cada input. */
 export function erroresRecarga(
   borrador: BorradorRecarga,
-  ajustes: Pick<Ajustes, "topeRecarga">
+  ajustes: Pick<Ajustes, "topeRecarga" | "tarifario">,
+  tarifa: number
 ): ErroresRecarga {
   const errores: ErroresRecarga = {};
+  const parametros: ParametrosTarifarios = { ...ajustes.tarifario, base: tarifa };
 
-  const monto = Number(borrador.monto);
-  if (borrador.monto.trim() === "" || !Number.isFinite(monto) || monto <= 0) {
-    errores.monto = "Escribe el monto que transferiste (mayor que 0).";
-  } else if (monto < 1) {
-    errores.monto = "El monto mínimo por recarga es Bs 1.";
-  } else if (monto > ajustes.topeRecarga) {
-    errores.monto = `El tope por recarga es ${new Intl.NumberFormat("es-VE").format(
-      ajustes.topeRecarga
-    )} Bs. Divide el pago en varias operaciones.`;
-  } else if (!Number.isInteger(monto)) {
-    errores.monto = "Usa bolívares enteros: la red no maneja céntimos.";
+  const pasajes = Number(borrador.pasajes);
+  if (borrador.pasajes.trim() === "") {
+    errores.pasajes = "Elige cuántos pasajes quieres recargar.";
+  } else if (!Number.isInteger(pasajes) || pasajes < 1) {
+    errores.pasajes = "Escribe una cantidad entera de pasajes (1 o más).";
+  } else {
+    const { total } = cotizarRecarga(pasajes, parametros);
+    if (total > ajustes.topeRecarga) {
+      const mayor = maximoPasajes(ajustes.topeRecarga, parametros);
+      errores.pasajes =
+        mayor > 0
+          ? `El tope por operación es ${new Intl.NumberFormat("es-VE").format(
+              ajustes.topeRecarga
+            )} Bs. Puedes comprar hasta ${mayor} ${mayor === 1 ? "pasaje" : "pasajes"}.`
+          : `El tope por operación es ${new Intl.NumberFormat("es-VE").format(
+              ajustes.topeRecarga
+            )} Bs, insuficiente para un pasaje.`;
+    }
   }
 
   if (!/^0\d{10}$/.test(soloDigitos(borrador.telefono))) {

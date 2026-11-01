@@ -564,14 +564,15 @@ export const repositorioLocal: Repositorio = {
     if (duplicada) {
       throw new ErrorBlink("duplicada", "Ya reportaste esa referencia. Revisa Movimientos.");
     }
+    const pasajes = Math.max(1, Math.round(recarga.pasajes));
     const movimiento: Movimiento = {
       id: `rc-${crypto.randomUUID()}`,
       serial: tarjeta.serial,
       tipo: "recarga",
-      monto: Math.round(recarga.monto),
+      monto: Math.round(recarga.montoBase),
       saldoDespues: tarjeta.saldo,
       at: new Date().toISOString(),
-      detalle: "Pago Móvil en revisión",
+      detalle: `Recarga de ${pasajes} ${pasajes === 1 ? "pasaje" : "pasajes"} en revisión`,
       estado: "pendiente" satisfies EstadoMovimiento,
       banco: recarga.banco,
       referencia,

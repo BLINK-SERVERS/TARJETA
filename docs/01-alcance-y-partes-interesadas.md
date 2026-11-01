@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-01 |
-| Versión | 1.1.0 |
-| Fecha | 2026-10-31 |
+| Versión | 1.2.0 |
+| Fecha | 2026-11-01 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 12207:2017 · ISO/IEC/IEEE 29148 |
 
@@ -88,6 +88,8 @@ reclamo → recarga → aprobación → sincronización → cobro) sin tocar pro
 | RF-03 | Vincular N tarjetas a una cuenta por serial con Luhn. | TARJETA | Implementado |
 | RF-04 | Rechazar tarjetas bloqueadas, vencidas, ya vinculadas o fuera de cartera. | TARJETA | Implementado |
 | RF-05 | Reportar recarga por Pago Móvil con banco, teléfono y referencia. | TARJETA | Implementado |
+| RF-05.1 | Comprar pasajes (1 a N) y calcular el monto exacto con gross-up, margen y redondeo a la decena. | TARJETA | Implementado |
+| RF-05.2 | Guardar por separado el bruto transferido y el monto base acreditado con el desglose de comisiones. | Backend | Implementado (0019/0020) |
 | RF-06 | Evitar referencias duplicadas y limitar reportes por ráfaga. | TARJETA | Implementado |
 | RF-07 | Consultar movimientos por tarjeta. | TARJETA | Implementado |
 | RF-08 | Cambiar el PIN validando el actual. | TARJETA | Implementado |
@@ -105,7 +107,7 @@ reclamo → recarga → aprobación → sincronización → cobro) sin tocar pro
 - La tarjeta física es MIFARE Classic 1K; el portal debe funcionar aunque el
   pasajero no tenga lector (solo con el serial impreso).
 - El monto máximo por recarga es configurable (`settings.publico.topeRecarga`,
-  hoy Bs 5.000,00).
+  hoy Bs 20.000,00) y el máximo de pasajes se deriva de él (37 a Bs 500).
 - El acceso directo a `db.<ref>.supabase.co` es IPv6; desde redes IPv4 se usa el
   pooler (`aws-0-us-east-2.pooler.supabase.com:5432`).
 - Las credenciales del repositorio solo contienen claves **públicas** (publishable).

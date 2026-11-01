@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-09 |
-| Versión | 1.10.0 |
-| Fecha | 2026-10-31 |
+| Versión | 1.8.0 |
+| Fecha | 2026-11-01 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 12207 (riesgos) · ISO/IEC 27001 (A.5.7) |
 
@@ -26,6 +26,8 @@ Escalas: probabilidad e impacto **A**lta / **M**edia / **B**aja. Estado:
 | R-09 | Si un secreto TOTP se muestra en una captura o chat, el factor queda expuesto. | B | M | Se reinicia la inscripción (invalida el secreto) y se considera expuesto. | **Mitigado** |
 | R-10 | El modo sin conexión guarda en el teléfono datos personales (nombre, cédula, teléfono, correo, datos de pago) y el token de sesión en `localStorage`; un XSS o un equipo desbloqueado los expone. | M | A | Copia de solo lectura, sin capacidad de escritura ni claves de servicio; caduca a las 12 h de la última sincronización, rechaza fechas futuras y se borra al salir, al expirar la sesión o si el servidor la rechaza. Falta cifrado con WebCrypto atado al PIN y CSP (L-03). | **Mitigado** (residual aceptado) |
 | R-11 | El service worker comparte origen con las demás publicaciones de GitHub Pages; una limpieza o un ámbito amplios podrían tocar o leer cachés ajenas. | B | M | Borra solo cachés con prefijo `blink-tarjeta-`, valida origen y ámbito de los mensajes, solo cachea recursos estáticos dentro de `/TARJETA/` y las respuestas de API quedan fuera. | **Mitigado** |
+| R-12 | Cambiar `settings.publico.tarifario` altera el precio de las recargas nuevas sin aviso al pasajero. | M | M | Cada recarga guarda una copia del tarifario; publicar cambios con nota operativa y revisar la bandeja. | **Abierto** |
+| R-13 | El excedente de redondeo se guarda por recarga pero no se concilia contra una cuenta contable. | B | M | Sumarlo en el cierre diario antes de tratarlo como ingreso; no hay cuenta de destino en el esquema. | **Abierto** |
 
 ## 2. Brechas funcionales frente al diseño técnico
 
@@ -61,6 +63,11 @@ implementación:
 | B-24 | Los códigos POS (`ISO-00`/`ERR-xx`) solo viven en el firmware y en la serie: no se guardan ni se cuentan en la nube. | B | No se puede medir cuántos rechazos por saldo, llave o bloqueo ocurren por unidad (BLINK-DOC-17 §9). |
 | B-25 | La cabecera azul con texto blanco de 6×8 px queda en 3,5:1 y el título blanco sobre verde en 2,2:1, por debajo del 4,5:1 de ISO 9241 para texto pequeño; además falta probar la legibilidad a plena luz. | M | La especificación impone esos colores; los importes ya usan tinta oscura. Validar con el operador y, si hace falta, aclarar el azul o agrandar el texto de la cabecera (BLINK-DOC-18 §10). |
 | B-26 | El reloj SPI de la pantalla se subió a 40 MHz por medición de tiempo; no se validó la integridad de señal ni la estabilidad térmica de la unidad. | B | Si aparecen píxeles sueltos, volver a 24 MHz deja el resultado en 63 ms y rompe el límite de 50 ms (BLINK-DOC-18 §12). |
+| B-27 | `bt_recargar` legado sigue abierto a `anon` y acepta montos libres sin desglose. | M | Compatibilidad con clientes que tengan el service worker anterior en caché; retirar cuando el parque actualice (BLINK-DOC-19, ADR-20). |
+| B-28 | Sin token ring offline firmado: la recarga aprobada espera la sincronización del validador. | A | Un pasajero que recarga y aborda antes de que su unidad sincronice puede no tener saldo aunque la nube ya lo acreditó (BLINK-DOC-19 §9). |
+| B-29 | Sin portal cautivo `WiFiManager`; la red del validador se configura en el firmware. | B | Cambiar de red exige reflashear o editar la configuración (BLINK-DOC-19 §9). |
+| B-30 | Sin app nativa, mapa ni GTFS; el portal es web y no hay capa geográfica. | B | El estándar de rutas de la especificación de arquitectura no está implementado (BLINK-DOC-19 §9). |
+| B-31 | Batería Li-Po 2000 mAh, TP4056, buzzer y autonomía no validados en la unidad física. | M | Falta la prueba de campo antes de operación continua (BLINK-DOC-19 §9). |
 
 ## 3. Deuda técnica
 
@@ -78,6 +85,7 @@ implementación:
 | D-10 | La simulación local no está integrada al CI y depende de `docker-compose` v1. | El contrato RPC se prueba a mano; un cambio puede llegar a `main` sin pasar por el flujo completo. | Media |
 | D-11 | La aprobación de recargas no verifica que exista su movimiento y la sincronización de toques no usa `ON CONFLICT`. | Una recarga podría acreditarse sin historial y dos sincronizaciones simultáneas podrían abortar el lote (BLINK-DOC-15 §9, F-01/F-02). | Media |
 | D-12 | `trips_telemetry.chip_counter` se guarda pero no se compara con la secuencia esperada por tarjeta. | La detección de replay o de un contador retrocedido es manual; falta una consulta o alerta automática (BLINK-DOC-16 §5.3). | Media |
+| D-13 | La fórmula tarifaria vive en dos lenguajes (`tarifa.ts` y `bt_cotizar_recarga`). | Una divergencia haría que la vista previa no coincida con lo guardado; el servidor manda, pero el pasajero vería otro monto. | Media |
 
 ## 4. Limitaciones conocidas de la plataforma
 

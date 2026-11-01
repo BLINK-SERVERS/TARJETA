@@ -16,11 +16,13 @@ import {
   type BorradorRecarga,
 } from "./dominio";
 import type { Movimiento } from "./tipos";
+import { TARIFARIO_POR_DEFECTO } from "./tarifa";
 
-const AJUSTES = { topeRecarga: 5000 };
+const AJUSTES = { topeRecarga: 20000, tarifario: TARIFARIO_POR_DEFECTO };
+const TARIFA = 500;
 
 const BUENO: BorradorRecarga = {
-  monto: "200",
+  pasajes: "1",
   telefono: "0414-1234567",
   banco: "Banesco",
   referencia: "4821",
@@ -115,30 +117,40 @@ describe("datos del registro", () => {
 
 describe("erroresRecarga", () => {
   it("no marca nada con un reporte completo", () => {
-    expect(erroresRecarga(BUENO, AJUSTES)).toEqual({});
+    expect(erroresRecarga(BUENO, AJUSTES, TARIFA)).toEqual({});
   });
 
-  it("valida monto, teléfono, banco y referencia por separado", () => {
+  it("valida pasajes, teléfono, banco y referencia por separado", () => {
     const errores = erroresRecarga(
-      { monto: "", telefono: "0414", banco: "", referencia: "12" },
-      AJUSTES
+      { pasajes: "", telefono: "0414", banco: "", referencia: "12" },
+      AJUSTES,
+      TARIFA
     );
-    expect(errores.monto).toBeTruthy();
+    expect(errores.pasajes).toBeTruthy();
     expect(errores.telefono).toBeTruthy();
     expect(errores.banco).toBeTruthy();
     expect(errores.referencia).toBeTruthy();
   });
 
-  it("respeta el tope por operación", () => {
-    expect(erroresRecarga({ ...BUENO, monto: "6000" }, AJUSTES).monto).toMatch(/tope/);
+  it("respeta el tope por operación e indica cuántos caben", () => {
+    const errores = erroresRecarga({ ...BUENO, pasajes: "40" }, AJUSTES, TARIFA);
+    expect(errores.pasajes).toMatch(/tope/);
+    expect(errores.pasajes).toMatch(/37 pasajes/);
   });
 
-  it("solo admite bolívares enteros", () => {
-    expect(erroresRecarga({ ...BUENO, monto: "10.5" }, AJUSTES).monto).toMatch(/enteros/);
+  it("solo admite cantidades enteras", () => {
+    expect(erroresRecarga({ ...BUENO, pasajes: "1.5" }, AJUSTES, TARIFA).pasajes).toMatch(
+      /entera/
+    );
+    expect(erroresRecarga({ ...BUENO, pasajes: "0" }, AJUSTES, TARIFA).pasajes).toMatch(
+      /entera/
+    );
   });
 
   it("exige teléfono venezolano de 11 dígitos", () => {
-    expect(erroresRecarga({ ...BUENO, telefono: "4141234567" }, AJUSTES).telefono).toBeTruthy();
+    expect(
+      erroresRecarga({ ...BUENO, telefono: "4141234567" }, AJUSTES, TARIFA).telefono
+    ).toBeTruthy();
   });
 });
 

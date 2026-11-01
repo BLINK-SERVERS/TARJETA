@@ -1,5 +1,5 @@
 -- Datos mínimos para simular la operación. Se ejecuta una sola vez por
--- arranque, sobre una base recién migrada (0001–0016).
+-- arranque, sobre una base recién migrada (todas las migraciones).
 insert into public.transit_routes (name, general_fare, student_fare)
 select 'Ruta Simulación', 500, 250
  where not exists (select 1 from public.transit_routes where name = 'Ruta Simulación');
