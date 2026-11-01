@@ -38,7 +38,7 @@ implementación:
 | B-01 | ~~Mapa de memoria MIFARE por sectores y claves diversificadas `HMAC_SHA256(master, UID)` no implementado.~~ | — | **Cerrada** el 2026-10-31: identidad v3 en el sector 1, saldo y contador en el 2, telemetría en el 3, llaves derivadas por tarjeta; probado con la maestra (BLINK-DOC-16 §3). |
 | B-02 | Lista negra offline en el validador: descarga implementada, prueba física pendiente. | M | El 2026-10-31 se probaron físicamente el enrolado y el cobro; falta bloquear una tarjeta y confirmar que el validador la rechaza sin red (BLINK-DOC-15 §8.4). |
 | B-03 | ~~BLINK PASAJES opera en local, sin RPC `bt_*`.~~ | — | **Cerrada** el 2026-10-31: el panel se retiró; el flujo pasó al portal y al back-office. |
-| B-04 | Aprobación de recargas sin bandeja en el back-office: se resuelve con RPC de servicio (`bt_recargas_pendientes`/`bt_aprobar_recarga`). | M | Añadir la pantalla de recargas pendientes al panel. |
+| B-04 | ~~Aprobación de recargas sin bandeja en el back-office: se resuelve con RPC de servicio (`bt_recargas_pendientes`/`bt_aprobar_recarga`).~~ | — | **Cerrada** el 2026-11-01: pantalla **Recargas** del back-office con sesión y segundo factor (migración `0018`); aprobar pide confirmación, rechazar exige motivo y la fila se bloquea antes de resolver. Queda publicar el panel. |
 | B-05 | Recuperación de PIN inexistente en el portal. | M | Requiere flujo de atención o verificación por correo. |
 | B-06 | Telemetría fiscal sin exportación oficial (GTFS/CSV). | B | El módulo Fiscal muestra totales, no descarga. |
 | B-07 | Estación de enrolado: la carga masiva UID↔serial existe en `0006` y su interfaz en el back-office (`BACKOFFICE`), falta el circuito físico completo con la placa. | M | El grabado del chip funciona por la consola serie (prueba real del 2026-10-31); falta conectarlo a la interfaz web. |
@@ -100,6 +100,7 @@ implementación:
 | 1c | Inscribir el segundo factor de la cuenta administradora desde el teléfono del operador. | Operador | Inmediato |
 | 1d | ~~Aplicar `0009` y crear la tarjeta maestra~~ (hecho el 2026-10-30; ver BLINK-DOC-07 §3.5 y BLINK-DOC-12). | Administrador | Cerrado |
 | 1e | ~~Aplicar `0010` y renumerar la maestra a `00-0-0000000-0`~~ (hecho el 2026-10-30; ver BLINK-DOC-07 §3.6). | Administrador | Cerrado |
+| 1f | ~~Aplicar `0018` y construir la bandeja de recargas~~ (hecho el 2026-11-01; cierra B-04, ver BLINK-DOC-07 §4.8). Queda publicar el panel. | Administrador | Pendiente publicación |
 | 2 | Rotar contraseña de PostgreSQL y tokens expuestos (checklist en BLINK-DOC-11). | Administrador | Inmediato |
 | 3 | Mover el firmware del **lector** a un repositorio con `firmware/` (el validador ya está en git). | Desarrollo | Corto |
 | 4 | ~~Migrar BLINK PASAJES al esquema `bt_*`~~ (cerrado el 2026-10-31: panel retirado y dominio redirigido a TARJETA). | Desarrollo | Cerrado |
@@ -123,7 +124,10 @@ implementación:
 ## 6. Revisión
 
 Este registro se actualiza al cerrar cada hito. La última revisión corresponde al
-2026-10-31 y acompañó la interfaz datáfono `ISO-UI-240-REV2` del firmware 8
+2026-11-01 y acompañó la bandeja de recargas del back-office (migración `0018`):
+se cerró B-04 (aprobación de recargas sin pantalla en el panel).
+La revisión anterior, del 2026-10-31, acompañó la interfaz datáfono
+`ISO-UI-240-REV2` del firmware 8
 (BLINK-DOC-18): se añadieron B-25 (contraste de cabecera y título, falta la
 prueba de luz real) y B-26 (SPI a 40 MHz sin validación de integridad).
 La revisión anterior, del 2026-10-31, acompañó los códigos de respuesta POS del

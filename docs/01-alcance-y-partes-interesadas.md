@@ -38,13 +38,13 @@ cobro a bordo (validador) y emisión física de plásticos.
 
 ### 2.2 BLINK BACK-OFFICE — `blink-servers.github.io/BACKOFFICE/`
 
-Consola administrativa en repositorio propio: alta de lotes, inventario,
-estación de enrolado por Web Serial y resumen operativo. Exige rol `ADMIN` o
-`TAQUILLA` y segundo factor TOTP.
+Consola administrativa en repositorio propio: alta de lotes, bandeja de recargas,
+inventario, estación de enrolado por Web Serial y resumen operativo. Exige rol
+`ADMIN` o `TAQUILLA` y segundo factor TOTP.
 
-**En alcance:** fabricación y trazabilidad de tarjetas y enrolado UID↔serial. La
-asignación a una cuenta la hace el pasajero desde el portal al reclamar el
-serial; la revisión de recargas se hace hoy por RPC de servicio (brecha B-04).
+**En alcance:** fabricación y trazabilidad de tarjetas, enrolado UID↔serial y
+revisión del Pago Móvil desde la pantalla **Recargas**. La asignación a una
+cuenta la hace el pasajero desde el portal al reclamar el serial.
 **Fuera de alcance:** registro de pasajeros (portal) y liquidación fiscal.
 
 ### 2.3 Backend compartido — Supabase `gakkfzqcrapxeierfdhk`

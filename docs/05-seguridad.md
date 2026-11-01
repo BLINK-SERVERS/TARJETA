@@ -35,11 +35,11 @@
 
 Controles implementados:
 
-- RLS activo en las 12 tablas; `revoke all` para `anon`/`authenticated` en todas.
+- RLS activo en las 13 tablas; `revoke all` para `anon`/`authenticated` en todas.
 - `security definer` con `search_path` fijo para evitar *search path injection*.
 - Las funciones internas (`bt_*_json`, `bt_sesion_cuenta`, `bt_admin_sesion`,
   `bt_totp_*`, etc.) están revocadas.
-- `anon` ejecuta el contrato del portal **y** once RPC de back-office que
+- `anon` ejecuta el contrato del portal **y** trece RPC de back-office que
   autentican por token de sesión con rol administrativo y segundo factor.
 - El PIN nunca viaja al cliente después del registro y nunca se devuelve.
 - La respuesta de `bt_entrar` no distingue entre cédula inexistente y PIN erróneo

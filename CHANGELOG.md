@@ -9,6 +9,11 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 
 ### Añadido
 
+- **Migración `0018_admin_recargas`**: `bt_admin_recargas` y
+  `bt_admin_resolver_recarga` exponen la bandeja de Pago Móvil y su resolución
+  al back-office con sesión y TOTP, reutilizando `bt_aprobar_recarga` y
+  `bt_rechazar_recarga`. Las funciones crudas siguen cerradas a `anon`; la fila
+  se bloquea antes de resolver y el rechazo exige motivo.
 - **Interfaz datáfono `ISO-UI-240-REV2`** (firmware 8, BLINK-DOC-18): el cobro
   aprobado ocupa la pantalla completa en verde `#00C853` durante 2,5 s y el
   rechazo en rojo `#D50000` durante 3,0 s, con visto bueno o cruz trazados,

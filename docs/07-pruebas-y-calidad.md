@@ -375,6 +375,33 @@ Hallazgos que quedan en el código:
 - **La vuelta al panel tarda 95 ms.** Es posterior a la retención y no forma
   parte del cambio de color de la transacción.
 
+### 4.8 Bandeja de recargas del back-office (migración 0018, 2026-11-01)
+
+Se agregaron `bt_admin_recargas` y `bt_admin_resolver_recarga` (sesión + MFA) y
+la pantalla **Recargas**. La prueba se ejecutó en la simulación local dentro de
+una transacción revertida, con una tarjeta `G-00001-001-N` de saldo 1000 y dos
+reportes pendientes de 5000 y 3000.
+
+| # | Prueba | Resultado |
+| --- | --- | --- |
+| 1 | Bandeja con dos pendientes | `total=2`, `monto=8000`, más antiguo primero, `operador` resuelto |
+| 2 | Acotar `p_limite` | `p_limite=1` lista una fila y conserva `total=2`; el tope es 200 |
+| 3 | Aprobar 5000 | Saldo 1000 → **6000**; movimiento `aprobado` con `saldo_despues=6000`; `resolved_by` con el nombre del operador |
+| 4 | Rechazar sin motivo | `bt:datos:Escribe el motivo del rechazo.` |
+| 5 | Rechazar con motivo | `estado=rechazado`, saldo intacto |
+| 6 | Resolver dos veces | `bt:datos:Esa recarga ya fue resuelta (estado: aprobado).` |
+| 7 | Token inválido / sesión vencida | `bt:sesion:Tu sesión venció. Vuelve a entrar.` |
+| 8 | Operador sin segundo factor | `bt:mfa:Activa la verificación en dos pasos antes de operar.` |
+| 9 | `anon` ejecuta la RPC por PostgREST | HTTP 400 con el mensaje `bt:sesion` (no expone datos) |
+| 10 | Migración en producción | `CREATE FUNCTION` ×2, permisos revocados a `public/anon/authenticated` y otorgados a `anon`; 4 pendientes reales (15 500 Bs) visibles |
+| 11 | Interfaz en el navegador (simulación) | Bandeja con 2 pendientes y Bs. 6.500; confirmación de aprobación con aviso de irreversibilidad; al aprobar 5000 el saldo pasa a 6000 y la bandeja queda en 1 / Bs. 1.500; el rechazo sin motivo se bloquea en el cliente y con motivo deja 0 pendientes y el estado vacío |
+
+La prueba visual (fila 11) se hizo con el servidor de desarrollo del back-office
+contra la simulación, con una sesión sembrada en `sessionStorage` y el segundo
+factor activo en la base local; los datos de prueba se borraron al terminar.
+Queda pendiente repetir el recorrido en producción cuando se restaure el MFA
+(hoy en modo bypass).
+
 ## 5. Prueba de la tarjeta virtual (ID-1 / CR80)
 
 | Viewport | Ancho de tarjeta | Alto | Relación medida | Radio |

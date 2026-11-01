@@ -3,11 +3,11 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-00 |
-| Versión | 1.10.0 |
-| Fecha | 2026-10-31 |
+| Versión | 1.11.0 |
+| Fecha | 2026-11-01 |
 | Estado | Vigente |
 | Autor | Equipo BLINK (desarrollo asistido) |
-| Revisión | 10 |
+| Revisión | 11 |
 | Normas de referencia | ISO 9001:2015 §7.5 · ISO/IEC/IEEE 12207:2017 · ISO/IEC/IEEE 26511/26512/26513/26514/26515 · ISO/IEC 25010 · ISO/IEC 27001:2022 |
 
 ## 1. Propósito
@@ -27,7 +27,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | Producto | Repositorio | URL pública | Versión |
 | --- | --- | --- | --- |
 | BLINK TARJETA (portal del pasajero) | `BLINK-SERVERS/TARJETA` | https://blink-servers.github.io/TARJETA/ | 1.5.0 |
-| BLINK BACK-OFFICE (gestión de tarjetas) | `BLINK-SERVERS/BACKOFFICE` | https://blink-servers.github.io/BACKOFFICE/ | 1.1.0 |
+| BLINK BACK-OFFICE (gestión de tarjetas) | `BLINK-SERVERS/BACKOFFICE` | https://blink-servers.github.io/BACKOFFICE/ | 1.2.0 |
 | Backend (Supabase) | proyecto `gakkfzqcrapxeierfdhk` | — | PostgreSQL 17.11 |
 | Simulación local | `TARJETA/simulacion` | `http://127.0.0.1:54321` (API) · `:5175` (portal) · `:5173` (panel) | — |
 
@@ -107,6 +107,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | 1.8.0 | 2026-10-31 | Nuevo BLINK-DOC-16: cobro repetido por tarjeta (Crypto1), Read-After-Write, estado incierto, contador del chip (`0017`) y desviaciones razonadas de la especificación externa (ADR-09 a ADR-11). | Equipo BLINK |
 | 1.9.0 | 2026-10-31 | Nuevo BLINK-DOC-17: códigos de respuesta POS (`ISO-00`/`ERR-xx`) e iconos en el validador (firmware 7), campo `codigo=` en `TAP` y respuesta adaptada al panel de 240×240 (ADR-12 y ADR-13). | Equipo BLINK |
 | 1.10.0 | 2026-10-31 | Nuevo BLINK-DOC-18: interfaz datáfono `ISO-UI-240-REV2` (firmware 8) con resultado a pantalla completa 2,5 s / 3,0 s, banda amarilla offline, renderizado medido en 39–40 ms, ADR-14 y ADR-15; DOC-02, DOC-07, DOC-09 y DOC-17 actualizados. | Equipo BLINK |
+| 1.11.0 | 2026-11-01 | Bandeja de recargas en el back-office (migración `0018`, `bt_admin_recargas` y `bt_admin_resolver_recarga` con sesión + MFA); B-04 cerrada; DOC-01, DOC-02, DOC-04, DOC-06, DOC-07, DOC-08 y DOC-10 actualizados. | Equipo BLINK |
 
 Reglas de mantenimiento:
 
@@ -130,5 +131,6 @@ Reglas de mantenimiento:
 | **RPC** | Función PostgreSQL expuesta por PostgREST (`POST /rest/v1/rpc/<nombre>`). |
 | **RLS** | Row Level Security: política de filas de PostgreSQL. |
 | **Pago Móvil** | Transferencia bancaria venezolana que el pasajero reporta y un admin aprueba. |
+| **Bandeja de recargas** | Pantalla del back-office que lista los Pago Móvil pendientes y permite aprobarlos o rechazarlos con sesión y TOTP. |
 | **Back-office** | Consola administrativa separada del portal; exige rol `ADMIN`/`TAQUILLA` y TOTP. |
 | **TOTP** | Código de 6 dígitos cada 30 s (RFC 6238); BLINK lo verifica en la base, no en el navegador. |

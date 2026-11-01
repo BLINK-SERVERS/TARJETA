@@ -35,7 +35,7 @@ flowchart LR
 | Componente | Tecnología | Despliegue | Responsabilidad |
 | --- | --- | --- | --- |
 | BLINK TARJETA | React 19 · Vite 8 · TS strict | GitHub Pages (Actions), base `/TARJETA/` | Cuenta, billetera, recargas, extracto. |
-| BLINK BACK-OFFICE | React 19 · Vite 8 · TS strict · Web Serial | GitHub Pages (Actions), base `/BACKOFFICE/` | Lotes, inventario y estación de enrolado; exige rol administrativo y TOTP. |
+| BLINK BACK-OFFICE | React 19 · Vite 8 · TS strict · Web Serial | GitHub Pages (Actions), base `/BACKOFFICE/` | Lotes, inventario, estación de enrolado y bandeja de recargas; exige rol administrativo y TOTP. |
 | PASAJES-REDIRECT | HTML estático | GitHub Pages, CNAME `pasajes.blink.com.ve` | Redirige el dominio retirado a BLINK TARJETA conservando el ancla. |
 | Simulación | PostgreSQL 16 · PostgREST v12 · nginx | Docker local (`simulacion/`) | Reproduce el contrato RPC y el flujo completo sin producción. |
 | BLINK POS | React 19 · Vite 8 · Konsta · Supabase JS | GitHub Pages rama `gh-pages` + Cloudflare | Comercio: ventas, caja, catálogo (fuera de esta suite). |

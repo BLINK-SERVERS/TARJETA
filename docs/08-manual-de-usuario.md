@@ -123,16 +123,20 @@ Web Serial, disponible en Chromium/Edge).
    Authenticator, Authy o 1Password y escribir el código de 6 dígitos. Sin este
    paso el panel no deja crear lotes ni enrolar tarjetas.
 3. **Resumen:** totales de tarjetas fabricadas, activas y asignadas.
-4. **Lotes:** elegir cantidad, patrocinante y origen; el sistema genera los
+4. **Recargas:** bandeja de Pago Móvil pendientes con total y monto. Compara con
+   el banco y usa **Aprobar** (pide confirmación) o **Rechazar** (exige motivo);
+   el saldo de la tarjeta cambia al aprobar y el chip lo recibe en la siguiente
+   sincronización. Detalle en §5.1.
+5. **Lotes:** elegir cantidad, patrocinante y origen; el sistema genera los
    seriales en estado «Fabricada / Inactiva / No asignada» y permite exportar la
    hoja en CSV para imprimir.
-5. **Estación:** conectar el lector USB, pasar cada tarjeta y capturar su UID;
+6. **Estación:** conectar el lector USB, pasar cada tarjeta y capturar su UID;
    revisar la lista y cargar en bloque. Los pares rechazados se muestran con el
    motivo sin detener la carga.
-6. **Entrega:** el pasajero vincula el serial desde el portal (§1.2); la tarjeta
+7. **Entrega:** el pasajero vincula el serial desde el portal (§1.2); la tarjeta
    pasa a `ACTIVE` a su nombre. No hay asignación manual en taquilla.
-7. **Inventario:** filtrar por lote, serial o estado y exportar.
-8. **Salir** al terminar: el token vive solo en la pestaña.
+8. **Inventario:** filtrar por lote, serial o estado y exportar.
+9. **Salir** al terminar: el token vive solo en la pestaña.
 
 Si se pierde el teléfono, el segundo factor se reinicia desde la consola SQL
 (BLINK-DOC-06 §5.5) y se vuelve a inscribir.
@@ -151,11 +155,12 @@ Sitio: https://www.blink.com.ve/
 
 Tareas que hoy se hacen por RPC de servicio o consola:
 
-| Tarea | Función |
+| Tarea | Dónde / función |
 | --- | --- |
-| Ver recargas por revisar | `bt_recargas_pendientes(100)` |
-| Aprobar una recarga | `bt_aprobar_recarga(<id>, 'admin')` |
-| Rechazar una recarga | `bt_rechazar_recarga(<id>, 'admin', 'motivo')` |
+| Ver y resolver recargas | Back-office → **Recargas** |
+| Ver recargas por revisar | `bt_recargas_pendientes(100)` (SQL Editor) |
+| Aprobar una recarga | `bt_aprobar_recarga(<id>, 'admin')` (SQL Editor) |
+| Rechazar una recarga | `bt_rechazar_recarga(<id>, 'admin', 'motivo')` (SQL Editor) |
 | Emitir tarjeta | `bt_emitir_tarjeta(serial, nombre, cédula, teléfono, tarifa)` |
 | Enrolar chip | `bt_enrolar_tarjeta(serial, uid)` |
 | Bloquear / desbloquear | `bt_bloquear_tarjeta(serial, motivo)` / `bt_desbloquear_tarjeta(serial)` |
@@ -168,16 +173,19 @@ Tareas que hoy se hacen por RPC de servicio o consola:
 El procedimiento completo, con el detalle de cada efecto en la base, está en
 BLINK-DOC-06 §5.6. En corto:
 
-1. **Bandeja:** en el SQL Editor del panel de Supabase,
-   `select jsonb_pretty(public.bt_recargas_pendientes(50));` lista los reportes
-   pendientes del más antiguo al más reciente.
+1. **Bandeja:** abre **Recargas** en el back-office (sesión con segundo factor).
+   Lista los reportes pendientes del más antiguo al más reciente con el total,
+   el monto en revisión, el serial, el titular, el banco, los últimos 4 dígitos
+   de la referencia y el saldo actual de la tarjeta.
 2. **Revisión:** compara con el estado de cuenta del banco el monto, el banco,
    el teléfono emisor y los **últimos 4 dígitos** de la referencia (es lo único
    que guarda el portal).
-3. **Resolución:** `select public.bt_aprobar_recarga('<uuid>', 'Operador');` o
-   `select public.bt_rechazar_recarga('<uuid>', 'Operador', 'Motivo');`. Nunca
-   se actualiza la tabla a mano: la función acredita el saldo y deja el
-   movimiento consistente. **Aprobar es irreversible.**
+3. **Resolución:** pulsa **Aprobar** y confirma, o **Rechazar** y escribe el
+   motivo. Nunca se actualiza la tabla a mano: el servidor acredita el saldo y
+   deja el movimiento consistente. **Aprobar es irreversible** y una recarga ya
+   resuelta no se puede volver a tocar. La vía SQL de emergencia sigue siendo
+   `select public.bt_aprobar_recarga('<uuid>', 'Operador');` o
+   `select public.bt_rechazar_recarga('<uuid>', 'Operador', 'Motivo');`.
 4. **Entrega al chip:** en la siguiente sincronización el validador descarga la
    recarga aprobada y, al apoyar la tarjeta, incrementa el saldo del plástico
    (`RECARGA_APLICADA` por serie). El ciclo cierra cuando la base marca

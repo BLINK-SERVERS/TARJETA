@@ -200,6 +200,8 @@ operador nunca lleva una credencial con acceso total a la base.
 | `bt_admin_asignar` | `p_token, p_serial, p_cedula, p_operador=''` | Tarjeta activada a nombre de la cuenta |
 | `bt_admin_lotes` | `p_token, p_limite=20` | Lotes con `enroladas`, `asignadas`, `fabricadas` |
 | `bt_admin_tarjetas` | `p_token, p_lote=null, p_buscar='', p_estado=null, p_limite=200` | `{total, tarjetas[]}` con titular, cédula y saldo |
+| `bt_admin_recargas` | `p_token, p_limite=100` | `{total, monto, recargas[], operador}` de las recargas pendientes |
+| `bt_admin_resolver_recarga` | `p_token, p_recarga, p_aprobar, p_motivo=null` | `{ok, saldo, recarga, aprobada, operador}`; el rechazo exige motivo |
 
 ### Reglas
 
@@ -219,13 +221,20 @@ operador nunca lleva una credencial con acceso total a la base.
 5. **Contrato de error.** `bt_admin_entrar` también devuelve `{error, mensaje}`
    con HTTP 200 (`permiso`, `credenciales`, `mfa`) para poder persistir el intento
    fallido y mantener el bloqueo de 5 fallos / 5 minutos.
-6. **Solo lectura.** `bt_admin_lotes` y `bt_admin_tarjetas` no modifican datos;
-   `p_limite` se acota a 200 tarjetas y 100 lotes.
-7. **Permisos.** Las funciones internas (`bt_admin_sesion`, `bt_admin_sesion_mfa`,
-   `bt_totp_*`) están revocadas para `anon`; solo las once RPC de la tabla
+6. **Solo lectura.** `bt_admin_lotes`, `bt_admin_tarjetas` y `bt_admin_recargas`
+   no modifican datos; `p_limite` se acota a 200 tarjetas, 100 lotes y 200
+   recargas.
+7. **Resolución de recargas.** `bt_admin_resolver_recarga` exige el segundo
+   factor, bloquea la fila (`for update`) y delega en `bt_aprobar_recarga` o
+   `bt_rechazar_recarga`, de modo que el saldo, el movimiento y la auditoría se
+   escriben en un solo lugar. Una recarga ya resuelta responde `bt:datos`; el
+   rechazo sin motivo también. Aprobar es irreversible desde el panel.
+8. **Permisos.** Las funciones internas (`bt_admin_sesion`, `bt_admin_sesion_mfa`,
+   `bt_totp_*`) están revocadas para `anon`; solo las trece RPC de la tabla
    anterior se conceden. Las funciones primitivas (`bt_generar_lote`,
-   `bt_estacion_*`, `bt_resumen_operativo`) siguen cerradas a `anon`: el panel
-   llega a ellas únicamente a través de su envoltorio con token.
+   `bt_estacion_*`, `bt_resumen_operativo`, `bt_recargas_pendientes`,
+   `bt_aprobar_recarga`, `bt_rechazar_recarga`) siguen cerradas a `anon`: el
+   panel llega a ellas únicamente a través de su envoltorio con token.
 
 ```bash
 # 1) Entrar: devuelve token y el estado del segundo factor
@@ -275,6 +284,17 @@ otras funciones `security definer`.
 { "tipo": "recarga", "monto": 100, "saldo": 0, "detalle": "Pago Móvil en revisión",
   "estado": "pendiente", "banco": "Banco de Venezuela", "referencia": "1177",
   "fecha": "2026-10-29T22:17:00Z" }
+
+// Bandeja de recargas del back-office
+{
+  "total": 4, "monto": 15500, "operador": "Operador Apellido",
+  "recargas": [{
+    "recarga": "<uuid>", "movimiento": "<uuid>", "serial": "G-00001-001-N",
+    "titular": "María Fernández", "cedula": "V-12345678", "monto": 5000,
+    "telefono": "04141234567", "banco": "Banesco", "referencia": "1234",
+    "estado": "pendiente", "reportada": "2026-11-01T05:14:17Z", "saldo": 1000
+  }]
+}
 ```
 
 ## 7. Versionado del contrato

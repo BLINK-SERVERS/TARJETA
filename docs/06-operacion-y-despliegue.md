@@ -312,23 +312,29 @@ cumplen `^0\d{10}$`, referencias de menos de 4 dígitos, más de 6 reportes en
 10 minutos por tarjeta y una referencia repetida en la misma tarjeta y banco
 (`bt:duplicada`).
 
-**Paso 2 — revisión de la bandeja.** En el SQL Editor del panel de Supabase
-(rol propietario; la función está cerrada a `anon`):
-
-```sql
-select jsonb_pretty(public.bt_recargas_pendientes(50));
-```
-
-Devuelve, por reporte: `recarga` (UUID), `movimiento`, `serial`, `titular`,
-`cedula`, `monto`, `telefono`, `banco`, `referencia`, `estado` y `reportada`,
-del más antiguo al más reciente. Se aprueba **solo** si coinciden monto, banco,
-teléfono emisor y los últimos 4 dígitos de la referencia con el estado de
-cuenta real.
+**Paso 2 — revisión de la bandeja.** En el back-office, menú **Recargas**
+(requiere sesión de `ADMIN`/`TAQUILLA` y el segundo factor activo). La pantalla
+muestra el total pendiente y el monto en revisión, y lista del reporte más
+antiguo al más reciente: fecha de reporte, serial con titular y cédula, monto,
+banco con los últimos 4 dígitos de la referencia, teléfono emisor y saldo actual
+de la tarjeta. Se aprueba **solo** si coinciden monto, banco, teléfono emisor y
+los últimos 4 dígitos de la referencia con el estado de cuenta real. Si hay más
+de 200 pendientes, la pantalla lo advierte y muestra los 200 más antiguos.
 
 **Paso 3 — resolución.** Nunca se actualiza `recharges` a mano: la RPC mantiene
-consistentes el saldo virtual y el movimiento.
+consistentes el saldo virtual y el movimiento. En la misma pantalla, `Aprobar`
+abre una confirmación que recuerda que la operación es irreversible; `Rechazar`
+pide el motivo del rechazo (obligatorio) y no toca el saldo. El servidor bloquea
+la fila antes de resolver, así que dos operadores no pueden aplicar la misma
+recarga: el segundo recibe «Esa recarga ya fue resuelta».
+
+Las RPC subyacentes siguen existiendo para el SQL Editor del panel de Supabase
+(rol propietario; están cerradas a `anon`) como vía de emergencia:
 
 ```sql
+-- Bandeja cruda
+select jsonb_pretty(public.bt_recargas_pendientes(50));
+
 -- Aprobar: devuelve {"ok": true, "saldo": <nuevo saldo>}
 select public.bt_aprobar_recarga('<uuid>', 'Nombre del operador');
 

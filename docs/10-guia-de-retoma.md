@@ -36,7 +36,7 @@
     src/lib/local.ts               espejo local del contrato
     src/components/TarjetaVirtual.tsx  tarjeta ID-1 con giro 3D
     src/styles/app.css             tarjeta con container queries (cqw)
-    supabase/migrations/           0001…0016
+    supabase/migrations/           0001…0018
     scripts/lote.ts                generación de lotes y hoja de impresión
     docs/                          esta suite
     simulacion/                    pila Docker + flujo.mjs + scripts
@@ -45,10 +45,11 @@
     src/lib/api.ts                 cliente RPC con token de sesión (BLINK-DOC-04 §4)
     src/lib/serial.ts              lector ESP32 por Web Serial
     src/pages/Acceso.tsx, Mfa.tsx  login cédula+PIN y alta del segundo factor
+    src/pages/Resumen.tsx          totales operativos del día
+    src/pages/Recargas.tsx         bandeja de Pago Móvil: aprobar o rechazar
     src/pages/Lotes.tsx            creación de lotes y exportación CSV
     src/pages/Inventario.tsx       filtros por lote, serial y estado
     src/pages/Estacion.tsx         captura UID y carga masiva
-    src/pages/Taquilla.tsx         asignación serial ↔ cédula
 
   pos/pos/app/                     ← comercio (Supabase Auth + RLS), producto aparte
   firmware/lector/, firmware/validador/   sketches ESP32
