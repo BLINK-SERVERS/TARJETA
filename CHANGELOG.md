@@ -9,6 +9,23 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 
 ### Añadido
 
+- **Interfaz datáfono `ISO-UI-240-REV2`** (firmware 8, BLINK-DOC-18): el cobro
+  aprobado ocupa la pantalla completa en verde `#00C853` durante 2,5 s y el
+  rechazo en rojo `#D50000` durante 3,0 s, con visto bueno o cruz trazados,
+  importe y saldo en formato `2.450,00 Bs`. Al vencer la retención se repinta
+  el panel de estado vivo.
+- **Banda amarilla sin conexión** `#FFD700` con texto negro
+  `SIN CONEXION A INTERNET` y el número de cobros pendientes, persistente
+  mientras no haya Wi-Fi (ADR-15).
+- **Renderizado en RAM de 39–40 ms**: lienzo de 240×120 px en el heap, dos
+  pasadas y envío en bloques de 40 líneas; el resultado completo baja de
+  63 ms (24 MHz) a 39–40 ms (40 MHz), dentro del límite de 50 ms de la
+  especificación.
+- **Comando serie `PANTALLA_TEST`**: pinta las dos pantallas de resultado y el
+  panel, e informa `PANTALLA,ms=` de cada una sin gastar un toque.
+- **`pantallaReservar()`** reserva el lienzo antes de Wi-Fi; si falla, la
+  interfaz dibuja directo sobre el panel y el arranque lo informa con
+  `PANTALLA,lienzo=directo`.
 - **BLINK-DOC-15**: auditoría de datos, RLS, integridad referencial y cierre
   del ciclo de recarga, con la evidencia de la prueba física.
 - **Script de limpieza** `supabase/limpieza/2026-10-31_auditoria_y_purga.sql`:
@@ -59,6 +76,14 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
 
 ### Cambiado
 
+- **Firmware 8**: `READY` e `INFO` informan `fw=8`; la retención del resultado
+  pasa de 5 s a 2,5 s (aprobado) y 3,0 s (denegado); el resultado deja de
+  ocupar la franja y pasa a pantalla completa; el SPI de la pantalla sube de
+  24 a 40 MHz.
+- **Suite documental 1.10.0**: DOC-18 nuevo (interfaz datáfono), DOC-17 1.1.0
+  (resultado a pantalla completa y retención 2,5/3,0 s), DOC-02 1.5.0
+  (ADR-14 y ADR-15), DOC-07 1.8.0 (§4.7 con las mediciones) y DOC-09 1.10.0
+  (B-25 y B-26).
 - **Purga del vehículo demo `A99XY7Z`** (MAC `001122334455`, sin viajes ni
   liquidaciones); queda la unidad real `A12BC3D`. No se reiniciaron secuencias
   ni se tocaron cuentas, tarjetas, recargas, movimientos ni telemetría.

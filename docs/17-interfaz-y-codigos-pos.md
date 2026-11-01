@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-17 |
-| Versión | 1.0.0 |
+| Versión | 1.1.0 |
 | Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Autor | Equipo BLINK (desarrollo asistido) |
@@ -39,29 +39,23 @@ estables e iconos) sin sustituir el panel de diagnóstico.
 
 ## 3. Pantalla real (ST7789 240×240)
 
-La pantalla conserva el panel de diagnóstico y añade la lectura POS en la franja
-del último toque. Zonas, de arriba abajo:
+Desde el firmware 8 la interfaz sigue `ISO-UI-240-REV2`: el resultado del cobro
+ocupa la pantalla completa y el reposo muestra el panel de estado vivo. El
+detalle de zonas, colores y tiempos está en **BLINK-DOC-18**; aquí se resume lo
+que afecta a los códigos.
 
-| Franja | Alto | Contenido |
-| --- | --- | --- |
-| Cabecera | 34 px | `BLINK` en azul corporativo, unidad y placa |
-| Enlace | 24 px | Wi-Fi, IP, token, última sincronización y firmware |
-| Tarjeta | 48 px | Tipo, estado, serial, saldo y UID de la última lectura |
-| Resultado | 76 px | Título, **icono + código**, monto y saldo (o serial si se rechaza) |
-| Cola local | 18 px | Pendientes, bloqueadas y log |
-| Pie | 32 px | GPS y minutos encendido |
+| Vista | Qué se ve del código |
+| --- | --- |
+| Reposo | Nada: panel de diagnóstico (enlace, última tarjeta, cola, GPS y tarifa) |
+| Aprobado (2,5 s) | Fondo verde, `APROBADO`, `ISO-00` al pie, monto y saldo |
+| Denegado (3,0 s) | Fondo rojo, `DENEGADO`, motivo y `ERR-xx` al pie |
 
-En la franja de resultado, la composición sigue a la especificación:
-
-- **Aprobado**: `COBRO OK` en verde, visto bueno dibujado con líneas y
-  `[ISO-00]` en letra doble, el monto debitado y el saldo restante.
-- **Rechazo**: motivo en rojo, cruz y `[ERR-xx]`, el serial y, si existe, el
-  saldo.
-- **Espera**: `ACERCA TU TARJETA` centrado, con el estado del equipo encima.
+El motivo en pantalla y el código son el mismo mapeo de §4: la pantalla nunca
+inventa un texto que el código no respalde.
 
 El icono se traza con `drawLine` porque la fuente del panel es ASCII y no
 incluye `✓` ni `✗`; no se añaden fuentes ni mapas de bits para no gastar
-flash (el sketch ya usa el 92 %).
+flash (el sketch ya usa el 93 %).
 
 ## 4. Catálogo de códigos
 
@@ -96,14 +90,15 @@ Notas de mapeo:
 
 | Parámetro | Valor | Motivo |
 | --- | --- | --- |
-| Retención del resultado | 5 s (`RESULTADO_MS`) | Se puede leer de pie, junto al conductor, sin tapar el siguiente pasaje |
-| Vuelta a espera | Automática | La pantalla nunca queda congelada en un rechazo |
-| Espera | Persistente | `ACERCA TU TARJETA` y el estado del equipo siempre visibles |
-| Contraste | Texto claro sobre azul oscuro | Legible a plena luz y sin deslumbrar de noche |
+| Retención del aprobado | 2,5 s (`RESULTADO_OK_MS`) | Tiempo de asimilación de la especificación `ISO-UI-240-REV2` |
+| Retención del denegado | 3,0 s (`RESULTADO_ERROR_MS`) | El rechazo necesita un instante más para leerse de pie |
+| Vuelta al panel | Automática | La pantalla nunca queda congelada en un resultado |
+| Espera | Persistente | `ACERQUE SU TARJETA` y el estado del equipo siempre visibles |
+| Contraste | Fondo sólido verde/rojo con tinta contrastada | Importes en `#00331A` sobre verde (6,3:1) |
 | Parpadeo | Ninguno | El aviso sonoro y el color bastan; el parpadeo cansa en cabina |
 
-La especificación menciona «tiempos de retención ergonómica» sin fijar cifras;
-se mantiene el valor ya probado en la unidad real y se documenta aquí.
+Los tiempos, la paleta y las mediciones de renderizado están en BLINK-DOC-18
+§5–§7.
 
 ## 6. Protocolo serie
 
@@ -123,15 +118,16 @@ TAP,ok=0,motivo=tiempo,codigo=ERR-91,uid=...,serial=...
 
 ### ADR-12 · Adoptar los códigos POS sin migrar la pantalla a 128×128
 
-**Decisión.** Se implementa el catálogo `ISO-00` / `ERR-xx` y los iconos, pero
-se mantiene la ST7789 240×240 con el panel de diagnóstico.
+**Decisión.** Se implementa el catálogo `ISO-00` / `ERR-xx` y los iconos sobre
+la ST7789 de 240×240. Desde el firmware 8 el resultado ocupa la pantalla
+completa y el reposo conserva el panel de diagnóstico (ADR-14, BLINK-DOC-18).
 
 **Motivo.** El hardware instalado no es de 128×128 y el panel de estado es un
 requisito operativo del propietario (ver la red, la cola y el GPS sin consola).
-Reducir la interfaz a tres zonas perdería información que ya se usa a diario.
+La especificación `ISO-UI-240-REV2` confirma el formato de 240×240.
 
-**Contrapartida.** La geometría exacta de la especificación no se replica; sí
-su jerarquía, su catálogo y sus tiempos.
+**Contrapartida.** La geometría exacta de `ISO-POS-015` no se replica; sí su
+jerarquía, su catálogo y sus tiempos.
 
 ### ADR-13 · `ERR-91` reservado a la fase de lectura
 
@@ -149,6 +145,7 @@ cobrado, y tratarlo como «repetir el toque» podría cobrar dos veces.
 | --- | --- | --- |
 | 2026-10-31 22:06 | Compilación del firmware 7 con códigos e iconos | 1 209 963 bytes (92 %), 51 788 bytes de RAM (15 %) |
 | 2026-10-31 22:08 | Flasheo y arranque | `READY,BLINK,7,0,0`; monitor serie sin errores |
+| 2026-10-31 23:31 | Firmware 8: pantalla completa y tiempos | `ms=39/vista=ok`, `ms=40/vista=no`; ver BLINK-DOC-18 §11 |
 | Pendiente | Toque real con saldo | Ver `ISO-00` en pantalla y `codigo=ISO-00` en serie |
 | Pendiente | Retirar la tarjeta a media lectura | Ver `ERR-91` y `REPITA EL TOQUE` |
 
@@ -159,14 +156,15 @@ el corte a media lectura quedan como prueba pendiente (B-23).
 
 1. El código no se guarda en la nube: `trips_telemetry` solo recibe cobros
    aprobados. Contar rechazos por código exige columnas nuevas (B-24).
-2. La pantalla no es de 128×128 ni admite la geometría exacta de la
-   especificación (ADR-12).
-3. El icono es un trazado de líneas de 12×12, no un glifo tipográfico.
+2. La geometría exacta de `ISO-POS-015` no se replica; la de
+   `ISO-UI-240-REV2` sí, con las desviaciones de BLINK-DOC-18 §12.
+3. El icono es un trazado de líneas, no un glifo tipográfico.
 4. `ERR-41` distingue «sin identidad BLINK», no «no registrada en la nube»:
    eso solo lo sabe el servidor al sincronizar.
 
 ## 10. Referencias
 
 - BLINK-DOC-16 (cobro offline, RAW, inciertas, ADR-09 a ADR-11).
+- BLINK-DOC-18 (interfaz datáfono 240×240, ADR-14 y ADR-15).
 - BLINK-DOC-07 §4.5 (prueba física) y §4.6 (compilación del firmware 7).
 - `firmware/validador/README.md` (protocolo serie y códigos).

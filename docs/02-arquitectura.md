@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-02 |
-| Versión | 1.4.0 |
+| Versión | 1.5.0 |
 | Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26514 · ISO/IEC/IEEE 42010 |
@@ -149,3 +149,5 @@ usable.
 | ADR-11 | Sin relé de torniquete; aviso por pantalla y buzzer. | El hardware de a bordo no tiene GPIO de potencia reservado. | «Cero saldo = cero acceso» depende del conductor o de la unidad. |
 | ADR-12 | Códigos POS `ISO-00`/`ERR-xx` en pantalla y serie, sin migrar el panel a 128×128. | El panel es ST7789 240×240 y el diagnóstico vivo es un requisito operativo. | La geometría exacta de la especificación no se replica (DOC-17). |
 | ADR-13 | `ERR-91` (repetir el toque) solo antes de escribir; un timeout durante la escritura es `ERR-63` e incierta. | Antes del decremento no hay nada que reconciliar; después sí. | Un corte a media escritura nunca se reintenta a ciegas. |
+| ADR-14 | El resultado del cobro ocupa la pantalla completa 2,5 s / 3,0 s y luego se repinta el panel de diagnóstico. | `ISO-UI-240-REV2` pide color sólido a pantalla completa; el propietario pide conservar el estado vivo. | Ambas cosas conviven separadas en el tiempo (DOC-18). |
+| ADR-15 | Sin Wi-Fi, la banda inferior pasa a amarillo `#FFD700` con texto negro y el número de pendientes. | Transparencia operativa offline que exige la especificación. | Ocupa 56 px y reduce la cola a un dato mientras no hay red. |

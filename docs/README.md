@@ -3,11 +3,11 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-00 |
-| Versión | 1.9.0 |
+| Versión | 1.10.0 |
 | Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Autor | Equipo BLINK (desarrollo asistido) |
-| Revisión | 9 |
+| Revisión | 10 |
 | Normas de referencia | ISO 9001:2015 §7.5 · ISO/IEC/IEEE 12207:2017 · ISO/IEC/IEEE 26511/26512/26513/26514/26515 · ISO/IEC 25010 · ISO/IEC 27001:2022 |
 
 ## 1. Propósito
@@ -74,6 +74,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | BLINK-DOC-15 | [Auditoría de datos, limpieza y cierre del ciclo de recarga](15-auditoria-y-limpieza.md) | 27001 A.8.10 · 12207 |
 | BLINK-DOC-16 | [Cumplimiento de la especificación offline y del cobro MIFARE](16-especificacion-offline.md) | 14443-3 · 27001 |
 | BLINK-DOC-17 | [Interfaz del validador y códigos de respuesta POS](17-interfaz-y-codigos-pos.md) | 9241 · 8583 · 26514 |
+| BLINK-DOC-18 | [Interfaz datáfono 240×240 (ISO-UI-240-REV2)](18-interfaz-datofono-240.md) | 9241-3 · 25010 · 26514 |
 | — | [CHANGELOG](../CHANGELOG.md) | Keep a Changelog 1.1.0 + SemVer |
 
 ## 4. Convenciones de esta suite
@@ -105,6 +106,7 @@ normas de documentación de software ISO/IEC/IEEE 26511 a 26515.
 | 1.7.0 | 2026-10-31 | Nuevo BLINK-DOC-15: auditoría de RLS, integridad y datos placeholder, purga archivada del vehículo demo y cierre del ciclo de recarga con la prueba física de la maestra; DOC-07 §4.4 y DOC-09 1.7.0. | Equipo BLINK |
 | 1.8.0 | 2026-10-31 | Nuevo BLINK-DOC-16: cobro repetido por tarjeta (Crypto1), Read-After-Write, estado incierto, contador del chip (`0017`) y desviaciones razonadas de la especificación externa (ADR-09 a ADR-11). | Equipo BLINK |
 | 1.9.0 | 2026-10-31 | Nuevo BLINK-DOC-17: códigos de respuesta POS (`ISO-00`/`ERR-xx`) e iconos en el validador (firmware 7), campo `codigo=` en `TAP` y respuesta adaptada al panel de 240×240 (ADR-12 y ADR-13). | Equipo BLINK |
+| 1.10.0 | 2026-10-31 | Nuevo BLINK-DOC-18: interfaz datáfono `ISO-UI-240-REV2` (firmware 8) con resultado a pantalla completa 2,5 s / 3,0 s, banda amarilla offline, renderizado medido en 39–40 ms, ADR-14 y ADR-15; DOC-02, DOC-07, DOC-09 y DOC-17 actualizados. | Equipo BLINK |
 
 Reglas de mantenimiento:
 

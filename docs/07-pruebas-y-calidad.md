@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-07 |
-| Versión | 1.7.0 |
+| Versión | 1.8.0 |
 | Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 26513 · ISO/IEC 25010 |
@@ -344,6 +344,37 @@ pantalla de tres zonas. Se adoptó el catálogo y los iconos; la geometría de
 | 3 | Revisar el mapeo motivo → código | `saldo`→`ERR-12`, `llave`/`lectura`→`ERR-30`, `no-enrolada`→`ERR-41`, `bloqueada`→`ERR-54`, `corrupta`/`valor`/`escritura`/`verificacion`/`incierta`→`ERR-63`, `tiempo`→`ERR-91` |
 | 4 | Toque con saldo y retirada a media lectura | **Pendiente** (ver §8, puntos 6 y 8) |
 
+### 4.7 Interfaz datáfono y renderizado en 50 ms (firmware 8, 2026-10-31)
+
+Se adoptó `ISO-UI-240-REV2` (BLINK-DOC-18): resultado a pantalla completa en
+verde o rojo, retención de 2,5 s / 3,0 s y vuelta al panel de estado. La
+especificación exige que el cambio de color sólido se complete en menos de
+50 ms; se instrumentó el firmware con `micros()` y un comando de autoprueba.
+
+| # | Prueba | Resultado |
+| --- | --- | --- |
+| 1 | Comprobar el hueco máximo del heap al arrancar | 268 564 bytes libres, **110 580** en el mayor bloque contiguo: un lienzo de 115 200 B no cabe |
+| 2 | Reservar un lienzo de 240×120 (57 600 B) antes de Wi-Fi | `PANTALLA,lienzo=ram,heap=209108` |
+| 3 | Medir el relleno a 24 / 32 / 40 MHz | 57 ms / 46 ms / 34 ms |
+| 4 | `PANTALLA_TEST` a 40 MHz | `ms=39 vista=ok`, `ms=40 vista=no`, `ms=95 vista=panel` |
+| 5 | Compilar el firmware 8 | 1 219 075 bytes (93 %), 51 956 bytes de RAM (15 %) |
+| 6 | Flashear y arrancar | `READY,BLINK,8,0,0` |
+| 7 | Toque real: verde 2,5 s y vuelta al panel | **Pendiente** |
+| 8 | Apagar el router y mirar la banda amarilla | **Pendiente** |
+
+Hallazgos que quedan en el código:
+
+- **El lienzo de pantalla completa no cabe.** Pedir 115 200 B falla aunque el
+  heap tenga 268 KB: el mayor bloque contiguo es de 110 580 B. Se usa un
+  lienzo de media pantalla y dos pasadas.
+- **El lienzo debe reservarse antes de Wi-Fi.** Si se pide después de
+  `red.begin()` el hueco contiguo desaparece y el firmware cae al dibujo
+  directo (63 ms a 24 MHz y hasta 151 ms con el panel directo original).
+- **24 MHz no llega al límite.** El ESP32 divide los 80 MHz del bus; a 24 MHz
+  el resultado completo medía 63 ms. A 40 MHz mide 39–40 ms.
+- **La vuelta al panel tarda 95 ms.** Es posterior a la retención y no forma
+  parte del cambio de color de la transacción.
+
 ## 5. Prueba de la tarjeta virtual (ID-1 / CR80)
 
 | Viewport | Ancho de tarjeta | Alto | Relación medida | Radio |
@@ -403,3 +434,6 @@ solapamiento de contenido. **Cumplido** tras sustituir `min-height` por
    especificación externa pide 0,3–0,6 s (BLINK-DOC-16 §8).
 8. Retirar la tarjeta a media lectura para forzar `ERR-91` (`REPITA EL TOQUE`)
    y comprobar que no marca la tarjeta como incierta (ADR-13).
+9. Comprobar en el panel real el verde/rojo, la banda amarilla sin Wi-Fi y la
+   legibilidad a plena luz; la medición de 39–40 ms es de tiempo de bus, no de
+   percepción (BLINK-DOC-18 §11).

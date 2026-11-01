@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-09 |
-| Versión | 1.9.0 |
+| Versión | 1.10.0 |
 | Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 12207 (riesgos) · ISO/IEC 27001 (A.5.7) |
@@ -59,6 +59,8 @@ implementación:
 | B-22 | Las tarjetas con estado incierto solo se desbloquean por consola serie (`LIMPIAR_INCIERTAS`); no hay comando en el back-office ni reporte en la nube. | M | Un operador sin acceso al puerto serie no puede habilitar la tarjeta ni enterarse del incidente (BLINK-DOC-16 §4.3). |
 | B-23 | Falta inyectar un fallo real de escritura para comprobar el flujo `VERIFICAR` y la lista `inciertas`; el tiempo de cobro completo no se ha medido. | M | La protección existe pero no está validada con hardware; la especificación pide 0,3–0,6 s (BLINK-DOC-16 §8). |
 | B-24 | Los códigos POS (`ISO-00`/`ERR-xx`) solo viven en el firmware y en la serie: no se guardan ni se cuentan en la nube. | B | No se puede medir cuántos rechazos por saldo, llave o bloqueo ocurren por unidad (BLINK-DOC-17 §9). |
+| B-25 | La cabecera azul con texto blanco de 6×8 px queda en 3,5:1 y el título blanco sobre verde en 2,2:1, por debajo del 4,5:1 de ISO 9241 para texto pequeño; además falta probar la legibilidad a plena luz. | M | La especificación impone esos colores; los importes ya usan tinta oscura. Validar con el operador y, si hace falta, aclarar el azul o agrandar el texto de la cabecera (BLINK-DOC-18 §10). |
+| B-26 | El reloj SPI de la pantalla se subió a 40 MHz por medición de tiempo; no se validó la integridad de señal ni la estabilidad térmica de la unidad. | B | Si aparecen píxeles sueltos, volver a 24 MHz deja el resultado en 63 ms y rompe el límite de 50 ms (BLINK-DOC-18 §12). |
 
 ## 3. Deuda técnica
 
@@ -115,12 +117,18 @@ implementación:
 | 15 | Añadir un comando de `inciertas` al back-office y reportarlas a la nube (B-22). | Desarrollo | Corto |
 | 16 | Forzar un corte a media escritura y medir el tiempo de cobro con hardware (B-23). | Desarrollo | Corto |
 | 17 | Guardar o contar los códigos de rechazo por unidad y exponerlos en el panel fiscal (B-24). | Desarrollo | Medio |
+| 18 | Validar en el panel real colores, banda amarilla y legibilidad a plena luz; ajustar la cabecera si no se lee (B-25). | Propietario · Desarrollo | Corto |
+| 19 | Vigilar la estabilidad del SPI a 40 MHz en operación y tener el retorno a 24 MHz documentado (B-26). | Desarrollo | Medio |
 
 ## 6. Revisión
 
 Este registro se actualiza al cerrar cada hito. La última revisión corresponde al
-2026-10-31 y acompañó los códigos de respuesta POS del validador (BLINK-DOC-17,
-firmware 7): se añadió B-24 (los códigos no se guardan en la nube).
+2026-10-31 y acompañó la interfaz datáfono `ISO-UI-240-REV2` del firmware 8
+(BLINK-DOC-18): se añadieron B-25 (contraste de cabecera y título, falta la
+prueba de luz real) y B-26 (SPI a 40 MHz sin validación de integridad).
+La revisión anterior, del 2026-10-31, acompañó los códigos de respuesta POS del
+validador (BLINK-DOC-17, firmware 7): se añadió B-24 (los códigos no se guardan
+en la nube).
 La revisión anterior, del 2026-10-31, acompañó el cobro repetido por tarjeta y
 la especificación offline
 (BLINK-DOC-16): se cerró B-01 (mapa de bloques y llaves derivadas), se añadieron
