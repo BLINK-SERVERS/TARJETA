@@ -324,8 +324,12 @@ el re-encendido de antena del bucle, que despertaba la tarjeta olvidada.
 | 3 | `trips_telemetry` | Dos filas nuevas con `offline_id` único y `chip_counter` 8 y 9 |
 | 4 | Firmware con Read-After-Write e inciertas (21:48) | Compila (92 %/15 %), flashea y arranca `READY,BLINK,6` |
 
-Queda pendiente la prueba de fallo (retirar la tarjeta a media escritura) para
-ver la pantalla **VERIFICAR** y la lista `inciertas`; ver BLINK-DOC-16 §8.
+Al cierre de esta revisión, el firmware de las 21:48 todavía no había cobrado
+ninguna tarjeta: los dos toques de la tabla corresponden a la versión anterior
+(la que solo corregía Crypto1). El primer toque con la versión de verificación
+debe confirmar `TAP,ok=1` y `inciertas=0` en `INFO`. Queda pendiente la prueba
+de fallo (retirar la tarjeta a media escritura) para ver la pantalla
+**VERIFICAR** y la lista `inciertas`; ver BLINK-DOC-16 §8.
 
 ## 5. Prueba de la tarjeta virtual (ID-1 / CR80)
 
