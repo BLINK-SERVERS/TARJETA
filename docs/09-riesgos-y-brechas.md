@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-09 |
-| Versión | 1.7.0 |
+| Versión | 1.8.0 |
 | Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 12207 (riesgos) · ISO/IEC 27001 (A.5.7) |
@@ -35,7 +35,7 @@ implementación:
 
 | ID | Brecha | Impacto | Notas |
 | --- | --- | --- | --- |
-| B-01 | Mapa de memoria MIFARE por sectores y claves diversificadas `HMAC_SHA256(master, UID)` no implementado en la nube. | M | El firmware y el esquema actual usan UID + saldo virtual; falta la escritura segura del plástico. |
+| B-01 | ~~Mapa de memoria MIFARE por sectores y claves diversificadas `HMAC_SHA256(master, UID)` no implementado.~~ | — | **Cerrada** el 2026-10-31: identidad v3 en el sector 1, saldo y contador en el 2, telemetría en el 3, llaves derivadas por tarjeta; probado con la maestra (BLINK-DOC-16 §3). |
 | B-02 | Lista negra offline en el validador: descarga implementada, prueba física pendiente. | M | El 2026-10-31 se probaron físicamente el enrolado y el cobro; falta bloquear una tarjeta y confirmar que el validador la rechaza sin red (BLINK-DOC-15 §8.4). |
 | B-03 | ~~BLINK PASAJES opera en local, sin RPC `bt_*`.~~ | — | **Cerrada** el 2026-10-31: el panel se retiró; el flujo pasó al portal y al back-office. |
 | B-04 | Aprobación de recargas sin bandeja en el back-office: se resuelve con RPC de servicio (`bt_recargas_pendientes`/`bt_aprobar_recarga`). | M | Añadir la pantalla de recargas pendientes al panel. |
@@ -56,6 +56,8 @@ implementación:
 | B-19 | La simulación no corre en CI: se ejecuta a mano en el equipo de desarrollo. | M | Ver D-10; bloquea detectar regresiones del contrato en cada push. |
 | B-20 | `settings.publico` conserva el Pago Móvil de ejemplo (RIF `J-00000000-0`, teléfono `0414-0000000`, titular «BLINK PASAJES, C.A.»). | A | Un pasajero real vería datos bancarios falsos. El dueño debe cargar el RIF, teléfono y titular definitivos (BLINK-DOC-15 §6). |
 | B-21 | No hay caducidad de recargas pendientes ni trabajo programado; `pg_cron` no está instalado. | M | Una recarga sin revisar queda pendiente indefinidamente. Aplicar la política de rechazo por antigüedad (BLINK-DOC-15 §9, F-04). |
+| B-22 | Las tarjetas con estado incierto solo se desbloquean por consola serie (`LIMPIAR_INCIERTAS`); no hay comando en el back-office ni reporte en la nube. | M | Un operador sin acceso al puerto serie no puede habilitar la tarjeta ni enterarse del incidente (BLINK-DOC-16 §4.3). |
+| B-23 | Falta inyectar un fallo real de escritura para comprobar el flujo `VERIFICAR` y la lista `inciertas`; el tiempo de cobro completo no se ha medido. | M | La protección existe pero no está validada con hardware; la especificación pide 0,3–0,6 s (BLINK-DOC-16 §8). |
 
 ## 3. Deuda técnica
 
@@ -72,6 +74,7 @@ implementación:
 | D-09 | La copia sin conexión no se cifra con WebCrypto ni se ata al PIN. | Un XSS o un teléfono desbloqueado puede leer los datos mientras la copia viva (12 h). | Media |
 | D-10 | La simulación local no está integrada al CI y depende de `docker-compose` v1. | El contrato RPC se prueba a mano; un cambio puede llegar a `main` sin pasar por el flujo completo. | Media |
 | D-11 | La aprobación de recargas no verifica que exista su movimiento y la sincronización de toques no usa `ON CONFLICT`. | Una recarga podría acreditarse sin historial y dos sincronizaciones simultáneas podrían abortar el lote (BLINK-DOC-15 §9, F-01/F-02). | Media |
+| D-12 | `trips_telemetry.chip_counter` se guarda pero no se compara con la secuencia esperada por tarjeta. | La detección de replay o de un contador retrocedido es manual; falta una consulta o alerta automática (BLINK-DOC-16 §5.3). | Media |
 
 ## 4. Limitaciones conocidas de la plataforma
 
@@ -83,6 +86,7 @@ implementación:
 | L-04 | Pages sirve con base `/TARJETA/`; mover a subdominio exige compilar en la raíz. | Cambio de `base` y de `vite.config.ts` si se decide `tarjeta.blink.com.ve`. |
 | L-05 | La tarjeta maestra se crea por consola (`bt_crear_tarjeta_maestra`), no desde el back-office. | Crear el plástico del propietario exige acceso a SQL. |
 | L-06 | La redirección de `pasajes.blink.com.ve` es HTML (`meta refresh` + JS), no un 301 del servidor. | GitHub Pages no permite reglas de servidor; sin JS igual redirige por el `meta`, pero no hay control de cabeceras ni de caché. |
+| L-07 | El validador no acciona relé ni torniquete: el aviso es pantalla y buzzer. | «Cero saldo = cero acceso» depende del conductor o del sistema de la unidad (ADR-11, BLINK-DOC-16 §7). |
 
 ## 5. Plan de mitigación inmediato
 
@@ -107,14 +111,22 @@ implementación:
 | 12 | Llevar `simulacion/flujo.sh` al CI (B-19, D-10). | Desarrollo | Corto |
 | 13 | Aplicar las guardas F-01 y F-02 del ciclo de recarga (D-11) y definir la caducidad de pendientes (B-21). | Desarrollo | Corto |
 | 14 | Cargar el Pago Móvil real en `settings.publico` (B-20). | Propietario | Inmediato |
+| 15 | Añadir un comando de `inciertas` al back-office y reportarlas a la nube (B-22). | Desarrollo | Corto |
+| 16 | Forzar un corte a media escritura y medir el tiempo de cobro con hardware (B-23). | Desarrollo | Corto |
 
 ## 6. Revisión
 
 Este registro se actualiza al cerrar cada hito. La última revisión corresponde al
-2026-10-31, con la auditoría de datos y el cierre del ciclo de recarga
-(BLINK-DOC-15): se cerró la prueba física de enrolado y cobro, se purgó la
-unidad demo, se añadieron B-20 (Pago Móvil de ejemplo), B-21 (pendientes sin
-caducidad) y D-11 (guardas del ciclo), y se acotó D-03 al firmware del lector.
+2026-10-31 y acompañó el cobro repetido por tarjeta y la especificación offline
+(BLINK-DOC-16): se cerró B-01 (mapa de bloques y llaves derivadas), se añadieron
+B-22 (inciertas solo por consola), B-23 (falta prueba de fallo de escritura y
+medición de tiempos), D-12 (`chip_counter` sin validación de secuencia) y L-07
+(sin relé).
+La revisión anterior, del 2026-10-31, acompañó la auditoría de datos y el cierre
+del ciclo de recarga (BLINK-DOC-15): se cerró la prueba física de enrolado y
+cobro, se purgó la unidad demo, se añadieron B-20 (Pago Móvil de ejemplo), B-21
+(pendientes sin caducidad) y D-11 (guardas del ciclo), y se acotó D-03 al
+firmware del lector.
 La revisión anterior, del 2026-10-31, acompañó el retiro de BLINK PASAJES (B-03
 cerrada, L-03 acotada a TARJETA/BACKOFFICE), la redirección del dominio (L-06)
 y la simulación local del flujo completo (B-19, D-10). La revisión del

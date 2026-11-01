@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-07 |
-| Versión | 1.5.0 |
+| Versión | 1.6.0 |
 | Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Normas | ISO/IEC/IEEE 26513 · ISO/IEC 25010 |
@@ -309,6 +309,24 @@ campo. `reseleccionar()` ahora apaga y enciende la antena antes de cada
 reintento; con ese cambio el grabado y el toque funcionaron a la primera. La
 evidencia completa, con identificadores y saldos, está en BLINK-DOC-15 §8.4.
 
+### 4.5 Cobro repetido y verificación de escritura (2026-10-31)
+
+El mismo equipo dejó de leer tarjetas nuevas después del primer cobro. La causa
+era que el PCD quedaba en modo Crypto1: `PICC_HaltA()` calla la tarjeta pero no
+borra la clave del lector, y el siguiente `REQA` salía cifrado. Se centralizó
+la salida en `soltarTarjeta()` (`PICC_HaltA()` + `PCD_StopCrypto1()`) y se quitó
+el re-encendido de antena del bucle, que despertaba la tarjeta olvidada.
+
+| # | Paso | Resultado |
+| --- | --- | --- |
+| 1 | Toque 1 de la maestra (21:41:12) | `TAP,ok=1`: 2000 → 1500 Bs, contador 8 |
+| 2 | Toque 2, seis segundos después (21:41:18) | `TAP,ok=1`: 1500 → 1000 Bs, contador 9; sin reinicio |
+| 3 | `trips_telemetry` | Dos filas nuevas con `offline_id` único y `chip_counter` 8 y 9 |
+| 4 | Firmware con Read-After-Write e inciertas (21:48) | Compila (92 %/15 %), flashea y arranca `READY,BLINK,6` |
+
+Queda pendiente la prueba de fallo (retirar la tarjeta a media escritura) para
+ver la pantalla **VERIFICAR** y la lista `inciertas`; ver BLINK-DOC-16 §8.
+
 ## 5. Prueba de la tarjeta virtual (ID-1 / CR80)
 
 | Viewport | Ancho de tarjeta | Alto | Relación medida | Radio |
@@ -333,6 +351,8 @@ solapamiento de contenido. **Cumplido** tras sustituir `min-height` por
 | Pruebas unitarias en verde | Cumplido |
 | Simulación local del flujo completo | Cumplido (2026-10-31) |
 | Enrolado y cobro con tarjeta física | Cumplido (2026-10-31, §4.4) |
+| Cobro repetido sin reiniciar y contador del chip en la nube | Cumplido (2026-10-31, §4.5) |
+| Read-After-Write y estado incierto bajo fallo de hardware | Pendiente (B-23) |
 
 ## 7. Calidad según ISO/IEC 25010
 
@@ -358,3 +378,8 @@ solapamiento de contenido. **Cumplido** tras sustituir `min-height` por
 5. Probar el back-office con Playwright (acceso, TOTP y carga en bloque) sobre un
    proyecto de pruebas, porque los códigos TOTP no se pueden reutilizar en CI sin
    un secreto conocido.
+6. Forzar un corte a media escritura (retirar la tarjeta durante el cobro) y
+   comprobar el rechazo **VERIFICAR**, la lista `inciertas` y su limpieza
+   (B-23, BLINK-DOC-16 §4.3).
+7. Medir el tiempo de cobro completo con marcas de tiempo en serie; la
+   especificación externa pide 0,3–0,6 s (BLINK-DOC-16 §8).

@@ -18,9 +18,33 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
   en el chip (UID `3981BF06`); el primer toque aplicó una recarga de 5000 Bs y
   cobró 500, dejando `virtual_balance = last_chip_balance = 4500`, la recarga
   con `synced_to_chip = true` y una fila de telemetría.
+- **BLINK-DOC-16** *Especificación offline del validador*: mapa real de
+  memoria, ciclo de cobro con Read-After-Write, estado incierto, sincronización,
+  matriz RSK-01…05, ADR-09 (un toque = un pasaje), ADR-10 (llaves derivadas) y
+  ADR-11 (sin relé), con la tabla de verificación física del 2026-10-31.
+- **Migración `0017_contador_de_chip.sql`**: columna
+  `trips_telemetry.chip_counter` y disparador `bt_trip_contador_chip()` que la
+  extrae del `offline_id` (`UID-epoch-contador-aleatorio`); 8 filas históricas
+  rellenadas. Permite auditar la secuencia de escrituras del chip.
+- **Verificación de escritura en el validador** (firmware v6): cada cobro y
+  recarga relee el chip y exige saldo y contador exactos. Un fallo de escritura
+  o de relectura emite `INCIDENCIA`, marca el serial como incierto y bloquea
+  toques posteriores con **VERIFICAR** hasta que un operador envía
+  `LIMPIAR_INCIERTAS`.
 
 ### Corregido
 
+- **«Cobra una vez y luego no lee»** (firmware v6): tras autenticar, el
+  MFRC522 quedaba en Crypto1 y el siguiente `REQA` viajaba cifrado, así que el
+  lector no veía tarjetas nuevas hasta reiniciar. Todas las salidas pasan ahora
+  por `soltarTarjeta()` (`PICC_HaltA()` + `PCD_StopCrypto1()`). Verificado con
+  dos toques seguidos el 2026-10-31 21:41 (contadores 8 y 9).
+- **Doble cobro latente por ciclo de antena**: el bucle re-energizaba la antena
+  cada 2 s y despertaba la tarjeta en `HALT`, cobrándola en bucle. Se retiró el
+  ciclo; la tarjeta cobrada queda en `HALT` hasta que se retira del campo.
+- **Segundo toque perdido**: `REPETIR_MS` baja de 1500 a 500 ms para que un
+  segundo toque deliberado (pagar dos pasajes) no caiga en la ventana de
+  rebote.
 - **Re-enrolado tras autenticación fallida (firmware v6)**: `reseleccionar()`
   corta y reenciende el campo RF antes de reintentar, porque el PICC no vuelve
   a IDLE por sí solo. El comando `ENROLAR … FORZAR` ya no termina en
@@ -32,7 +56,11 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
   liquidaciones); queda la unidad real `A12BC3D`. No se reiniciaron secuencias
   ni se tocaron cuentas, tarjetas, recargas, movimientos ni telemetría.
 - **Suite documental 1.7.0**: DOC-07 §4.4 (prueba física), DOC-09 1.7.0
-  (B-20, B-21, D-11), DOC-12 2.0.1 (estado del grabado) y DOC-15 nuevo.
+  (B-20, B-21, D-11) y DOC-15 nuevo. Pasa a 1.8.0 con DOC-16, DOC-07 §4.5,
+  DOC-09 1.8.0 (B-23, D-12, L-07) y el cambio de política de ADR-09.
+- **Un toque = un pasaje (ADR-09)**: se descarta acumular toques durante 2 s y
+  el rebote de 15 s; cada presentación de la tarjeta cobra un pasaje, lo que
+  permite pagar dos pasajes con dos toques.
 
 ### Pendiente
 
@@ -40,6 +68,8 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
   ejemplo).
 - Aplicar las guardas F-01/F-02 y la caducidad de pendientes (F-04).
 - Revisar las recargas pendientes `6466` y `4346` reportadas durante la prueba.
+- Probar el corte de energía a mitad de escritura y medir el tiempo de cobro
+  (B-23); exponer `inciertas` en el back-office (B-22).
 - Rotación de secretos y restauración del MFA.
 
 ## [1.5.0] — 2026-10-31

@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Código | BLINK-DOC-02 |
-| Versión | 1.2.0 |
+| Versión | 1.3.0 |
 | Fecha | 2026-10-31 |
 | Estado | Vigente |
 | Norma | ISO/IEC/IEEE 26514 · ISO/IEC/IEEE 42010 |
@@ -71,10 +71,16 @@ Validador: bt_validador_sincronizar_token recibe recargas aprobadas
 ### 3.3 Cobro a bordo
 
 ```text
-Validador (offline) → guarda taps con offline_id
+Validador (offline) → cobra en el chip con Read-After-Write
+        → guarda taps con offline_id y el contador del chip
         → HTTPS POST bt_validador_sincronizar_token (Bearer token del validador)
-        → descuenta saldo, registra trip_telemetry, devuelve lista negra y recargas
+        → descuenta saldo, registra trips_telemetry (+ chip_counter),
+          devuelve lista negra y recargas
 ```
+
+Cada toque cobra un pasaje. Si la escritura o la relectura de comprobación
+fallan, la tarjeta pasa a la lista local `inciertas` y se rechaza hasta revisión
+manual; ver BLINK-DOC-16 §4.
 
 ### 3.4 Liquidación
 
@@ -138,3 +144,6 @@ usable.
 | ADR-06 | Tokens de validador con `bt_validador_emitir_token`. | Evita usar la clave pública para operar. | Requiere provisioning por dispositivo. |
 | ADR-07 | Simulación local con Postgres + PostgREST + nginx en lugar de un Supabase de pruebas. | Permite probar el flujo completo sin cuota, red ni datos reales, y el gateway imita `/rest/v1/`. | Hay que mantener el compose y el gateway cuando cambie el contrato. |
 | ADR-08 | Retirar BLINK PASAJES y redirigir su dominio con un repo estático. | El panel duplicaba funciones del back-office y no tenía acceso al DNS por API. | `pasajes.blink.com.ve` depende de GitHub Pages y de su CNAME. |
+| ADR-09 | Un toque, un pasaje; sin multi-toque acumulado ni antirebote de 15 s. | Cada cargo es visible y determinista; el gesto acumulado castiga el doble toque involuntario. | Pagar por dos exige retirar la tarjeta entre toques. |
+| ADR-10 | Llaves derivadas por UID en lugar de bloquear el bloque de identidad. | Permite re-enrolar la maestra y migrar formatos v1→v3. | Quien tenga la `MASTER_KEY` puede reescribir tarjetas. |
+| ADR-11 | Sin relé de torniquete; aviso por pantalla y buzzer. | El hardware de a bordo no tiene GPIO de potencia reservado. | «Cero saldo = cero acceso» depende del conductor o de la unidad. |
