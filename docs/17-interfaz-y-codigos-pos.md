@@ -35,7 +35,7 @@ estables e iconos) sin sustituir el panel de diagnóstico.
 | `ERR-12`, `ERR-30`, `ERR-41`, `ERR-54`, `ERR-63`, `ERR-91` | Cumplido con el mapeo de §4 | §4 |
 | Multiplicador `(x2)` por multi-toque | No aplica: un toque = un pasaje | ADR-09 (DOC-16) |
 | Apertura de relé | No aplica al hardware | ADR-11 (DOC-16) |
-| Tiempos de retención ergonómicos | Cumplido: 5 s y vuelta a espera | §5 |
+| Tiempos de retención ergonómicos | Cumplido: 2,5 s (aprobado) y 3,0 s (denegado), vuelta al panel | §5 |
 
 ## 3. Pantalla real (ST7789 240×240)
 
@@ -65,7 +65,7 @@ pero el anfitrión debe decidir con el código.
 
 | Código | Motivo interno | Cuándo | Pantalla | Acción |
 | --- | --- | --- | --- | --- |
-| `ISO-00` | *(vacío)* | Cobro aplicado y verificado | `COBRO OK` + monto + saldo | Buzzer de éxito |
+| `ISO-00` | *(vacío)* | Cobro aplicado y verificado | `APROBADO` + monto + saldo | Buzzer de éxito |
 | `ERR-12` | `saldo` | Saldo menor que la tarifa | `SALDO INSUFICIENTE` | Recargar en el portal |
 | `ERR-30` | `llave`, `lectura` | La llave derivada no autentica o el bloque no se lee | `NO LEGIBLE` | Reposicionar la tarjeta |
 | `ERR-41` | `no-enrolada` | La tarjeta no tiene identidad BLINK | `NO LEGIBLE` | Tarjeta ajena al sistema |
@@ -166,5 +166,5 @@ el corte a media lectura quedan como prueba pendiente (B-23).
 
 - BLINK-DOC-16 (cobro offline, RAW, inciertas, ADR-09 a ADR-11).
 - BLINK-DOC-18 (interfaz datáfono 240×240, ADR-14 y ADR-15).
-- BLINK-DOC-07 §4.5 (prueba física) y §4.6 (compilación del firmware 7).
+- BLINK-DOC-07 §4.5 (prueba física), §4.6 (firmware 7) y §4.7 (firmware 8).
 - `firmware/validador/README.md` (protocolo serie y códigos).

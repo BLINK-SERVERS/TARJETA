@@ -54,7 +54,8 @@ y versionado [SemVer 2.0.0](https://semver.org/lang/es/). Las fechas usan ISO 86
   `ERR-91` se reserva a la tarjeta retirada a medio gesto; un timeout durante
   la escritura sigue siendo `ERR-63` e incierta (ADR-13).
 - **Nuevo BLINK-DOC-17** con el catálogo de códigos, la adaptación de la
-  interfaz al panel de 240×240 (ADR-12) y la matriz de retención (5 s).
+  interfaz al panel de 240×240 (ADR-12) y la matriz de retención (hoy 2,5 s y
+  3,0 s con el firmware 8).
 
 ### Corregido
 

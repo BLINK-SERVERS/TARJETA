@@ -301,6 +301,6 @@ colores y de la banda amarilla requiere al operador.
 - `ISO-UI-240-REV2` (especificación externa del propietario, 2026-10-31).
 - BLINK-DOC-17 (interfaz del validador y códigos POS).
 - BLINK-DOC-16 (cobro offline, estado incierto, ADR-09 a ADR-11).
-- BLINK-DOC-07 §4.6 y §4.7 (compilación y pruebas del firmware 8).
+- BLINK-DOC-07 §4.7 (pruebas del firmware 8) y §4.6 (códigos POS del firmware 7).
 - BLINK-DOC-09 (B-24, B-25).
 - `firmware/validador/README.md` (protocolo serie, `PANTALLA_TEST`).

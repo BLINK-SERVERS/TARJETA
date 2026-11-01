@@ -402,6 +402,7 @@ solapamiento de contenido. **Cumplido** tras sustituir `min-height` por
 | Cobro repetido sin reiniciar y contador del chip en la nube | Cumplido (2026-10-31, §4.5) |
 | Read-After-Write y estado incierto bajo fallo de hardware | Pendiente (B-23) |
 | Código POS visible en pantalla y en serie | Implementado; toque real pendiente (§4.6) |
+| Interfaz datáfono con cambio de color en menos de 50 ms | Cumplido: 39–40 ms medidos (§4.7) |
 
 ## 7. Calidad según ISO/IEC 25010
 
